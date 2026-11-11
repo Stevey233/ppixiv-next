@@ -165,6 +165,9 @@ html:not(.macos) {
     .search-view {
         margin: 8px 24px 24px !important;
         .thumbnails { margin: 0; }
+
+        // A short last row starts at the left edge, like the rest of the grid.
+        .thumbnails .row { justify-content: flex-start; }
     }
 }
 
