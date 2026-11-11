@@ -4,6 +4,7 @@ import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import IllustIdList from '/vview/sites/illust-id-list.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers, SafetyBackoffTimer } from '/vview/misc/helpers.js';
+import { dataSourceSupportsFilters, getFilters, makeFilter, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 
 export default class DataSource extends EventTarget
 {
@@ -164,9 +165,25 @@ export default class DataSource extends EventTarget
         // Run the actual load.
         let { mediaIds, allowEmpty } = await this.loadPageInternal(page) ?? { };
 
+        // Apply the result filters.  If they removed everything, add the page empty so the next
+        // page loads, see below.
+        let filteredAway = false;
+        let keep = await this._getResultFilter();
+        if(mediaIds && keep)
+        {
+            let kept = mediaIds.filter(keep);
+            filteredAway = mediaIds.length > 0 && kept.length == 0;
+            if(filteredAway)
+                allowEmpty = true;
+            mediaIds = kept;
+        }
+
         // Register the page if media IDs were returned.
         if(mediaIds)
             await this.addPage(page, mediaIds, { allowEmpty });
+
+        if(mediaIds?.length)
+            this._filteredEmptyPages = 0;
 
         // Reduce the start page, which will update the "load more results" button if any.
         if(this.supportsStartPage && page < this.initialPage)
@@ -179,6 +196,23 @@ export default class DataSource extends EventTarget
             console.log("No data on page", page);
             if(this.firstEmptyPage == -1 || page < this.firstEmptyPage)
                 this.firstEmptyPage = page;
+        }
+        else if(this.idList.mediaIdsByPage.get(page).length == 0 && filteredAway)
+        {
+            // The filters removed everything on this page.  Load the next one, but stop after a
+            // few in a row, so a filter that matches almost nothing doesn't page through the
+            // whole list.  loadMoreFiltered continues.
+            this._filteredEmptyPages = (this._filteredEmptyPages ?? 0) + 1;
+            if(this._filteredEmptyPages >= MAX_EMPTY_PAGES)
+            {
+                console.log(`Filters removed everything on ${MAX_EMPTY_PAGES} pages, stopping at page ${page}`);
+                this.filteredStopPage = page;
+                this.callUpdateListeners();
+                return;
+            }
+
+            await helpers.other.sleep(500);
+            return await this.loadPage(page+1, { cause: "filtered page was empty" });
         }
         else if(this.idList.mediaIdsByPage.get(page).length == 0)
         {
@@ -332,6 +366,36 @@ export default class DataSource extends EventTarget
 
     // Return the "15 / 100" page text to use.  This is only used by DataSource_VView.
     getPageTextForMediaId(mediaId) { return null; }
+
+    // The result filters in this data source's URL, see misc/result-filters.js.
+    get resultFilters()
+    {
+        if(!dataSourceSupportsFilters(this))
+            return new Set();
+        return getFilters(this.args);
+    }
+
+    // Return a function that says whether to keep a media ID, or null if nothing is filtered.
+    async _getResultFilter()
+    {
+        let filters = this.resultFilters;
+        if(filters.has("hide-seen"))
+            await ppixiv.seenWorks.loaded;
+        return makeFilter(filters);
+    }
+
+    // After loading stopped because the filters removed everything on several pages, load
+    // the next pages.
+    loadMoreFiltered()
+    {
+        let page = this.filteredStopPage;
+        if(page == null)
+            return;
+        this.filteredStopPage = null;
+        this._filteredEmptyPages = 0;
+        this.callUpdateListeners();
+        return this.loadPage(page+1, { cause: "load more filtered" });
+    }
 
     // Register a page of data.
     async addPage(page, mediaIds, {...options}={})

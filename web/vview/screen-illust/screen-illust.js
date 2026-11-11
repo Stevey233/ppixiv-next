@@ -341,6 +341,9 @@ export default class ScreenIllust extends Screen
         });
 
         this.showImageViewer({ newViewer, initial });
+
+        // Remember that this work was opened, to dim it in search results.
+        ppixiv.seenWorks.record(mediaId);
     }
 
     // Show a viewer.

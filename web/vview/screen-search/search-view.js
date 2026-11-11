@@ -324,6 +324,8 @@ export default class SearchView extends Widget
         ppixiv.settings.addEventListener("thumbnail_style", () => this.updateFromSettings(), this._signal);
         ppixiv.settings.addEventListener("pixiv_cdn", () => this.updateFromSettings(), this._signal);
         ppixiv.settings.addEventListener("show_ai_icon", () => this.refreshAllBookmarkIcons(), this._signal);
+        ppixiv.settings.addEventListener("seen_works", () => this.refreshAllSeen(), this._signal);
+        ppixiv.seenWorks.addEventListener("changed", () => this.refreshAllSeen(), this._signal);
         ppixiv.muting.addEventListener("mutes-changed", () => this.refreshAfterMuteChange(), this._signal);
 
         this.updateFromSettings();
@@ -1203,6 +1205,7 @@ export default class SearchView extends Widget
         link.style.borderBottomColor = `hsl(${illustId}deg 50% 50%)`;
 
         this.refreshBookmarkIcon(element);
+        this.refreshSeen(element);
 
         // Set the label.  This is only actually shown in following views.
         let label = element.querySelector(".thumbnail-label");
@@ -1733,6 +1736,20 @@ export default class SearchView extends Widget
         this.artistHeader.hidden = false;
 
         this.restoreScrollPosition(savedScroll);
+    }
+
+    // Dim the thumbnails of works opened before.  Thumbnails in the manga view are pages of the
+    // work being viewed, so they're never dimmed.
+    refreshSeen(thumbnailElement)
+    {
+        let seen = this.dataSource?.name != "manga" && ppixiv.seenWorks.shouldDim(thumbnailElement.dataset.id);
+        helpers.html.setClass(thumbnailElement, "seen", seen);
+    }
+
+    refreshAllSeen()
+    {
+        for(let thumb of this.getLoadedThumbs())
+            this.refreshSeen(thumb);
     }
 
     refreshAllBookmarkIcons()

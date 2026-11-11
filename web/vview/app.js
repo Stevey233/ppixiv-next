@@ -26,6 +26,7 @@ import SiteNative from '/vview/sites/native/site-native.js';
 import SitePixiv from '/vview/sites/pixiv/site-pixiv.js';
 import { getResources } from '/vview/app-resources.js';
 import { startTranslating } from '/vview/zh/i18n.js';
+import SeenWorks from '/vview/misc/seen-works.js';
 
 import appCss from '/resources/css/main.scss';
 
@@ -69,6 +70,7 @@ export default class App
         ppixiv.guessImageUrl = new GuessImageURL();
         ppixiv.muting = new Muting();
         ppixiv.imageTranslations = new ImageTranslations();
+        ppixiv.seenWorks = new SeenWorks();
 
         // Set up the PointerListener singleton.
         PointerListener.installGlobalHandler();
