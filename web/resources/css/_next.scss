@@ -282,8 +282,15 @@ html:not(.macos) {
 
     .header-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 20px;
+        gap: 12px 20px;
+    }
+
+    // In a narrow window, the search box gets its own line under the title.
+    @media (max-width: 760px) {
+        .header-title-block { flex-basis: calc(100% - 140px); }
+        .header-search { order: 3; width: 100% !important; }
     }
 
     .header-title-block {
@@ -1018,6 +1025,57 @@ html, html.mobile {
     .tooltip-display .tooltip-display-text {
         background-color: var(--n-text);
         color: var(--n-bg);
+        font-size: 13px;
+    }
+}
+
+// ------------------------------------------------------------------ settings
+
+html { accent-color: var(--n-blue); }
+
+.settings-dialog {
+    .sections > .box-link {
+        height: auto;
+        padding: 8px 14px;
+        color: var(--n-text);
+        font-size: 15px;
+        font-weight: 500;
+
+        &:not(.selected) { opacity: 1; color: var(--n-pencil); }
+
+        // The open page gets the guide line on its inner edge, like the rail.
+        &.selected {
+            box-shadow: inset 2px 0 0 var(--n-blue);
+            border-radius: 0;
+            font-weight: 700;
+        }
+    }
+
+    html[data-whats-new-updated] & .sections .settings-page-button[data-page='whatsNew'] {
+        color: var(--n-blue);
+    }
+
+    // On a phone the page list is shown on its own, with every entry marked selected.  Show it
+    // as a plain list.
+    html.mobile &:not(.floating) .sections {
+        gap: 0;
+
+        > .box-link, > .box-link.selected {
+            height: 52px;
+            padding: 0 4px;
+            color: var(--n-text);
+            font-weight: 500;
+            font-size: 16px;
+            box-shadow: inset 0 -1px 0 var(--n-rule);
+        }
+    }
+
+    .settings-list .box-link.selected {
+        box-shadow: none;
+    }
+
+    .settings-list .box-link > .explanation {
+        color: var(--n-pencil);
         font-size: 13px;
     }
 }
