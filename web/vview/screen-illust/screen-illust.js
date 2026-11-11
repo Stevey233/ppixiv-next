@@ -208,6 +208,9 @@ export default class ScreenIllust extends Screen
         super.deactivate();
         this._active = false;
 
+        // This screen stays in the page under the search view, so hide the page number with it.
+        this.nombre.hidden = true;
+
         // If we have a viewer, tell it if we're active.
         if(this.viewer != null)
             this.viewer.active = false;
