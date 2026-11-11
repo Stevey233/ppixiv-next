@@ -1079,3 +1079,30 @@ html { accent-color: var(--n-blue); }
         font-size: 13px;
     }
 }
+
+// ------------------------------------------------------------------ mobile viewer menu
+
+.mobile-illust-ui-container {
+    --frame-bg-color: var(--n-bg);
+
+    .mobile-illust-ui-page {
+        .avatar-widget {
+            width: 72px;
+            > .avatar { border: 2px solid var(--n-bg); }
+        }
+
+        .menu-bar {
+            background-color: var(--n-bg);
+            border-top: 1px solid var(--n-rule);
+            font-size: 60%;
+        }
+    }
+
+    .item {
+        --foreground-color: var(--n-rule);
+        &.enabled { --foreground-color: var(--n-pencil); }
+        &.selected { --foreground-color: var(--n-blue); }
+
+        .label { color: var(--n-text); }
+    }
+}
