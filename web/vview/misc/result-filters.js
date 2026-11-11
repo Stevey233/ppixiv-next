@@ -38,6 +38,16 @@ const ALL_FILTERS = new Set([
     ...HIDE_FILTERS.map(([value]) => value),
 ]);
 
+// The label shown for one filter value, like "竖图".
+export function filterLabel(value)
+{
+    for(let group of FILTER_GROUPS)
+        for(let [option, label] of group.options)
+            if(option == value)
+                return label;
+    return HIDE_FILTERS.find(([option]) => option == value)?.[1] ?? value;
+}
+
 // Data sources that list works, where filters make sense.
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",

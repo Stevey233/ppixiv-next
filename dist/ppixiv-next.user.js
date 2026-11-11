@@ -20,7 +20,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.18.g4e8356ed.dirty
+// @version     258.19.ge2295d49.dirty
 // ==/UserScript==
 (function() {
 
@@ -18994,6 +18994,13 @@ This can be enabled in preferences, and may become the default in a future relea
     ...FILTER_GROUPS.flatMap((group) => group.options.map(([value]) => value)),
     ...HIDE_FILTERS.map(([value]) => value)
   ]);
+  function filterLabel(value) {
+    for (let group of FILTER_GROUPS)
+      for (let [option, label] of group.options)
+        if (option == value)
+          return label;
+    return HIDE_FILTERS.find(([option]) => option == value)?.[1] ?? value;
+  }
   var FILTERABLE_DATA_SOURCES = /* @__PURE__ */ new Set([
     "discovery",
     "search",
@@ -20808,7 +20815,7 @@ This can be enabled in preferences, and may become the default in a future relea
                         <div class=search-title></div>
                         <button type=button class=filter-sheet-button>
                             \${helpers.createIcon("mat:filter_list")}
-                            <span>筛选</span>
+                            <span class=filter-label>筛选</span>
                             <span class=filter-count hidden></span>
                         </button>
                         <div class=avatar-container></div>
@@ -20842,10 +20849,12 @@ This can be enabled in preferences, and may become the default in a future relea
     _refreshFilterButton() {
       let button = this.querySelector(".filter-sheet-button");
       button.hidden = !dataSourceSupportsFilters(this.dataSource);
-      let count = getFilters(helpers.args.location).size;
+      let filters = [...getFilters(helpers.args.location)];
+      let count = filters.length;
+      this.querySelector(".filter-label").textContent = count ? filterLabel(filters[0]) : "筛选";
       let countNode = this.querySelector(".filter-count");
-      countNode.hidden = count == 0;
-      countNode.textContent = String(count);
+      countNode.hidden = count < 2;
+      countNode.textContent = \`+\${count - 1}\`;
       helpers.html.setClass(button, "active", count > 0);
     }
     setDataSource(dataSource) {
@@ -36194,7 +36203,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.18.g4e8356ed.dirty"}\`);
+      console.log(\`vview setup: \${"r258.19.ge2295d49.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -36243,7 +36252,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.18.g4e8356ed.dirty"}\`);
+      console.log(\`ppixiv setup: \${"r258.19.ge2295d49.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
