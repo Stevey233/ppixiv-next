@@ -337,6 +337,8 @@ html:not(.macos) {
         text-overflow: ellipsis;
     }
 
+    .header-follow-container { display: contents; }
+
     .header-search {
         width: min(420px, 36vw);
 

@@ -6,6 +6,7 @@ import { SettingsDialog } from '/vview/widgets/settings-widgets.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import CreateSearchMenu from '/vview/screen-search/search-menu.js';
 import FilterBar from '/vview/next/filter-bar.js';
+import FollowButton from '/vview/next/follow-button.js';
 import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers } from '/vview/misc/helpers.js';
@@ -29,6 +30,7 @@ export default class DesktopSearchUI extends Widget
                         </a>
 
                         <h1 class="search-title title-font"></h1>
+                        <vv-container class=header-follow-container></vv-container>
                     </div>
 
                     <div class="header-search pixiv-only"></div>
@@ -117,6 +119,12 @@ export default class DesktopSearchUI extends Widget
         });
 
         this.imageForSuggestions = this.querySelector(".image-for-suggestions");
+
+        // On a user's page, a follow button sits next to their name.  See docs/design.md.
+        this.followButton = new FollowButton({
+            container: this.querySelector(".header-follow-container"),
+            onFollowedClick: () => this.avatarWidget.followDropdownOpener.visible = true,
+        });
     }
     
     setDataSource(dataSource)
@@ -134,6 +142,7 @@ export default class DesktopSearchUI extends Widget
         this.dataSource = dataSource;
         this.avatarWidget.setUserId(null);
         this.avatarWidget.visible = false;
+        this.followButton.setUserId(null);
         this.imageForSuggestions.hidden = true;
 
         this.filterBar.setDataSource(dataSource);
@@ -194,6 +203,7 @@ export default class DesktopSearchUI extends Widget
 
             this.avatarWidget.visible = userId != null;
             this.avatarWidget.setUserId(userId);
+            this.followButton.setUserId(userId);
         }
 
         let elementTitle = this.root.querySelector(".search-title");
