@@ -9,9 +9,8 @@
 // This also handles mousewheel zooming.
 
 import Widget from '/vview/widgets/widget.js';
-import { BookmarkButtonWidget, LikeButtonWidget } from '/vview/widgets/illust-widgets.js';
+import { BookmarkButtonWidget } from '/vview/widgets/illust-widgets.js';
 import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js';
-import { BookmarkTagDropdownOpener } from '/vview/widgets/bookmark-tag-list.js';
 import { AvatarWidget, GetUserIdFromMediaId } from '/vview/widgets/user-widgets.js';
 import MoreOptionsDropdown from '/vview/widgets/more-options-dropdown.js';
 import FixChromeClicks from '/vview/misc/fix-chrome-clicks.js';
@@ -97,14 +96,27 @@ export default class ContextMenu extends Widget
                         <vv-container class=button-bookmark data-bookmark-type=private></vv-container>
                     </div>
                     
+                    <!-- Upstream has bookmark tags and like here.  They're replaced with the two
+                         actions used most after opening a work, and both stay in the info panel. -->
                     <div class=button-block>
-                        <div class="button button-bookmark-tags" data-popup="Bookmark tags">
-                            ${ helpers.createIcon("ppixiv:tag") }
+                        <div class="button button-bookmark-download enabled" data-popup="收藏并下载原图">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5" fill="currentColor" fill-opacity=".22"/>
+                                <path d="M17.5 12.5v8"/>
+                                <path d="m14.4 17.6 3.1 3.1 3.1-3.1"/>
+                            </svg>
                         </div>
                     </div>
 
-                    <div class="button-block button-container">
-                        <vv-container class=button-like-container></vv-container>
+                    <div class=button-block>
+                        <a href=# class="button button-similar enabled" data-popup="相似作品">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 4h9.5A2.5 2.5 0 0 1 20 6.5V16"/>
+                                <rect x="3.5" y="7.5" width="12.5" height="12.5" rx="2.5" fill="currentColor" fill-opacity=".22"/>
+                                <circle cx="7.6" cy="11.6" r="1.3"/>
+                                <path d="m4 18.5 4-4 3 3 1.5-1.5 3 3"/>
+                            </svg>
+                        </a>
                     </div>
                 </div>
 
@@ -253,14 +265,6 @@ export default class ContextMenu extends Widget
 
         this.illustWidgets = [
             this.avatarWidget,
-            new LikeButtonWidget({
-                container: this.root.querySelector(".button-like-container"),
-                template: `
-                    <div class="button button-like enabled" style="position: relative;">
-                        <ppixiv-inline src="resources/like-button.svg"></ppixiv-inline>
-                    </div>
-                `
-            }),
             new ImageInfoWidget({
                 container: this.root.querySelector(".context-menu-image-info-container"),
             }),
@@ -295,13 +299,12 @@ export default class ContextMenu extends Widget
             this.illustWidgets.push(bookmarkWidget);
         }
 
-        // Set up the bookmark tags dropdown.
-        this.bookmarkTagsDropdownOpener = new BookmarkTagDropdownOpener({
-            parent: this,
-            bookmarkTagsButton: this.root.querySelector(".button-bookmark-tags"),
-            bookmarkButtons: this.bookmarkButtons,
+        this.root.querySelector(".button-bookmark-download").addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this._bookmarkAndDownload(this._effectiveMediaId);
         });
-        this.illustWidgets.push(this.bookmarkTagsDropdownOpener);
+        this._buttonSimilar = this.root.querySelector(".button-similar");
 
         this.refresh();
     }
@@ -1127,9 +1130,42 @@ export default class ContextMenu extends Widget
     }
 
     // Update selection highlight for the context menu.
+    // Bookmark a work with the default privacy, if it isn't bookmarked yet, and download it: the
+    // original image, a ZIP of every page for multi-page works, or an MKV for animations.
+    async _bookmarkAndDownload(mediaId)
+    {
+        if(mediaId == null || helpers.mediaId.parse(mediaId).type != "illust")
+            return;
+
+        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+        if(mediaInfo == null)
+            return;
+
+        if(mediaInfo.bookmarkData == null)
+            Actions.bookmarkAdd(mediaId, { private: null });
+
+        let downloadType = null;
+        for(let type of ["ZIP", "image", "MKV"])
+        {
+            if(Actions.isDownloadTypeAvailable(type, mediaInfo))
+            {
+                downloadType = type;
+                break;
+            }
+        }
+        if(downloadType != null)
+            Actions.downloadIllust(mediaId, downloadType);
+    }
+
     refresh()
     {
         let mediaId = this._effectiveMediaId;
+
+        // Point the similar works button at the work under the menu.
+        let similarId = mediaId != null && helpers.mediaId.parse(mediaId).type == "illust"?
+            helpers.mediaId.toIllustIdAndPage(mediaId)[0]:null;
+        this._buttonSimilar.href = similarId? `/bookmark_detail.php?illust_id=${similarId}#ppixiv?recommendations=1`:"#";
+        helpers.html.setClass(this._buttonSimilar, "enabled", similarId != null);
         if(this.visible)
             this.getMediaInfo.id = mediaId;
 

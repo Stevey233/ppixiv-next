@@ -131,7 +131,7 @@ html:not(.macos) {
 // Four L-shaped marks just outside a box's corners, like the trim marks on manga manuscript paper.
 // They mark the thumbnail under the mouse, the focused one, and the one the viewer was showing.
 
-@mixin crop-marks($offset: 6px, $length: 12px, $weight: 1.5px)
+@mixin crop-marks($offset: 5px, $length: 14px, $weight: 2px)
 {
     content: "";
     position: absolute;
@@ -163,7 +163,7 @@ html:not(.macos) {
     }
 
     .search-view {
-        margin: 0 24px 24px !important;
+        margin: 8px 24px 24px !important;
         .thumbnails { margin: 0; }
     }
 }
@@ -257,7 +257,7 @@ html:not(.macos) {
 
 .screen-search-container .search-desktop-ui {
     justify-content: flex-start;
-    padding: 20px 24px 12px;
+    padding: 20px 24px 6px;
     background: var(--n-bg);
     box-shadow: none;
 
@@ -603,6 +603,15 @@ html, html.mobile {
 
     &:has(.image-ui.pinned) .view-container {
         right: var(--n-info-width);
+    }
+
+    // The viewer stays in the document while the search screen is shown.  Fade the pinned panel
+    // out with the image instead of leaving it over the search results.
+    .image-ui.pinned .ui-box {
+        opacity: calc(1 - var(--illust-hidden));
+    }
+    &[inert] .image-ui .ui-box {
+        visibility: hidden;
     }
 }
 
@@ -966,5 +975,47 @@ html, html.mobile {
     .header-text {
         font-size: 17px;
         font-weight: 700;
+    }
+}
+
+// ------------------------------------------------------------------ context menu
+
+.popup-context-menu {
+    --context-menu-bg-color: var(--n-surface);
+    color: var(--n-text);
+
+    .button-strip .button {
+        background-color: transparent;
+        color: var(--n-pencil);
+
+        &:not(.enabled) { color: var(--n-rule); }
+
+        @media(hover: hover) {
+            &.enabled:hover {
+                color: var(--n-text);
+                background-color: var(--n-surface-2);
+            }
+        }
+
+        &.enabled.selected {
+            color: var(--n-blue);
+            background-color: transparent;
+            box-shadow: inset 0 -2px 0 var(--n-blue);
+        }
+
+        .tag-dropdown-arrow { border-top-color: var(--n-surface); }
+    }
+
+    .button-bookmark-download:hover, .button-bookmark.enabled:hover { color: var(--n-heart) !important; }
+
+    .context-menu-image-info-container {
+        color: var(--n-pencil);
+        font-family: var(--n-font-num);
+    }
+
+    .tooltip-display .tooltip-display-text {
+        background-color: var(--n-text);
+        color: var(--n-bg);
+        font-size: 13px;
     }
 }
