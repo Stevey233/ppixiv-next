@@ -10,7 +10,10 @@ import {
 
 export default class FilterBar extends Widget
 {
-    constructor({...options}={})
+    // If followCurrentDataSource is true, the bar switches to the app's current data source when
+    // the URL changes.  The mobile filter sheet uses this, since it stays open while filters
+    // change and each set of filters has its own data source.
+    constructor({ followCurrentDataSource=false, ...options }={})
     {
         super({
             ...options,
@@ -58,7 +61,19 @@ export default class FilterBar extends Widget
         });
 
         this.querySelector(".filter-continue").addEventListener("click", () => this.dataSource?.loadMoreFiltered());
-        window.addEventListener("pp:statechange", () => this.refresh(), this._signal);
+        window.addEventListener("pp:statechange", () => {
+            this.refresh();
+
+            // The app switches data sources in its own statechange handler, so look after it.
+            if(followCurrentDataSource)
+                setTimeout(() => this.setDataSource(ppixiv.app.currentDataSource), 0);
+        }, this._signal);
+    }
+
+    shutdown()
+    {
+        this.dataSource?.removeEventListener("updated", this.refresh);
+        super.shutdown();
     }
 
     setDataSource(dataSource)

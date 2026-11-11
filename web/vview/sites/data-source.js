@@ -381,7 +381,22 @@ export default class DataSource extends EventTarget
         let filters = this.resultFilters;
         if(filters.has("hide-seen"))
             await ppixiv.seenWorks.loaded;
-        return makeFilter(filters);
+        let filter = makeFilter(filters);
+        if(filter == null)
+            return null;
+
+        // Always keep the work the URL is viewing.  Otherwise reloading while viewing a work that
+        // has since become seen or bookmarked drops it from its own list, and navigating to its
+        // neighbors and back to the list stop working.
+        let viewing = this.getUrlMediaId(helpers.args.location);
+        let viewingId = viewing && helpers.mediaId.parse(viewing).type == "illust"?
+            helpers.mediaId.toIllustIdAndPage(viewing)[0]:null;
+        return (mediaId) => {
+            if(viewingId != null && helpers.mediaId.parse(mediaId).type == "illust" &&
+               helpers.mediaId.toIllustIdAndPage(mediaId)[0] == viewingId)
+                return true;
+            return filter(mediaId);
+        };
     }
 
     // After loading stopped because the filters removed everything on several pages, load

@@ -246,14 +246,12 @@ export default class DesktopImageInfo extends Widget
 
     refreshOverlayUiVisibility()
     {
-        // Hide widgets inside the hover UI when it's hidden.
-        let pinned = this.pinned;
+        // Don't show the hover UI while editing, since it can get in the way of trying to
+        // click the image.  A pinned panel is hidden too, and gives its space back to the image.
+        let editing = ppixiv.settings.get("image_editing") && ppixiv.settings.get("image_editing_mode") != null;
+        let pinned = this.pinned && !editing && !ppixiv.mobile;
         helpers.html.setClass(this.root, "pinned", pinned);
         let visible = pinned || this.hoveringOverBox || this.hoveringOverSphere;
-
-        // Don't show the hover UI while editing, since it can get in the way of trying to
-        // click the image.
-        let editing = ppixiv.settings.get("image_editing") && ppixiv.settings.get("image_editing_mode") != null;
         if(editing)
             visible = false;
 

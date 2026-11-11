@@ -29,7 +29,7 @@ export async function get(url, data, options)
 
     let query = params.toString();
     if(query != "")
-        url += "?" + query;
+        url += (url.includes("?")? "&":"?") + query;
 
     let result = await sendPixivRequest({
         method: "GET",

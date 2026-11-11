@@ -2,7 +2,7 @@ import Widget from '/vview/widgets/widget.js';
 import { AvatarWidget } from '/vview/widgets/user-widgets.js';
 import DialogWidget from '/vview/widgets/dialog.js';
 import FilterBar from '/vview/next/filter-bar.js';
-import { dataSourceSupportsFilters, getFilters } from '/vview/misc/result-filters.js';
+import { dataSourceSupportsFilters, getFilters, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 export default class SearchUIMobile extends Widget
@@ -14,6 +14,9 @@ export default class SearchUIMobile extends Widget
             template: `
                 <div class=search-ui-mobile>
                     <div class=mobile-title-row>
+                        <button type=button class=mobile-back hidden aria-label="返回">
+                            ${ helpers.createIcon("mat:arrow_back_ios_new") }
+                        </button>
                         <div class=search-title></div>
                         <button type=button class=filter-sheet-button>
                             ${ helpers.createIcon("mat:filter_list") }
@@ -23,6 +26,10 @@ export default class SearchUIMobile extends Widget
                         <div class=avatar-container></div>
                     </div>
                     <div class=data-source-ui></div>
+                    <div class=mobile-filter-stopped hidden>
+                        <span>连续 ${MAX_EMPTY_PAGES} 页没有符合筛选的作品，已暂停加载。</span>
+                        <button type=button class=n-text-button>继续查找</button>
+                    </div>
                 </div>
             `
         });
@@ -38,6 +45,23 @@ export default class SearchUIMobile extends Widget
             new FilterSheet({ dataSource: this.dataSource });
         });
         window.addEventListener("pp:statechange", () => this._refreshFilterButton(), this._signal);
+
+        // Mobile history replaces entries instead of adding them (VirtualHistory "permanent"
+        // mode), so the browser's Back leaves the site.  This goes back within ppixiv.
+        this.querySelector(".mobile-back").addEventListener("click", () => ppixiv.phistory.back());
+
+        this.querySelector(".mobile-filter-stopped button").addEventListener("click", () => this.dataSource?.loadMoreFiltered());
+    }
+
+    shutdown()
+    {
+        this.dataSource?.removeEventListener("updated", this._refreshFilterStopped);
+        super.shutdown();
+    }
+
+    _refreshFilterStopped = () =>
+    {
+        this.querySelector(".mobile-filter-stopped").hidden = this.dataSource?.filteredStopPage == null;
     }
 
     _refreshFilterButton()
@@ -59,7 +83,10 @@ export default class SearchUIMobile extends Widget
             this._currentDataSourceUi = null;
         }
 
-        this.dataSource = dataSource;    
+        this.dataSource?.removeEventListener("updated", this._refreshFilterStopped);
+        this.dataSource = dataSource;
+        this.dataSource?.addEventListener("updated", this._refreshFilterStopped);
+        this._refreshFilterStopped();
         this.avatarWidget.setUserId(null);
         this.avatarWidget.visible = false;
 
@@ -95,6 +122,7 @@ export default class SearchUIMobile extends Widget
         }
 
         this._refreshFilterButton();
+        this.querySelector(".mobile-back").hidden = !(ppixiv.phistory.permanent && ppixiv.phistory.length > 1);
     }
 
     applyVisibility()
@@ -118,7 +146,7 @@ class FilterSheet extends DialogWidget
             `,
         });
 
-        let filterBar = new FilterBar({ container: this.querySelector(".filter-sheet-bar") });
+        let filterBar = new FilterBar({ container: this.querySelector(".filter-sheet-bar"), followCurrentDataSource: true });
         filterBar.setDataSource(dataSource);
         this.querySelector(".filter-sheet-done").addEventListener("click", () => this.visible = false);
     }
