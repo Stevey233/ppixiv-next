@@ -34,89 +34,71 @@ export default class ContextMenu extends Widget
     {
         super({...options, template: `
             <div class=popup-context-menu>
-                <div class=button-strip>
-                    <div class="button-block shift-right">
-                        <a href=# class="button button-view-manga" data-popup="View manga pages">
-                            ${ helpers.createIcon("ppixiv:thumbnails", { classes: ["manga"] }) }
-                            ${ helpers.createIcon("mat:menu_book", { classes: ["series"] }) }
-                        </a>
+                <!-- One set of buttons, grouped by what they do.  The look comes from the
+                     "context_menu_style" setting: a labeled list, an icon strip, or a cross around
+                     the cursor.  Each style is only CSS (_next.scss), so they share this markup.
+                     See docs/design.md. -->
+                <div class="cm-group cm-user">
+                    <vv-container class="cm-cell avatar-widget-container"></vv-container>
+                    <div class="cm-cell button button-parent-folder enabled" data-popup="Parent folder" hidden>
+                        ${ helpers.createIcon("folder") }
+                        <span class=cm-label>上级文件夹</span>
                     </div>
-
-                    <div class=button-block>
-                        <div class="button button-fullscreen enabled" data-popup="Fullscreen">
-                            <ppixiv-inline src="resources/fullscreen.svg"></ppixiv-inline>
-                        </div>
-                    </div>
-                    <div class=context-menu-image-info-container></div>
+                    <div class="cm-cell view-in-explorer" hidden></div>
+                    <div class="cm-meta context-menu-image-info-container"></div>
                 </div>
-                <div class=button-strip>
-                    <div class=button-block>
-                        <div class="button button-browser-back enabled" data-popup="Back" style="transform: scaleX(-1);">
-                            <ppixiv-inline src="resources/exit-icon.svg"></ppixiv-inline>
-                        </div>
-                    </div>
-                    <div class=button-block>
-                        <div class="button requires-zoom button-zoom" data-popup="Mousewheel to zoom">
-                            <ppixiv-inline src="resources/zoom-plus.svg"></ppixiv-inline>
-                            <ppixiv-inline src="resources/zoom-minus.svg"></ppixiv-inline>
-                        </div>
-                    </div>
-                    <div class=button-block>
-                        <div class="button requires-zoom button-zoom-level" data-level="cover" data-popup="Zoom to cover">
-                            <ppixiv-inline src="resources/zoom-full.svg"></ppixiv-inline>
-                        </div>
-                    </div>
-                    <div class=button-block>
-                        <div class="button requires-zoom button-zoom-level" data-level="actual" data-popup="Zoom to actual size">
-                            <ppixiv-inline src="resources/zoom-actual.svg"></ppixiv-inline>
-                        </div>
-                    </div>
-                    <div class=button-block>
-                        <div class="button button-more enabled" data-popup="More...">
-                            ${ helpers.createIcon("settings") }
-                        </div>
-                    </div>
-                </div>
-                <div class=button-strip>
-                    <div class=button-block>
-                        <vv-container class="avatar-widget-container"></vv-container>
 
-                        <div class="button button-parent-folder enabled" data-popup="Parent folder" hidden>
-                            ${ helpers.createIcon("folder") }
-                        </div>
-                    </div>
-
-                    <div class="button-block view-in-explorer" hidden></div>
-
-                    <div class="button-block">
-                        <vv-container class=button-bookmark data-bookmark-type=public></vv-container>
-                    </div>
-
-                    <div class="button-block private-bookmark-button">
-                        <vv-container class=button-bookmark data-bookmark-type=private></vv-container>
-                    </div>
-                    
+                <div class="cm-group cm-collect">
+                    <vv-container class="cm-cell button-bookmark-container" data-bookmark-type=public></vv-container>
+                    <vv-container class="cm-cell button-bookmark-container private-bookmark-button" data-bookmark-type=private></vv-container>
                     <!-- Upstream has bookmark tags and like here.  They're replaced with the two
                          actions used most after opening a work, and both stay in the info panel. -->
-                    <div class=button-block>
-                        <div class="button button-bookmark-download enabled" data-popup="收藏并下载原图">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5" fill="currentColor" fill-opacity=".22"/>
-                                <path d="M17.5 12.5v8"/>
-                                <path d="m14.4 17.6 3.1 3.1 3.1-3.1"/>
-                            </svg>
-                        </div>
+                    <div class="cm-cell button button-bookmark-download enabled" data-popup="收藏并下载原图">
+                        ${ helpers.createIcon("mat:download") }
+                        <span class=cm-label>收藏并下载</span>
                     </div>
+                </div>
 
-                    <div class=button-block>
-                        <a href=# class="button button-similar enabled" data-popup="相似作品">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 4h9.5A2.5 2.5 0 0 1 20 6.5V16"/>
-                                <rect x="3.5" y="7.5" width="12.5" height="12.5" rx="2.5" fill="currentColor" fill-opacity=".22"/>
-                                <circle cx="7.6" cy="11.6" r="1.3"/>
-                                <path d="m4 18.5 4-4 3 3 1.5-1.5 3 3"/>
-                            </svg>
-                        </a>
+                <div class="cm-group cm-go">
+                    <a href=# class="cm-cell button button-similar enabled" data-popup="相似作品">
+                        ${ helpers.createIcon("mat:photo_library") }
+                        <span class=cm-label>相似作品</span>
+                    </a>
+                    <a href=# class="cm-cell button button-view-manga" data-popup="View manga pages">
+                        ${ helpers.createIcon("mat:grid_view", { classes: ["manga"] }) }
+                        ${ helpers.createIcon("mat:menu_book", { classes: ["series"] }) }
+                        <span class="cm-label manga">全部页面</span>
+                        <span class="cm-label series">系列</span>
+                    </a>
+                    <div class="cm-cell button button-browser-back enabled" data-popup="Back">
+                        ${ helpers.createIcon("mat:arrow_back") }
+                        <span class=cm-label>返回</span>
+                    </div>
+                </div>
+
+                <div class="cm-group cm-zoom">
+                    <div class="cm-cell button requires-zoom button-zoom" data-popup="Mousewheel to zoom">
+                        ${ helpers.createIcon("mat:zoom_in") }
+                        <span class=cm-label>缩放</span>
+                    </div>
+                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="cover" data-popup="Zoom to cover">
+                        ${ helpers.createIcon("mat:fit_screen") }
+                        <span class=cm-label>铺满</span>
+                    </div>
+                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="actual" data-popup="Zoom to actual size">
+                        <span class=cm-glyph>1:1</span>
+                        <span class=cm-label>原始大小</span>
+                    </div>
+                </div>
+
+                <div class="cm-group cm-window">
+                    <div class="cm-cell button button-fullscreen enabled" data-popup="Fullscreen">
+                        ${ helpers.createIcon("mat:fullscreen") }
+                        <span class=cm-label>全屏</span>
+                    </div>
+                    <div class="cm-cell button button-more enabled" data-popup="More...">
+                        ${ helpers.createIcon("mat:more_horiz") }
+                        <span class=cm-label>更多</span>
                     </div>
                 </div>
 
@@ -138,6 +120,9 @@ export default class ContextMenu extends Widget
         // to check if we exist.
         if(ppixiv.mobile)
             return;
+
+        this._applyStyle();
+        ppixiv.settings.addEventListener("context_menu_style", this._applyStyle, this._signal);
             
         this.getUserIdFromMediaId = new GetUserIdFromMediaId({
             parent: this,
@@ -242,8 +227,10 @@ export default class ContextMenu extends Widget
                 helpers.html.setClass(this._buttonViewManga, "enabled", enabled);
                 this._buttonViewManga.style.pointerEvents = enabled?"":"none";
 
-                this._buttonViewManga.querySelector(".manga").hidden = seriesId != null;
-                this._buttonViewManga.querySelector(".series").hidden = seriesId == null;
+                for(let node of this._buttonViewManga.querySelectorAll(".manga"))
+                    node.hidden = seriesId != null;
+                for(let node of this._buttonViewManga.querySelectorAll(".series"))
+                    node.hidden = seriesId == null;
 
                 // Set the manga page or series link.
                 if(enabled)
@@ -287,9 +274,16 @@ export default class ContextMenu extends Widget
             let bookmarkWidget = new BookmarkButtonWidget({
                 container: a,
                 // position: relative positions the bookmark count.
-                template: `
-                    <div class="button button-bookmark ${a.dataset.bookmarkType}">
-                        <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
+                template: a.dataset.bookmarkType == "public"? `
+                    <div class="button button-bookmark public">
+                        ${ helpers.createIcon("mat:favorite") }
+                        <span class="cm-label n-unset">收藏</span>
+                        <span class="cm-label n-set">已收藏</span>
+                    </div>
+                `:`
+                    <div class="button button-bookmark private">
+                        ${ helpers.createIcon("mat:lock") }
+                        <span class=cm-label>私密收藏</span>
                     </div>
                 `,
                 bookmarkType: a.dataset.bookmarkType,
@@ -307,6 +301,17 @@ export default class ContextMenu extends Widget
         this._buttonSimilar = this.root.querySelector(".button-similar");
 
         this.refresh();
+    }
+
+    // "list", "strip" or "cross".  See the template.
+    get menuStyle()
+    {
+        return ppixiv.settings.get("context_menu_style");
+    }
+
+    _applyStyle = () =>
+    {
+        this.root.dataset.cmStyle = this.menuStyle;
     }
 
     _contextMenuEnabledForElement(element)
@@ -444,6 +449,9 @@ export default class ContextMenu extends Widget
     // Return the element that should be under the cursor when the menu is opened.
     get elementToCenter()
     {
+        // The cross is built around its middle cell, so that's where the cursor goes.
+        if(this.menuStyle == "cross")
+            return this.displayedMenu.querySelector(".button-zoom");
         return null;
     }
 
@@ -535,19 +543,14 @@ export default class ContextMenu extends Widget
     {
         let { x, y } = this.popupPosition;
 
-        if(this._currentViewer == null)
-        {
-            // If we can't zoom, adjust the popup position so it doesn't go over the right and
-            // bottom of the screen, with a bit of padding so we're not flush with the edge and
-            // so the popup text is visible.
-            //
-            // If zooming is enabled (we're viewing an image), always align to the same place,
-            // so the cursor is always over the zoom toggle button.
-            let windowWidth = window.innerWidth - 4;
-            let windowHeight = window.innerHeight - 20;
-            x = helpers.math.clamp(x, 0, windowWidth - this.displayedMenu.offsetWidth);
-            y = helpers.math.clamp(y, 0, windowHeight - this.displayedMenu.offsetHeight);
-        }
+        // Keep the menu on screen.  Upstream skipped this in the viewer to keep the zoom
+        // button under the cursor, which cut the menu off near the window edges.  The zoom
+        // button still lands under the cursor everywhere else.
+        let margin = 8;
+        let maxX = window.innerWidth - margin - this.displayedMenu.offsetWidth;
+        let maxY = window.innerHeight - margin - this.displayedMenu.offsetHeight;
+        x = helpers.math.clamp(x, margin, Math.max(margin, maxX));
+        y = helpers.math.clamp(y, margin, Math.max(margin, maxY));
 
         this.displayedMenu.style.left = `${x}px`;
         this.displayedMenu.style.top = `${y}px`;

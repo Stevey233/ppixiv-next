@@ -560,6 +560,23 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        contextMenuStyle: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "context_menu_style",
+                label: "右键菜单样式",
+                values: {
+                    list: "列表",
+                    strip: "图标条",
+                    cross: "十字",
+                },
+                explanation: (value) =>
+                    value == "list"? "带文字的竖排列表。":
+                    value == "strip"? "两行图标，悬停时在底部显示名称。":
+                    "按钮围在光标四周，光标落在中间的缩放按钮上。",
+            });
+        },
+
         downloadFilename: () => {
             let sample = {
                 author: "作者", author_id: "1234", id: "123456789", title: "作品标题",
@@ -846,6 +863,7 @@ export class SettingsDialog extends DialogWidget
                 if(!ppixiv.mobile)
                 {
                     settingsWidgets.doubleClickFullscreen();
+                    settingsWidgets.contextMenuStyle();
                     settingsWidgets.invertScrolling();
                     settingsWidgets.noHideCursor();
                     settingsWidgets.showMangaPageIndicator();

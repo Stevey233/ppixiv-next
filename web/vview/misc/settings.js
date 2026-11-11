@@ -75,6 +75,7 @@ export default class Settings extends EventTarget
         this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
         this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
         this.configure("double_click_fullscreen", { defaultValue: false });
+        this.configure("context_menu_style", { defaultValue: "list" });
         this.configure("info_panel_pinned", { defaultValue: true });
 
         // Upstream's default thumbnail size fits one column on a phone.  Two to three columns

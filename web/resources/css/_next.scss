@@ -1198,44 +1198,352 @@ html, html.mobile {
 }
 
 // ------------------------------------------------------------------ context menu
+//
+// Hold the right button over a work.  The markup in context-menu.js is shared; the
+// "context_menu_style" setting picks one of three layouts:
+//
+//   list   a labeled list, framed with crop marks like a focused thumbnail (default)
+//   strip  two rows of icons with a caption line that names the hovered button
+//   cross  buttons around the cursor, which lands on the zoom button in the middle
+//
+// See docs/design.md.
 
 .popup-context-menu {
-    --context-menu-bg-color: var(--n-surface);
+    padding: 0;
+    border-radius: 0;
     color: var(--n-text);
+    font-family: var(--n-font);
+    font-size: 14px;
 
-    .button-strip .button {
-        background-color: transparent;
-        color: var(--n-pencil);
+    // Open from the cursor, quickly.  Upstream scaled from 85%.
+    transition: opacity ease 0.1s, transform ease 0.1s;
+    &.hidden-widget { transform: scale(.96); }
+    @media (prefers-reduced-motion: reduce) {
+        transition: opacity ease 0.1s;
+        &.hidden-widget { transform: none; }
+    }
 
-        &:not(.enabled) { color: var(--n-rule); }
+    .cm-group { display: flex; }
+    .cm-cell { display: flex; position: relative; }
+    .cm-cell[hidden] { display: none; }
+    .cm-cell > .button { flex: 1; }
+
+    .button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        position: relative;
+        width: auto;
+        height: auto;
+        padding: 0;
+        border-radius: 0;
+        background: none;
+        color: var(--n-text);
+        text-decoration: none;
+        cursor: pointer;
+
+        .font-icon { font-size: 20px; color: var(--n-pencil); }
+        .cm-glyph {
+            font-family: var(--n-font-num);
+            font-weight: 700;
+            font-size: 15px;
+            line-height: 20px;
+            min-width: 20px;
+            text-align: center;
+            color: var(--n-pencil);
+        }
+
+        &:not(.enabled) {
+            cursor: default;
+            color: var(--n-rule);
+            .font-icon, .cm-glyph { color: var(--n-rule); }
+        }
 
         @media(hover: hover) {
             &.enabled:hover {
-                color: var(--n-text);
                 background-color: var(--n-surface-2);
+                .font-icon, .cm-glyph { color: var(--n-text); }
             }
         }
 
         &.enabled.selected {
-            color: var(--n-blue);
-            background-color: transparent;
-            box-shadow: inset 0 -2px 0 var(--n-blue);
+            .font-icon, .cm-glyph { color: var(--n-blue); }
         }
-
-        .tag-dropdown-arrow { border-top-color: var(--n-surface); }
     }
 
-    .button-bookmark-download:hover, .button-bookmark.enabled:hover { color: var(--n-heart) !important; }
+    // Bookmarks: the heart and the lock fill with the heart color once the work is in that
+    // kind of bookmark.
+    .button-bookmark {
+        .n-set { display: none; }
+        &.bookmarked {
+            .n-unset { display: none; }
+            .n-set { display: inline; }
+            .font-icon { color: var(--n-heart); }
+        }
+        @media(hover: hover) {
+            &.enabled:hover .font-icon { color: var(--n-heart); }
+        }
+        .count {
+            position: static;
+            width: auto;
+            color: var(--n-pencil);
+            font-family: var(--n-font-num);
+            font-size: 13px;
+            font-weight: 600;
+            text-shadow: none;
+        }
+    }
+
+    .avatar-widget-container .avatar-widget {
+        width: 32px;
+        height: 32px;
+    }
 
     .context-menu-image-info-container {
-        color: var(--n-pencil);
-        font-family: var(--n-font-num);
+        align-self: auto;
+        padding: 0;
+        background: none;
     }
 
-    .tooltip-display .tooltip-display-text {
-        background-color: var(--n-text);
-        color: var(--n-bg);
+    .context-menu-image-info {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 10px;
+        padding: 0;
+        font-family: var(--n-font-num);
         font-size: 13px;
+        font-weight: 500;
+        color: var(--n-pencil);
+
+        .image-info { color: var(--n-text); font-weight: 600; }
+        > * { white-space: nowrap; }
+    }
+
+    .tooltip-display {
+        padding: 0;
+        .tooltip-display-text {
+            padding: 0;
+            border-radius: 0;
+            background: none;
+            color: var(--n-pencil);
+            font-size: 12px;
+        }
+    }
+
+    // ---------------------------------------------------------- list (default)
+    &[data-cm-style="list"] {
+        width: 224px;
+        padding: 4px 0;
+        background-color: var(--n-surface);
+        border: 1px solid var(--n-rule);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+
+        // Crop marks at the four corners, outside the card, like the marks on a focused
+        // thumbnail.  Each corner is a short line along each edge.
+        &::before {
+            content: "";
+            position: absolute;
+            inset: -11px;
+            pointer-events: none;
+            --c: linear-gradient(var(--n-blue), var(--n-blue));
+            background:
+                var(--c) left 0 top 10px / 7px 1px no-repeat,
+                var(--c) left 10px top 0 / 1px 7px no-repeat,
+                var(--c) right 0 top 10px / 7px 1px no-repeat,
+                var(--c) right 10px top 0 / 1px 7px no-repeat,
+                var(--c) left 0 bottom 10px / 7px 1px no-repeat,
+                var(--c) left 10px bottom 0 / 1px 7px no-repeat,
+                var(--c) right 0 bottom 10px / 7px 1px no-repeat,
+                var(--c) right 10px bottom 0 / 1px 7px no-repeat;
+        }
+
+        .cm-group {
+            flex-direction: column;
+            padding: 4px 0;
+            & + .cm-group { border-top: 1px solid var(--n-rule); }
+        }
+
+        .button {
+            justify-content: flex-start;
+            gap: 12px;
+            height: 34px;
+            padding: 0 14px;
+            .font-icon, .cm-glyph { width: 20px; }
+            @media(hover: hover) {
+                &.enabled:hover { box-shadow: inset 2px 0 0 var(--n-blue); }
+            }
+        }
+        .button-bookmark .count { margin-left: auto; }
+
+        .cm-user {
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 14px 8px;
+            .button { padding: 0 6px; }
+            .context-menu-image-info { flex-wrap: wrap; row-gap: 0; column-gap: 8px; }
+        }
+
+        // Zoom is three side-by-side cells, with the cursor on the first one in the viewer.
+        // Lists without a viewer don't zoom, so the row is left out.
+        .cm-zoom {
+            flex-direction: row;
+            gap: 2px;
+            padding: 4px 6px;
+            &:not(:has(.enabled)) { display: none; }
+
+            .cm-cell { flex: 1; }
+            .button {
+                flex-direction: column;
+                justify-content: center;
+                gap: 2px;
+                height: 52px;
+                padding: 0;
+                .cm-label { font-size: 12px; }
+                @media(hover: hover) {
+                    &.enabled:hover { box-shadow: inset 0 -2px 0 var(--n-blue); }
+                }
+            }
+        }
+
+        .tooltip-display { display: none; }
+    }
+
+    // ---------------------------------------------------------- strip
+    &[data-cm-style="strip"] {
+        display: grid;
+        grid-template-columns: repeat(7, 44px);
+        grid-template-areas:
+            "user collect collect collect go   go   go"
+            "zoom zoom    zoom    win     win  meta meta"
+            "tip  tip     tip     tip     tip  tip  tip";
+        background-color: var(--n-surface);
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+        overflow: hidden;
+
+        .cm-label { display: none; }
+        .cm-user { display: contents; }
+        .avatar-widget-container { grid-area: user; align-items: center; justify-content: center; }
+        .button-parent-folder, .view-in-explorer { display: none; }
+        .context-menu-image-info-container {
+            grid-area: meta;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 1px solid var(--n-rule);
+            border-top: 1px solid var(--n-rule);
+        }
+        .context-menu-image-info {
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        .cm-collect { grid-area: collect; }
+        .cm-go { grid-area: go; border-left: 1px solid var(--n-rule); }
+        .cm-zoom { grid-area: zoom; border-top: 1px solid var(--n-rule); }
+        .cm-window { grid-area: win; border-left: 1px solid var(--n-rule); border-top: 1px solid var(--n-rule); }
+        .cm-collect { border-left: 1px solid var(--n-rule); }
+
+        .cm-cell { width: 44px; height: 44px; }
+        .button { width: 44px; height: 44px; }
+
+        // The bookmark count sits under the heart, in the page-number figures.
+        .button-bookmark .count {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 1px;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1;
+        }
+        .button-bookmark.has-like-count .font-icon { margin-top: -8px; }
+
+        // The caption line keeps its height, so the menu doesn't jump while hovering.
+        .tooltip-display {
+            grid-area: tip;
+            height: 26px;
+            align-items: center;
+            padding: 0 12px;
+            border-top: 1px solid var(--n-rule);
+            &[hidden] { display: flex; }
+            &[hidden] .tooltip-display-text { visibility: hidden; }
+        }
+    }
+
+    // ---------------------------------------------------------- cross
+    &[data-cm-style="cross"] {
+        display: grid;
+        grid-template-columns: repeat(5, 44px);
+        grid-template-rows: repeat(4, 44px) auto;
+        gap: 6px;
+        background: none;
+
+        .cm-label { display: none; }
+        .cm-group, .cm-user { display: contents; }
+        .button-parent-folder, .view-in-explorer { display: none; }
+
+        .cm-cell {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: var(--n-surface);
+            border: 1px solid var(--n-rule);
+            box-sizing: border-box;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+            overflow: hidden;
+        }
+        .button { border-radius: 50%; }
+
+        .button-view-manga            { grid-area: 1 / 3; }
+        .avatar-widget-container      { grid-area: 2 / 2; align-items: center; justify-content: center; }
+        .button-fullscreen            { grid-area: 2 / 3; }
+        .button-more                  { grid-area: 2 / 4; }
+        .button-browser-back          { grid-area: 3 / 1; }
+        .button-similar               { grid-area: 3 / 2; }
+        .button-zoom                  { grid-area: 3 / 3; }
+        .button-zoom-level[data-level="cover"]  { grid-area: 3 / 4; }
+        .button-zoom-level[data-level="actual"] { grid-area: 3 / 5; }
+        .private-bookmark-button      { grid-area: 4 / 2; }
+        .cm-collect > .cm-cell:first-child { grid-area: 4 / 3; }
+        .button-bookmark-download     { grid-area: 4 / 4; }
+
+        // The middle cell is a registration mark, and the cursor opens the menu on it.
+        .button-zoom {
+            overflow: visible;
+            border-color: var(--n-blue);
+            &::before, &::after {
+                content: "";
+                position: absolute;
+                background: var(--n-blue);
+                pointer-events: none;
+            }
+            &::before { left: -9px; right: -9px; top: 50%; height: 1px; }
+            &::after { top: -9px; bottom: -9px; left: 50%; width: 1px; }
+            &:not(.enabled) .font-icon { visibility: hidden; }
+        }
+        .button-zoom-level:not(.enabled) { visibility: hidden; }
+
+        .button-bookmark .count { display: none; }
+
+        // A caption under the cross: the size and age, or the hovered button's name.
+        .context-menu-image-info-container, .tooltip-display {
+            grid-area: 5 / 1 / 6 / 6;
+            justify-self: center;
+            padding: 4px 10px;
+            background-color: var(--n-surface);
+            border: 1px solid var(--n-rule);
+            border-radius: 999px;
+        }
+        .tooltip-display:not([hidden]) ~ .cm-user .context-menu-image-info-container,
+        &:has(.tooltip-display:not([hidden])) .context-menu-image-info-container { visibility: hidden; }
+        .tooltip-display .tooltip-display-text { color: var(--n-text); }
     }
 }
 
