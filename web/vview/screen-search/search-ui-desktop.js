@@ -239,7 +239,8 @@ export default class DesktopSearchUI extends Widget
         let enabled = this.parent.searchView.mediaIdsExpandedByDefault;
         let button = this.root.querySelector(".expand-manga-posts");
         button.dataset.popup = enabled? "Collapse manga posts":"Expand manga posts";
-        button.querySelector(".font-icon").innerText = enabled? "close_fullscreen":"open_in_full";
+        // Upstream used the fullscreen arrows, which read as "go fullscreen".
+        button.querySelector(".font-icon").innerText = enabled? "unfold_less":"unfold_more";
         
         // Hide the button if the data source can never return manga posts to be expanded, or
         // if it's the manga page itself which always expands.

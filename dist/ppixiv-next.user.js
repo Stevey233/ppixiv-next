@@ -20,7 +20,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.19.ge2295d49.dirty
+// @version     258.20.gec43e518.dirty
 // ==/UserScript==
 (function() {
 
@@ -20790,7 +20790,7 @@ This can be enabled in preferences, and may become the default in a future relea
       let enabled = this.parent.searchView.mediaIdsExpandedByDefault;
       let button = this.root.querySelector(".expand-manga-posts");
       button.dataset.popup = enabled ? "Collapse manga posts" : "Expand manga posts";
-      button.querySelector(".font-icon").innerText = enabled ? "close_fullscreen" : "open_in_full";
+      button.querySelector(".font-icon").innerText = enabled ? "unfold_less" : "unfold_more";
       button.hidden = !this.dataSource?.allowExpandingMangaPages;
     }
     refreshRefreshSearchFromPage() {
@@ -36203,7 +36203,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.19.ge2295d49.dirty"}\`);
+      console.log(\`vview setup: \${"r258.20.gec43e518.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -36252,7 +36252,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.19.ge2295d49.dirty"}\`);
+      console.log(\`ppixiv setup: \${"r258.20.gec43e518.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
