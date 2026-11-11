@@ -1,3 +1,30 @@
+# ppixiv 新界面（实验）
+
+这是 Stevey 的 ppixiv 分支（`stevey` 分支），把 ppixiv-zh 的功能直接并进 ppixiv 源码，并从头重做了界面。它和原版 ppixiv、ppixiv-zh 互相独立：脚本名是"ppixiv 新界面（实验）"，命名空间 `stevey-ppixiv-next`，装上不会覆盖原来的两个脚本。
+
+- 设计方向、配色和字体、每处功能和交互改动的原因：[docs/design.md](docs/design.md)
+- 构建好的脚本：`dist/ppixiv-next.user.js`
+
+## 试用
+
+1. 在 Tampermonkey 里打开"添加新脚本"，把 `dist/ppixiv-next.user.js` 的内容整个粘进去保存（或者从文件导入）。
+2. 在 Tampermonkey 里停用 ppixiv 和 ppixiv-zh。三个同时启用时，新脚本会在页面上提示并且不启动。
+3. 刷新 pixiv.net 的页面。
+
+切回原来的界面：停用"ppixiv 新界面（实验）"，重新启用 ppixiv 和 ppixiv-zh，刷新。设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。
+
+## 构建
+
+```
+./tools/build.sh
+```
+
+它在仓库根目录运行上游的 `python3 -m vview.build.build_ppixiv`（第一次会下载 dart-sass 和 esbuild 到 `bin/`），再把 `output/ppixiv-main.user.js` 复制成 `dist/ppixiv-next.user.js`。
+
+---
+
+以下是上游 ppixiv 的说明。
+
 This user script improves viewing illustrations on Pixiv.
 
 The most recent version [can be installed here](https://ppixiv.org/install).
