@@ -502,3 +502,48 @@ export class MenuOptionsThumbnailSizeSlider extends MenuOptionSliderSetting
         return 100 * Math.pow(1.3, value);
     }
 }
+
+// A text setting, saved as the user types.  explanation(value) returns the text shown under it.
+export class MenuOptionTextSetting extends MenuOption
+{
+    constructor({
+        setting,
+        label,
+        placeholder="",
+        explanation=null,
+        ...options
+    })
+    {
+        super({...options, template: `
+            <div class="box-link-row text-setting">
+                <label class=text-setting-label>
+                    <span class=label></span>
+                    <input type=text class=text-setting-input spellcheck=false>
+                </label>
+                <div class=explanation hidden></div>
+            </div>
+        `});
+
+        this.setting = setting;
+        this._getExplanation = explanation;
+        this.root.querySelector(".label").textContent = label;
+
+        this.input = this.root.querySelector("input");
+        this.input.placeholder = placeholder;
+        this.input.value = ppixiv.settings.get(setting) ?? "";
+        this.input.addEventListener("input", () => {
+            ppixiv.settings.set(this.setting, this.input.value);
+            this.refresh();
+        });
+
+        // Keep keys typed here from reaching the page's hotkeys.
+        this.input.addEventListener("keydown", (e) => e.stopPropagation());
+
+        this.refresh();
+    }
+
+    get explanationText()
+    {
+        return this._getExplanation?.(ppixiv.settings.get(this.setting) ?? "");
+    }
+}

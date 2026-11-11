@@ -1,6 +1,7 @@
 import Widget from '/vview/widgets/widget.js';
 import { MenuOptionButton, MenuOptionRow, MenuOptionOptionsSetting, MenuOptionsThumbnailSizeSlider } from '/vview/widgets/menu-option.js';
-import { MenuOptionSliderSetting, MenuOptionToggleSetting } from '/vview/widgets/menu-option.js';
+import { MenuOptionSliderSetting, MenuOptionToggleSetting, MenuOptionTextSetting } from '/vview/widgets/menu-option.js';
+import { FILENAME_FIELDS, renderFilename } from '/vview/misc/download-names.js';
 import { createTranslationSettingsWidgets } from '/vview/misc/image-translation.js';
    
 import { EditMutedTagsWidget } from '/vview/widgets/mutes.js';
@@ -465,6 +466,126 @@ function createSettingsWidget({ globalOptions })
             return widget;
         },
 
+        theme: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "theme",
+                label: "外观",
+                values: {
+                    auto: "跟随系统",
+                    dark: "深色",
+                    light: "浅色",
+                },
+            });
+        },
+
+        tagLanguage: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "tag_language",
+                label: "标签译名",
+                values: {
+                    zh: "中文",
+                    en: "英文",
+                },
+                explanation: (value) => value == "en"?
+                    "使用 Pixiv 的英文译名。":
+                    "没有中文译名时显示英文。搜索框的补全会用中文译名找到日文标签。",
+            });
+        },
+
+        hdThumbnails: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "hd_thumbnails",
+                label: "高清缩略图",
+                values: {
+                    auto: "自动",
+                    off: "关闭",
+                },
+                explanation: (value) => value == "off"?
+                    "使用 Pixiv 的 540 像素缩略图。":
+                    "按屏幕上的实际像素和网速选择 WebP 尺寸。",
+            });
+        },
+
+        hoverPreload: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "悬停预加载原图",
+                setting: "hover_preload",
+                explanationEnabled: "鼠标在缩略图上停留 0.3 秒后下载原图，会增加流量。",
+                explanationDisabled: "打开作品时才下载原图。",
+            });
+        },
+
+        seenWorks: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "seen_works",
+                label: "看过的作品",
+                values: {
+                    dim: "调暗",
+                    keep: "只记录",
+                    off: "不记录",
+                },
+                explanation: (value) =>
+                    value == "dim"? `在看图界面打开过的作品，缩略图会变暗。已记录 ${ppixiv.seenWorks.count} 个作品。`:
+                    value == "keep"? `记录但不调暗，筛选里的“隐藏看过的”仍然可用。已记录 ${ppixiv.seenWorks.count} 个作品。`:
+                    `不再记录新打开的作品，已有的 ${ppixiv.seenWorks.count} 个记录保留。`,
+            });
+        },
+
+        clearSeenWorks: () => {
+            return new MenuOptionButton({
+                ...globalOptions,
+                label: "清除看过的记录",
+                onclick: async () => {
+                    let prompt = new ConfirmPrompt({ header: `清除 ${ppixiv.seenWorks.count} 个看过的作品？` });
+                    if(!await prompt.result)
+                        return;
+                    let cleared = await ppixiv.seenWorks.clear();
+                    ppixiv.message.show(cleared? "已清除看过的记录":"清除失败，记录还在");
+                },
+            });
+        },
+
+        doubleClickFullscreen: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "双击图片全屏",
+                setting: "double_click_fullscreen",
+                explanationEnabled: "双击图片切换浏览器全屏。",
+                explanationDisabled: "双击不做任何事。需要全屏时按 F11。",
+            });
+        },
+
+        downloadFilename: () => {
+            let sample = {
+                author: "作者", author_id: "1234", id: "123456789", title: "作品标题",
+                page: "2", pages: "3", date: "2026-01-02", ext: "png",
+            };
+            let fields = FILENAME_FIELDS.map(([key, label]) => `{${key}} ${label}`).join("，");
+            return new MenuOptionTextSetting({
+                ...globalOptions,
+                setting: "download_filename",
+                label: "下载文件名",
+                placeholder: "留空：作者名 - 作品 ID - 标题",
+                explanation: (template) => {
+                    let example;
+                    if(!template.trim())
+                        example = `${sample.author} - ${sample.id} #${sample.page} - ${sample.title}.${sample.ext}`;
+                    else
+                    {
+                        let page = renderFilename(template, sample) ?? "（默认文件名）";
+                        let zip = renderFilename(template, { ...sample, page: "", ext: "zip" }) ?? "（默认文件名）";
+                        example = `${page}，ZIP：${zip}`;
+                    }
+                    return `可用 ${fields}。< > 里有空的变量时整段省略，例如 {id}<_p{page}> {title}。\n示例：${example}`;
+                },
+            });
+        },
+
         nativeLogin: () => {
             return new MenuOptionButton({
                 ...globalOptions,
@@ -490,6 +611,8 @@ function createSettingsWidget({ globalOptions })
 }
 
 let pageTitles = {
+    general: "外观和标签",
+    download: "下载",
     thumbnail:  "Thumbnail options",
     image:"Image viewing",
     tagMuting: "Muted tags",
@@ -536,6 +659,8 @@ export class SettingsDialog extends DialogWidget
 
     addPages()
     {
+        if(!ppixiv.native)
+            this._createPageButton("general");
         this._createPageButton("thumbnail");
         this._createPageButton("image");
 
@@ -551,6 +676,8 @@ export class SettingsDialog extends DialogWidget
         if(ppixiv.sendImage.enabled)
             this._createPageButton("linkedTabs");
 
+        if(!ppixiv.native)
+            this._createPageButton("download");
         this._createPageButton("other");
         this._createPageButton("whatsNew");
     }
@@ -673,10 +800,26 @@ export class SettingsDialog extends DialogWidget
         let settingsWidgets = createSettingsWidget({ globalOptions });
 
         let pages = {
+            general: () => {
+                settingsWidgets.theme();
+                settingsWidgets.tagLanguage();
+                settingsWidgets.disableTranslations();
+            },
+            download: () => {
+                settingsWidgets.downloadFilename();
+            },
             thumbnail: () =>
             {
                 settingsWidgets.thumbnailSize();
                 settingsWidgets.thumbnailStyle();
+                if(!ppixiv.native)
+                {
+                    settingsWidgets.hdThumbnails();
+                    settingsWidgets.seenWorks();
+                    settingsWidgets.clearSeenWorks();
+                }
+                if(!ppixiv.mobile && !ppixiv.native)
+                    settingsWidgets.hoverPreload();
                 if(!ppixiv.mobile)
                 {
                     settingsWidgets.disableThumbnailPanning();
@@ -702,6 +845,7 @@ export class SettingsDialog extends DialogWidget
                 settingsWidgets.viewMode();
                 if(!ppixiv.mobile)
                 {
+                    settingsWidgets.doubleClickFullscreen();
                     settingsWidgets.invertScrolling();
                     settingsWidgets.noHideCursor();
                     settingsWidgets.showMangaPageIndicator();
