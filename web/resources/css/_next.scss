@@ -542,6 +542,8 @@ html:not(.macos) {
             font-size: 13px;
             font-weight: 600;
             opacity: 1;
+
+            &[hidden] { display: none; }
         }
 
         .page-icon { display: none; }

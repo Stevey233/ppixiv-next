@@ -238,12 +238,10 @@ export default class DesktopImageInfo extends Widget
         ppixiv.settings.set("info_panel_pinned", !ppixiv.settings.get("info_panel_pinned"));
     }
 
+    // Go back to the list, the same as Escape (see ContextMenu).
     returnToSearch()
     {
-        let searchUrl = this._dataSource?.searchUrl;
-        if(searchUrl == null)
-            return;
-        ppixiv.app.navigateFromIllustToSearch(new helpers.args(searchUrl.toString()));
+        ppixiv.phistory.back();
     }
 
     refreshOverlayUiVisibility()
@@ -330,14 +328,6 @@ export default class DesktopImageInfo extends Widget
                 this.hoveringOverBox = !this.visible;
                 this.refreshOverlayUiVisibility();
             }
-            return;
-        }
-
-        if(e.key == "Escape" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey)
-        {
-            e.preventDefault();
-            e.stopPropagation();
-            this.returnToSearch();
             return;
         }
 
