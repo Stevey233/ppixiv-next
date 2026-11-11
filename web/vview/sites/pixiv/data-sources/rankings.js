@@ -79,7 +79,11 @@ export default class DataSource_Rankings extends DataSource
 
         let mediaIds = [];
         for(let item of result.body.ranking)
-            mediaIds.push(helpers.mediaId.fromIllustId("" + item.illustId));
+        {
+            let mediaId = helpers.mediaId.fromIllustId("" + item.illustId);
+            mediaIds.push(mediaId);
+            this._setRank(mediaId, item.rank);
+        }
 
         // All search APIs return image info except for this one, so we need to load it to
         // behave the same as other data source.
@@ -142,12 +146,29 @@ export default class DataSource_Rankings extends DataSource
         // but it's not quite the same.
         let mediaIds = [];
         for(let item of result.contents)
-            mediaIds.push(helpers.mediaId.fromIllustId("" + item.illust_id));
+        {
+            let mediaId = helpers.mediaId.fromIllustId("" + item.illust_id);
+            mediaIds.push(mediaId);
+            this._setRank(mediaId, item.rank);
+        }
 
         // Register this as thumbnail data.
         await ppixiv.mediaCache.addMediaInfosPartial(result.contents, "rankings");
 
         return { mediaIds, thisDate, nextDate, prevDate, lastPage };
+    }
+
+    // Each work's place in the ranking, shown on its thumbnail.  See docs/design.md.
+    _setRank(mediaId, rank)
+    {
+        this._ranks ??= new Map();
+        if(rank != null)
+            this._ranks.set(mediaId, Number(rank));
+    }
+
+    rankForMediaId(mediaId)
+    {
+        return this._ranks?.get(helpers.mediaId.getMediaIdForPage(mediaId, 0)) ?? null;
     }
 
     loadDataForPlatform(options)

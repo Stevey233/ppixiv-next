@@ -11,6 +11,7 @@ import LocalAPI from '/vview/misc/local-api.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js'
 import { helpers, ClassFlags } from '/vview/misc/helpers.js';
 import PointerListener from '/vview/actors/pointer-listener.js';
+import FollowButton from '/vview/next/follow-button.js';
 
 export default class DesktopImageInfo extends Widget
 {
@@ -33,6 +34,12 @@ export default class DesktopImageInfo extends Widget
                 ${ helpers.createIcon("mat:arrow_back") }
             </button>
             <div class=info-spacer></div>
+            <a class="icon-button disable-ui-button popup pixiv-only" data-popup="在 Pixiv 打开" href="#no-ppixiv">
+                ${ helpers.createIcon("ppixiv:pixiv") }
+            </a>
+            <button type=button class="icon-button preferences-button popup" data-popup="设置">
+                ${ helpers.createIcon("mat:settings") }
+            </button>
             <button type=button class="info-pin icon-button popup" data-popup="固定或收起信息栏 (I)">
                 ${ helpers.createIcon("mat:view_sidebar") }
             </button>
@@ -49,6 +56,7 @@ export default class DesktopImageInfo extends Widget
                 </span>
                 <a class=edit-post href=#>编辑作品</a>
             </div>
+            <vv-container class=follow-button-container></vv-container>
         </div>
 
         <div class=ui-title-box>
@@ -63,58 +71,32 @@ export default class DesktopImageInfo extends Widget
             <div class=ugoira-frames hidden></div>
         </div>
 
-        <div class="button-row info-actions">
-            <div class=button-container>
-                <!-- position: relative positions the bookmark count. -->
+        <div class=info-actions>
+            <div class=info-actions-main>
                 <vv-container class=bookmark-button-container data-bookmark-type=public></vv-container>
-            </div>
-
-            <vv-container class="bookmark-button-container button-container" data-bookmark-type=private></vv-container>
-
-            <div style="position: relative;">
-                <div class="button icon-button button-bookmark-tags popup" data-popup="收藏标签">
+                <vv-container class=bookmark-button-container data-bookmark-type=private></vv-container>
+                <div class="n-action n-icon-only button-bookmark-tags popup" data-popup="收藏标签">
                     ${ helpers.createIcon("ppixiv:tag") }
-                    <div style="position: absolute; bottom: 2px; left: 4px;">
-                        <div class=tag-dropdown-arrow hidden></div>
-                    </div>
                 </div>
             </div>
 
-            <vv-container class="button-like-container button-container"></vv-container>
+            <div class=info-actions-more>
+                <vv-container class="button-like-container button-container"></vv-container>
 
-            <div class="download-button download-image-button popup pixiv-only" data-download="image" data-popup="下载图片">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
+                <div class="n-action download-button download-image-button popup pixiv-only" data-download="image" data-popup="下载原图">
+                    ${ helpers.createIcon("mat:download") }<span class=n-label>下载</span>
                 </div>
-            </div>
 
-            <div class="download-button download-manga-button popup pixiv-only" data-download="ZIP" data-popup="下载全部页面 (ZIP)">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-manga-icon.svg"></ppixiv-inline>
+                <div class="n-action download-button download-manga-button popup pixiv-only" data-download="ZIP" data-popup="下载全部页面 (ZIP)">
+                    ${ helpers.createIcon("mat:folder_zip") }<span class=n-label>下载全部</span>
                 </div>
-            </div>
 
-            <div class="download-button download-video-button popup pixiv-only" data-download="MKV" data-popup="下载动图 (MKV)">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
+                <div class="n-action download-button download-video-button popup pixiv-only" data-download="MKV" data-popup="下载动图 (MKV)">
+                    ${ helpers.createIcon("mat:download") }<span class=n-label>下载 MKV</span>
                 </div>
-            </div>
 
-            <div class="view-manga-button popup" data-popup="查看全部页面">
-                <div class="icon-button">
-                    ${ helpers.createIcon("ppixiv:thumbnails") }
-                </div>
-            </div>
-
-            <div class=info-spacer></div>
-
-            <a class="icon-button disable-ui-button popup pixiv-only" data-popup="在 Pixiv 打开" href="#no-ppixiv">
-                ${ helpers.createIcon("ppixiv:pixiv") }
-            </a>
-
-            <div class="image-settings-menu-box popup" data-popup="设置">
-                <div class="icon-button preferences-button">
-                    ${ helpers.createIcon("settings") }
+                <div class="n-action view-manga-button popup" data-popup="查看全部页面">
+                    ${ helpers.createIcon("ppixiv:thumbnails") }<span class=n-label>全部页面</span>
                 </div>
             </div>
         </div>
@@ -143,6 +125,14 @@ export default class DesktopImageInfo extends Widget
             },
         });
 
+        this.followButton = new FollowButton({
+            container: this.root.querySelector(".follow-button-container"),
+
+            // Clicking "已关注" opens the avatar's follow menu, which has unfollow and the
+            // public/private switch, so one stray click doesn't unfollow.
+            onFollowedClick: () => this.avatarWidget.followDropdownOpener.visible = true,
+        });
+
         this.tagListWidget = new TagListWidget({
             container: this.root.querySelector(".tag-list-container")
         });
@@ -152,8 +142,8 @@ export default class DesktopImageInfo extends Widget
         this.likeButton = new LikeButtonWidget({
             container: this.root.querySelector(".button-like-container"),
             template: `
-                <div class="button icon-button button-like enabled popup button-container" style="position: relative;">
-                    <ppixiv-inline src="resources/like-button.svg"></ppixiv-inline>
+                <div class="n-action button-like enabled popup button-container">
+                    ${ helpers.createIcon("mat:thumb_up") }<span class=n-label>点赞</span>
                 </div>
             `
         });
@@ -163,9 +153,14 @@ export default class DesktopImageInfo extends Widget
         for(let a of this.root.querySelectorAll("[data-bookmark-type]"))
             this.bookmarkButtons.push(new BookmarkButtonWidget({
                 container: a,
-                template: `
-                    <div class="button icon-button button-bookmark popup ${a.dataset.bookmarkType}">
-                        <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
+                template: a.dataset.bookmarkType == "public"? `
+                    <div class="n-action n-bookmark button-bookmark popup public">
+                        ${ helpers.createIcon("mat:favorite") }
+                        <span class="n-label n-unset">收藏</span><span class="n-label n-set">已收藏</span>
+                    </div>
+                `:`
+                    <div class="n-action n-bookmark-private button-bookmark popup private">
+                        ${ helpers.createIcon("mat:lock") }<span class=n-label>私密</span>
                     </div>
                 `,
                 bookmarkType: a.dataset.bookmarkType,
@@ -185,7 +180,6 @@ export default class DesktopImageInfo extends Widget
 
         for(let button of this.root.querySelectorAll(".download-button"))
             button.addEventListener("click", this.clickedDownload);
-        this.root.querySelector(".download-manga-button").addEventListener("click", this.clickedDownload);
         this.root.querySelector(".view-manga-button").addEventListener("click", (e) => {
             if(this.mediaId == null)
                 return;
@@ -425,6 +419,7 @@ export default class DesktopImageInfo extends Widget
         disableButton.href = `/artworks/${illustId}#no-ppixiv`;
 
         this.avatarWidget.setUserId(userId);
+        this.followButton.setUserId(userId);
         this.avatarWidget.visible = userId != null;
         this.tagListWidget.set(mediaInfo);
 
@@ -447,7 +442,7 @@ export default class DesktopImageInfo extends Widget
         }
 
         // If the author name or folder are empty, hide it instead of leaving it empty.
-        this.root.querySelector(".author-block").hidden = mediaInfo.userName == "";
+        this.root.querySelector(".author-block").hidden = ourPost || mediaInfo.userName == "";
         this.root.querySelector(".folder-block").hidden = !showFolder;
 
         let elementAuthor = this.root.querySelector(".author");

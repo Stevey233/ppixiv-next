@@ -516,6 +516,9 @@ export default class DataSource extends EventTarget
     // is options to setItem.
     setupDropdown(button, items)
     {
+        // Mark it as a dropdown, so it gets a caret.  See docs/design.md.
+        button.classList.add("n-dropdown");
+
         return new DropdownMenuOpener({
             button,
             createDropdown: ({...options}) => {

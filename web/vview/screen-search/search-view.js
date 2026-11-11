@@ -974,6 +974,8 @@ export default class SearchView extends Widget
                     <img class=thumb>
                 </a>
 
+                <div class=rank-number hidden></div>
+
                 <div class=last-viewed-image-marker>
                     <ppixiv-inline class=last-viewed-image-marker src="resources/last-viewed-image-marker.svg"></ppixiv-inline>
                 </div>
@@ -1208,6 +1210,11 @@ export default class SearchView extends Widget
         link.dataset.userId = info.userId;
 
         element.querySelector(".ugoira-icon").hidden = info.illustType != 2 && info.illustType != "video";
+
+        let rank = illustPage == 0? this.dataSource?.rankForMediaId?.(mediaId):null;
+        let rankBox = element.querySelector(".rank-number");
+        rankBox.hidden = rank == null;
+        rankBox.textContent = rank ?? "";
 
         helpers.html.setClass(element, "dot", helpers.pixiv.tagsContainDot(info.tagList));
 

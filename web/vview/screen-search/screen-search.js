@@ -77,6 +77,17 @@ export default class ScreenSearch extends Screen
                 ppixiv.settings.get("ui-on-hover") && !ppixiv.mobile);
             ppixiv.settings.addEventListener("ui-on-hover", refreshUiOnHover, { signal: this.shutdownSignal });
             refreshUiOnHover();
+
+            // The header slides away while scrolling down the list and comes back on any scroll
+            // up, like the phone's title bar.  Upstream keeps it pinned, which costs about 15% of
+            // a laptop screen's height.  See docs/design.md.
+            this.desktopScrollListener = new ScrollListener({
+                scroller: this.querySelector(".search-results"),
+                parent: this,
+                threshold: 80,
+                stickyUiNode: searchDesktopUiBox,
+                onchange: (listener) => helpers.html.setClass(searchDesktopUiBox, "scrolled-away", listener.scrolledForwards),
+            });
         }
 
         if(ppixiv.mobile)

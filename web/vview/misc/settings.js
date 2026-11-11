@@ -77,6 +77,10 @@ export default class Settings extends EventTarget
         this.configure("double_click_fullscreen", { defaultValue: false });
         this.configure("info_panel_pinned", { defaultValue: true });
 
+        // Upstream's default thumbnail size fits one column on a phone.  Two to three columns
+        // suit scanning a list.  See docs/design.md.
+        this.configure("thumbnail-size", { defaultValue: ppixiv.mobile? 2:4 });
+
         // Run any one-time settings migrations.
         this.migrate();
     }

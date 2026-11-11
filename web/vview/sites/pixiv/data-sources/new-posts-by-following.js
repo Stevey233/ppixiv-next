@@ -7,8 +7,8 @@ import { helpers } from '/vview/misc/helpers.js';
 export default class DataSource_NewPostsByFollowing extends DataSource
 {
     get name() { return "new_works_by_following"; }
-    get pageTitle() { return "Following"; }
-    getDisplayingText() { return "Following"; }
+    get pageTitle() { return "关注的新作"; }
+    getDisplayingText() { return "关注的新作"; }
     get ui() { return UI; }
 
     constructor(args)

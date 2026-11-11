@@ -22,6 +22,7 @@ import ImagePreloader from '/vview/misc/image-preloader.js';
 import IsolatedTapHandler from '/vview/actors/isolated-tap-handler.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js';
+import { getUrlForMediaId } from '/vview/misc/media-ids.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 // The main UI.  This handles creating the viewers and the global UI.
@@ -36,6 +37,20 @@ export default class ScreenIllust extends Screen
                 <!-- This holds our views: the current view, and the neighbor view if we're transitioning
                      between them. -->
                 <div class="view-container mouse-hidden-box" data-context-menu-target></div>
+
+                <!-- The page number of a multi-page work, set like the page numbers (nombre)
+                     printed in the margin of manga manuscript paper.  See docs/design.md. -->
+                <div class=nombre hidden>
+                    <button type=button class="nombre-step nombre-prev popup" data-popup="上一页" aria-label="上一页">
+                        ${ helpers.createIcon("mat:chevron_left") }
+                    </button>
+                    <a class="nombre-pages popup" data-popup="查看全部页面" href=#>
+                        <span class=nombre-current></span><span class=nombre-sep>/</span><span class=nombre-total></span>
+                    </a>
+                    <button type=button class="nombre-step nombre-next popup" data-popup="下一页" aria-label="下一页">
+                        ${ helpers.createIcon("mat:chevron_right") }
+                    </button>
+                </div>
 
                 <div class=manga-page-indicator>
                     <div class=bar></div>
@@ -83,6 +98,16 @@ export default class ScreenIllust extends Screen
         });
 
         this.mangaPageIndicator = this.root.querySelector(".manga-page-indicator");
+
+        this.nombre = this.root.querySelector(".nombre");
+        for(let [selector, step] of [[".nombre-prev", -1], [".nombre-next", 1]])
+        {
+            this.nombre.querySelector(selector).addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this._showPageRelative(step);
+            });
+        }
 
         // Desktop UI:
         if(!ppixiv.mobile)
@@ -581,6 +606,42 @@ export default class ScreenIllust extends Screen
 
         if(this.desktopUi)
             this.desktopUi.refresh();
+
+        this._refreshNombre();
+    }
+
+    // Show the page number of multi-page works.  Upstream only shows it inside the hover UI, so
+    // there's no visible sign that a work has more pages.
+    _refreshNombre()
+    {
+        let mediaId = this.currentMediaId;
+        let mediaInfo = mediaId? ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }):null;
+        let pageCount = mediaInfo?.pageCount ?? 1;
+        this.nombre.hidden = pageCount < 2;
+        if(pageCount < 2)
+            return;
+
+        let page = helpers.mediaId.parse(mediaId).page ?? 0;
+        let width = String(pageCount).length < 2? 2:String(pageCount).length;
+        this.nombre.querySelector(".nombre-current").textContent = String(page + 1).padStart(width, "0");
+        this.nombre.querySelector(".nombre-total").textContent = String(pageCount).padStart(width, "0");
+        this.nombre.querySelector(".nombre-prev").disabled = page <= 0;
+        this.nombre.querySelector(".nombre-next").disabled = page >= pageCount - 1;
+        this.nombre.querySelector(".nombre-pages").href = getUrlForMediaId(mediaId, { manga: true }).url;
+    }
+
+    _showPageRelative(step)
+    {
+        let mediaId = this.currentMediaId;
+        let mediaInfo = mediaId? ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }):null;
+        if(mediaInfo == null)
+            return;
+
+        let page = (helpers.mediaId.parse(mediaId).page ?? 0) + step;
+        if(page < 0 || page >= mediaInfo.pageCount)
+            return;
+
+        ppixiv.app.showMediaId(helpers.mediaId.getMediaIdForPage(mediaId, page));
     }
 
     onwheel = (e) =>
