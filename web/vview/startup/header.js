@@ -1,9 +1,10 @@
 // ==UserScript==
-// @name        ppixiv for Pixiv
-// @author      ppixiv
-// @namespace   ppixiv
-// @description Better Pixiv viewing | Fullscreen images | Faster searching | Bigger thumbnails | Download ugoira MKV | Ugoira seek bar | Download manga ZIP | One-click like, bookmark, follow | One-click zoom and pan
+// @name        ppixiv 新界面（实验）
+// @author      ppixiv, Stevey233
+// @namespace   stevey-ppixiv-next
+// @description 基于 ppixiv 的 Pixiv 看图脚本：简体中文界面、中文标签译名、筛选、看过标记、高清缩略图和重新设计的界面。不要和原版 ppixiv 或 ppixiv-zh 同时启用。
 // @homepage    https://github.com/ppixiv/ppixiv
+// @noframes
 // @match       https://*.pixiv.net/*
 // @run-at      document-start
 // @icon        https://ppixiv.org/ppixiv.png

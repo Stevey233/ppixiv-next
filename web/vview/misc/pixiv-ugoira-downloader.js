@@ -9,6 +9,7 @@
 import EncodeMKV from '/vview/misc/encode-mkv.js';
 import ZipImageDownloader from '/vview/misc/zip-image-downloader.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { downloadFilename } from '/vview/misc/download-names.js';
 
 export default class PixivUgoiraDownloader
 {
@@ -88,7 +89,7 @@ export default class PixivUgoiraDownloader
             
             // Build the file.
             let mkv = encoder.build();
-            let filename = this.illustData.userName + " - " + this.illustData.illustId + " - " + this.illustData.illustTitle + ".mkv";
+            let filename = downloadFilename({ mediaInfo: this.illustData, userName: this.illustData.userName, ext: "mkv" });
             helpers.saveBlob(mkv, filename);
         } catch(e) {
             console.error(e);

@@ -89,6 +89,16 @@ class AppStartup
             // Make sure that we're not loaded more than once.  This can happen if we're installed in
             // multiple script managers, or if the release and debug versions are enabled simultaneously.
             console.error("ppixiv has been loaded twice.  Is it loaded in multiple script managers?");
+            if(!this._warnedLoadedTwice)
+            {
+                this._warnedLoadedTwice = true;
+                window.addEventListener("DOMContentLoaded", () => {
+                    let warning = document.createElement("div");
+                    warning.textContent = "ppixiv 新界面（实验）没有启动：原版 ppixiv 已在运行。请在 Tampermonkey 中停用 ppixiv 和 ppixiv-zh，再刷新页面。";
+                    warning.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;padding:12px 16px;border-radius:8px;background:#222;color:#fff;font:14px/1.5 system-ui,sans-serif;";
+                    document.body?.appendChild(warning);
+                }, { once: true });
+            }
             return;
         }
 
@@ -256,7 +266,7 @@ class AppStartup
 
         window.sessionStorage.showedLogoutMessage = Date.now();
 
-        alert("Please log in to use ppixiv.");
+        alert("请先登录 Pixiv 再使用 ppixiv。");
     }
 
     refreshDisabledUi(disabledUi)

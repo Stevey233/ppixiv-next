@@ -25,6 +25,7 @@ import VirtualHistory from '/vview/util/virtual-history.js';
 import SiteNative from '/vview/sites/native/site-native.js';
 import SitePixiv from '/vview/sites/pixiv/site-pixiv.js';
 import { getResources } from '/vview/app-resources.js';
+import { startTranslating } from '/vview/zh/i18n.js';
 
 import appCss from '/resources/css/main.scss';
 
@@ -185,6 +186,9 @@ export default class App
         ppixiv.settings.addEventListener("display_mode", this._setDeviceProperties);
         window.addEventListener("orientationchange", this._setDeviceProperties);
         new ResizeObserver(this._setDeviceProperties).observe(document.documentElement);
+
+        // Translate text that upstream widgets set after they're created.
+        startTranslating();
 
         // Message popups:
         ppixiv.message = new MessageWidget({container: document.body});

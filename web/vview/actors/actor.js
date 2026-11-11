@@ -7,6 +7,7 @@
 // doesn't have HTML content or add itself to the DOM tree.  Non-widget actors are used
 // for helpers that want to live in the actor tree, but don't have content of their own.
 import { helpers } from '/vview/misc/helpers.js';
+import { translateTemplate } from '/vview/zh/i18n.js';
 
 let templatesCache = new Map();
 
@@ -145,6 +146,7 @@ export default class Actor extends EventTarget
             template = document.createElement("template");
             template.innerHTML = html;
             helpers.replaceInlines(template.content);
+            translateTemplate(template);
             
             if(name)
                 this._templatesCache[name] = template;

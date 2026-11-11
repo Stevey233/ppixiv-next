@@ -6,6 +6,7 @@ import Args from '/vview/util/args.js';
 import * as mediaId from '/vview/util/media-id.js';
 import * as pixiv from '/vview/util/pixiv.js';
 import * as pixivRequest from '/vview/util/pixiv-request.js';
+import { translateTitle } from '/vview/zh/i18n.js';
 
 export class helpers 
 {
@@ -526,6 +527,7 @@ export class helpers
 
     static setPageTitle(title)
     {
+        title = translateTitle(title);
         let title_element = document.querySelector("title");
         if(title_element.textContent == title)
             return;

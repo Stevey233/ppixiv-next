@@ -4,6 +4,7 @@ import LocalAPI from '/vview/misc/local-api.js';
 import RecentBookmarkTags from '/vview/misc/recent-bookmark-tags.js';
 import PixivUgoiraDownloader from '/vview/misc/pixiv-ugoira-downloader.js';
 import CreateZIP from '/vview/misc/create-zip.js';
+import { downloadFilename } from '/vview/misc/download-names.js';
 import * as Recaptcha from '/vview/util/recaptcha.js';
 import { downloadPixivImage } from '/vview/util/gm-download.js';
 import { helpers } from '/vview/misc/helpers.js';
@@ -609,13 +610,10 @@ export default class Actions
         {
             let blob = new Blob([results[0]]);
             let ext = results[0].extension;
-            let filename = userInfo.name + " - " + mediaInfo.illustId;
-
-            // If this is a single page of a manga post, include the page number.
-            if(downloadType == "image" && mediaInfo.mangaPages.length > 1)
-                filename += " #" + (mangaPage + 1);
-
-            filename += " - " + mediaInfo.illustTitle + "." + ext;
+            let filename = downloadFilename({
+                mediaInfo, userName: userInfo.name, page: pages[0], ext,
+                singlePageOfMany: downloadType == "image" && mediaInfo.mangaPages.length > 1,
+            });
             helpers.saveBlob(blob, filename);
             return;
         }
@@ -632,7 +630,7 @@ export default class Actions
 
         // Create the ZIP.
         let zip = new CreateZIP(filenames, results);
-        let filename = userInfo.name + " - " + mediaInfo.illustId + " - " + mediaInfo.illustTitle + ".zip";
+        let filename = downloadFilename({ mediaInfo, userName: userInfo.name, ext: "zip" });
         helpers.saveBlob(zip, filename);
     }
 

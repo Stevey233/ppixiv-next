@@ -1,6 +1,9 @@
 import KeyStorage from '/vview/misc/key-storage.js';
 import { helpers } from '/vview/misc/helpers.js';
 
+const KANA_RE = /[\u3040-\u30ff]/;
+const HAN_RE = /[\u3400-\u9fff]/;
+
 export default class TagTranslations
 {
     constructor()
@@ -11,7 +14,9 @@ export default class TagTranslations
         // not saved to disk, it just disables IndexedDB entirely, which is lazy and breaks pages.
         // Keep a copy of tags we've seen in this session to work around this  This isn't a problem
         // in other browsers.
+        // tag -> translations by language.
         this._cache = new Map();
+        this._pendingWrites = Promise.resolve();
     }
 
     // Return true if translations are enabled by the user.
@@ -51,7 +56,7 @@ export default class TagTranslations
             }
         }
 
-        this.addTranslations(translations, { overwrite });
+        return this.addTranslations(translations, { overwrite });
     }
     
     // Store a list of tag translations.
@@ -61,50 +66,72 @@ export default class TagTranslations
     //     tag: "original tag",
     //     translation: {
     //         en: "english tag",
+    //         zh: "中文",
     //     },
     // }
     //
-    // This is the same format that Pixiv uses in newer APIs.  Note that we currently only store
-    // English translations.
+    // This is the same format that Pixiv uses in newer APIs.  New translations are merged into the
+    // stored ones rather than replacing them: Pixiv's illust API only returns English, and replacing
+    // would lose the Chinese translation that search results gave us.
     //
-    // If overwrite is false, only overwrite translations that already exist.
-    async addTranslations(tagList, { overwrite=true }={})
+    // If overwrite is false, languages that already have a translation keep it.  If onlyMissingZh is
+    // true, tags that already have a Chinese translation are left alone.
+    addTranslations(tagList, { overwrite=true, onlyMissingZh=false }={})
+    {
+        // Keep each read, merge and write together, so a batch from search results and one from
+        // full work info arriving at once can't drop each other's languages.
+        let result = this._pendingWrites.then(() => this._addTranslations(tagList, { overwrite, onlyMissingZh }));
+        this._pendingWrites = result.catch(() => {});
+        return result;
+    }
+
+    async _addTranslations(tagList, { overwrite, onlyMissingZh })
     {
         let data = {};
         for(let tag of tagList)
         {
-            // If a tag has no keys and no romanization, skip it so we don't fill our database
-            // with useless entries.
-
-            if((tag.translation == null || Object.keys(tag.translation).length == 0) && tag.romaji == null)
-                continue;
-
             // Remove empty translation values.
             let translation = {};
-            for(let lang of Object.keys(tag.translation || {}))
+            for(let [lang, value] of Object.entries(tag.translation || {}))
             {
-                let value = tag.translation[lang];
-                if(value != "")
+                if(value)
                     translation[lang] = value;
             }
 
-            // Store the tag data that we care about.  We don't need to store post-specific info
-            // like "deletable".
-            let tagInfo = {
-                tag: tag.tag,
-                translation: translation,
-            };
-            if(tag.romaji)
-                tagInfo.romaji = tag.romaji;
-            data[tag.tag] = tagInfo;
+            // If a tag has no translations and no romanization, skip it so we don't fill our database
+            // with useless entries.
+            if(Object.keys(translation).length == 0 && tag.romaji == null)
+                continue;
 
-            let exists = this._cache.get(tag.tag);
-            if(translation.en && (overwrite || !exists))
-                this._cache.set(tag.tag, translation.en);
+            data[tag.tag] = { tag: tag.tag, translation, romaji: tag.romaji };
         }
 
-        // Batch write:
-        await this._db.multiSet(data, { overwrite });
+        let tags = Object.keys(data);
+        if(tags.length == 0)
+            return;
+
+        let stored = await this._db.multiGet(tags);
+        let merged = {};
+        for(let i = 0; i < tags.length; ++i)
+        {
+            let tag = tags[i];
+            let old = stored?.[i] ?? null;
+            let oldTranslation = { ...old?.translation, ...this._cache.get(tag) };
+            if(onlyMissingZh && oldTranslation.zh)
+                continue;
+
+            let { translation, romaji } = data[tag];
+            translation = overwrite? { ...oldTranslation, ...translation }:{ ...translation, ...oldTranslation };
+            this._cache.set(tag, translation);
+
+            let tagInfo = { tag, translation };
+            romaji ??= old?.romaji;
+            if(romaji)
+                tagInfo.romaji = romaji;
+            merged[tag] = tagInfo;
+        }
+
+        await this._db.multiSet(merged);
     }
 
     async getTagInfo(tags)
@@ -124,35 +151,69 @@ export default class TagTranslations
         return result;
     }
 
-    async getTranslations(tags, language="en")
+    // Return the translation to show for tag, given its translations by language, or null to
+    // show the tag itself.
+    static pickTranslation(tag, translation, language)
+    {
+        if(language == "en")
+            return translation?.en || null;
+
+        let value = translation?.zh || translation?.zh_tw || translation?.en;
+        if(!value || value == tag)
+            return null;
+
+        // Pixiv also "translates" tags that are already Chinese, or kanji-only Japanese, into
+        // English, like 原神 to "Genshin Impact".  A Chinese reader is better off with the tag itself.
+        if(HAN_RE.test(tag) && !KANA_RE.test(tag) && !HAN_RE.test(value))
+            return null;
+        return value;
+    }
+
+    // The language tags are shown in: "zh" (Chinese, falling back on English) or "en".
+    get displayLanguage()
+    {
+        return ppixiv.settings.get("tag_language") == "en"? "en":"zh";
+    }
+
+    // Return { tag: translation } for the tags in tags that have one.  Callers from upstream pass
+    // "en" as the language.  It's ignored, and the user's tag language is used.
+    async getTranslations(tags, language=null)
     {
         if(!this.enabled)
             return {};
 
+        await this._pendingWrites;
         let info = await this.getTagInfo(tags);
         let result = {};
         for(let tag of tags)
         {
-            if(info[tag] == null || info[tag].translation == null)
-                continue;
-
-            // Skip this tag if we don't have a translation for this language.
-            let translation = info[tag].translation[language];
-            if(translation == null)
-                continue;
-
-            result[tag] = translation;
+            let translation = { ...info[tag]?.translation, ...this._cache.get(tag) };
+            let value = TagTranslations.pickTranslation(tag, translation, this.displayLanguage);
+            if(value != null)
+                result[tag] = value;
         }
-
-        // See if we have cached translations for tags not in the database.
-        for(let tag of tags)
-        {
-            if(result[tag])
-                continue;
-            result[tag] = this._cache.get(tag);
-        }
-
         return result;
+    }
+
+    // Pixiv's tag autocomplete matches Chinese typed by the user against tag translations, so
+    // typing 碧蓝 suggests アズールレーン, whose translation is 碧蓝航线.  tag_translation is the text
+    // the suggestion matched, which can be in any language, so only a translation that contains
+    // the Chinese the user typed is recorded, and only for tags with no Chinese translation yet.
+    async addAutocompleteTranslations(candidates, keyword)
+    {
+        keyword = keyword?.trim();
+        if(this.displayLanguage != "zh" || !keyword || !HAN_RE.test(keyword) || KANA_RE.test(keyword))
+            return;
+
+        let found = [];
+        for(let { type, tag_name: tag, tag_translation: translation } of candidates ?? [])
+        {
+            if(type == "tag_translation" && tag && translation && tag != translation &&
+                translation.includes(keyword) && !KANA_RE.test(translation))
+                found.push({ tag, translation: { zh: translation } });
+        }
+        if(found.length > 0)
+            await this.addTranslations(found, { onlyMissingZh: true });
     }
 
     // Given a tag search, return a translated search.
@@ -186,16 +247,9 @@ export default class TagTranslations
 
     // A shortcut to retrieve one translation.  If no translation is available, returns the
     // original tag.
-    async getTranslation(tag, language="en")
+    async getTranslation(tag, language=null)
     {
-        let result = this._cache.get(tag);
-        if(result != null)
-            return result;
-
-        let translatedTags = await this.getTranslations([tag], "en");
-        if(translatedTags[tag])
-            return translatedTags[tag];
-        else
-            return tag;
+        let translatedTags = await this.getTranslations([tag]);
+        return translatedTags[tag] ?? tag;
     }
 }

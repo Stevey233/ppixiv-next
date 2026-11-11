@@ -16,6 +16,15 @@ export function setPixivRequestInfo({csrfToken, userId})
 
 export async function get(url, data, options)
 {
+    // Ask for Chinese tag translations.  Pixiv returns tag translations in the language named
+    // by lang, and its tag autocomplete only matches translations when lang is given.
+    if(ppixiv.settings?.get("tag_language") != "en")
+    {
+        let parsed = new URL(url, window.location);
+        if(parsed.origin == window.location.origin && (parsed.pathname.startsWith("/ajax/") || parsed.pathname == "/rpc/cps.php"))
+            data = { ...data, lang: "zh" };
+    }
+
     let params = createSearchParams(data);
 
     let query = params.toString();

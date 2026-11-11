@@ -778,6 +778,9 @@ class TagSearchDropdownWidget extends widget
         if(result == null)
             return;
 
+        // Record Chinese translations the autocomplete matched, so the entries below can show them.
+        await ppixiv.tagTranslations.addAutocompleteTranslations(result.candidates, keyword);
+
         this._autocompleteRequestFinished(tags, keyword, { candidates: result.candidates, text, wordStart, wordEnd });
     }
     
@@ -911,7 +914,16 @@ class TagSearchDropdownWidget extends widget
 
             span.textContent = translatedTag || tag;
             if(translatedTag)
+            {
                 span.dataset.translatedTag = translatedTag;
+
+                // Show the original tag after its translation, so 碧蓝航线 the translation of
+                // アズールレーン can be told apart from a tag that is literally 碧蓝航线.
+                let original = document.createElement("span");
+                original.classList.add("original-tag");
+                original.textContent = tag;
+                span.appendChild(original);
+            }
 
             tagContainer.appendChild(span);
         }

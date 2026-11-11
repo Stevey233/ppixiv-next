@@ -65,7 +65,16 @@ export default class Settings extends EventTarget
         this.configure("translation_size", { defaultValue: "M" });
         this.configure("translation_translator", { defaultValue: "deepl" });
         this.configure("translation_direction", { defaultValue: "auto" });
-        this.configure("translation_language", { defaultValue: "ENG" });
+        this.configure("translation_language", { defaultValue: "CHS" });
+
+        // Settings added by this fork.  The ones ppixiv-zh had are imported from it once, see migrate.
+        this.configure("theme", { defaultValue: "auto" }); // "dark", "light" or "auto"
+        this.configure("tag_language", { defaultValue: "zh" }); // "zh" or "en"
+        this.configure("hd_thumbnails", { defaultValue: "auto" }); // "auto" or "off"
+        this.configure("hover_preload", { defaultValue: true });
+        this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
+        this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
+        this.configure("double_click_fullscreen", { defaultValue: false });
 
         // Run any one-time settings migrations.
         this.migrate();
@@ -216,6 +225,26 @@ export default class Settings extends EventTarget
     // Handle migrating settings that have changed.
     migrate()
     {
+        // Carry over the choices made in ppixiv-zh, which kept them in its own localStorage keys.
+        // Those keys are left in place, so switching back to ppixiv-zh keeps working.
+        if(localStorage["_ppixiv_imported_ppx_zh"] == null)
+        {
+            let imports = {
+                "ppx-zh-theme": ["theme", (v) => ["dark", "light", "auto"].includes(v)? v:null],
+                "ppx-zh-tag-language": ["tag_language", (v) => v == "en"? "en":null],
+                "ppx-zh-thumb-quality": ["hd_thumbnails", (v) => v == "off"? "off":null],
+                "ppx-zh-hover-prefetch": ["hover_preload", (v) => v == "off"? false:null],
+                "ppx-zh-seen": ["seen_works", (v) => ["dim", "keep", "off"].includes(v)? v:null],
+                "ppx-zh-filename": ["download_filename", (v) => v?.trim()? v:null],
+            };
+            for(let [oldKey, [key, convert]] of Object.entries(imports))
+            {
+                let value = convert(localStorage[oldKey]);
+                if(value != null && !(("_ppixiv_" + key) in localStorage))
+                    localStorage["_ppixiv_" + key] = JSON.stringify(value);
+            }
+            localStorage["_ppixiv_imported_ppx_zh"] = "true";
+        }
     }
 
     set(key, value)
