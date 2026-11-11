@@ -1,5 +1,7 @@
 // The main thumbnail grid view.
 
+import { setThumbnail, forgetThumb, thumbnailLoaded, thumbnailFailed } from '/vview/misc/hd-thumbnails.js';
+import { thumbnailPointerOver, thumbnailPointerMove, cancelHoverPreload } from '/vview/misc/preload.js';
 import Widget from '/vview/widgets/widget.js';
 import { MenuOptionsThumbnailSizeSlider } from '/vview/widgets/menu-option.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js'
@@ -201,6 +203,14 @@ export default class SearchView extends Widget
         // The node that scrolls to show thumbs.
         this.scrollContainer = this.root.closest(".scroll-container");
         this.thumbnailBox = this.root.querySelector(".thumbnails");
+        this.thumbnailBox.addEventListener("pointerover", thumbnailPointerOver, this._signal);
+        this.thumbnailBox.addEventListener("pointermove", thumbnailPointerMove, this._signal);
+        this.thumbnailBox.addEventListener("pointerleave", thumbnailPointerOver, this._signal);
+        this.shutdownSignal.addEventListener("abort", () => {
+            cancelHoverPreload();
+            for(let node of Object.values(this.thumbs))
+                forgetThumb(node.querySelector(".thumb"));
+        });
         this._setDataSourceRunner = new GuardedRunner(this._signal);
         this._loadPageRunner = new GuardedRunner(this._signal);
 
@@ -239,8 +249,13 @@ export default class SearchView extends Widget
         // Call thumbImageLoadFinished when a thumbnail image finishes loading.
         this.root.addEventListener("load", (e) => {
             if(e.target.classList.contains("thumb"))
+            {
+                thumbnailLoaded(e.target);
                 this.thumbImageLoadFinished(e.target.closest(".thumbnail-box"), { cause: "onload" });
+            }
         }, { capture: true } );
+
+        this.root.addEventListener("error", (e) => thumbnailFailed(e.target), { capture: true });
 
         this.scrollContainer.addEventListener("scroll", (e) => this.scheduleStoreScrollPosition(), { passive: true });
         this.thumbnailBox.addEventListener("click", (e) => this.thumbnailClick(e));
@@ -936,8 +951,10 @@ export default class SearchView extends Widget
     // Clear the view.
     _clearThumbs()
     {
+        cancelHoverPreload();
         for(let node of Object.values(this.thumbs))
         {
+            forgetThumb(node.querySelector(".thumb"));
             node.remove();
             for(let observer of this.intersectionObservers)
                 observer.unobserve(node);
@@ -1142,6 +1159,7 @@ export default class SearchView extends Widget
         {
             // The image will be obscured, but we still shouldn't load the image the user blocked (which
             // is something Pixiv does wrong).  Load the user profile image instead.
+            forgetThumb(thumb);
             thumb.src = ppixiv.mediaCache.getProfilePictureUrl(info.userId);
             element.classList.add("muted");
 
@@ -1159,7 +1177,7 @@ export default class SearchView extends Widget
         }
         else
         {
-            thumb.src = url;
+            setThumbnail(thumb, url, mediaId, element);
             element.classList.remove("muted");
             LocalAPI.thumbnailWasLoaded(url);
 

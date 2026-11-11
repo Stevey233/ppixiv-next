@@ -2,6 +2,7 @@
 //
 // This handles creating and navigating between viewers.
 
+import { preloadMangaPages } from '/vview/misc/preload.js';
 import Screen from '/vview/screen.js';
 
 import DesktopImageInfo from '/vview/screen-illust/desktop-image-info.js';
@@ -177,6 +178,7 @@ export default class ScreenIllust extends Screen
 
     deactivate()
     {
+        preloadMangaPages(null);
         super.deactivate();
         this._active = false;
 
@@ -341,6 +343,7 @@ export default class ScreenIllust extends Screen
         });
 
         this.showImageViewer({ newViewer, initial });
+        preloadMangaPages(mediaId);
 
         // Remember that this work was opened, to dim it in search results.
         ppixiv.seenWorks.record(mediaId);
