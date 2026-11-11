@@ -1253,8 +1253,9 @@ export default class SearchView extends Widget
         let desiredSize = ppixiv.settings.get("thumbnail-size", 4);
         desiredSize = MenuOptionsThumbnailSizeSlider.thumbnailSizeForValue(desiredSize);
 
-        // Pack images more tightly on mobile.
-        let padding = ppixiv.mobile? 3:15;
+        // Pack images more tightly on mobile.  On desktop the gap only needs room for the crop
+        // marks around the hovered thumbnail (see _next.scss).
+        let padding = ppixiv.mobile? 3:8;
 
         // The container might have a fractional size, and clientWidth will round it, which is
         // wrong for us: if the container is 500.75 wide and we calculate a fit for 501, the result

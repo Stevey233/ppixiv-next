@@ -131,7 +131,7 @@ html:not(.macos) {
 // Four L-shaped marks just outside a box's corners, like the trim marks on manga manuscript paper.
 // They mark the thumbnail under the mouse, the focused one, and the one the viewer was showing.
 
-@mixin crop-marks($offset: 5px, $length: 14px, $weight: 2px)
+@mixin crop-marks($offset: 4px, $length: 14px, $weight: 2px)
 {
     content: "";
     position: absolute;
@@ -519,6 +519,9 @@ html:not(.macos) {
         &.last-viewed::after {
             @include crop-marks();
         }
+
+        // Draw the marked thumbnail over its neighbors, so the marks in the gap aren't covered.
+        &:hover, &:focus-within, &.flash, &.last-viewed { z-index: 1; }
 
         &.seen:not(:hover) .thumb {
             filter: grayscale(0.6) brightness(0.5);

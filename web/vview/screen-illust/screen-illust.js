@@ -87,9 +87,10 @@ export default class ScreenIllust extends Screen
         // Desktop UI:
         if(!ppixiv.mobile)
         {
-            // Fullscreen on double-click.
+            // Fullscreen on double-click, if enabled.  It's off by default, as in ppixiv-zh.
             this.viewContainer.addEventListener("dblclick", () => {
-                helpers.toggleFullscreen();
+                if(ppixiv.settings.get("double_click_fullscreen"))
+                    helpers.toggleFullscreen();
             });
 
             new HideMouseCursorOnIdle(this.root.querySelector(".mouse-hidden-box"));
