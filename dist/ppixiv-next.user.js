@@ -20,7 +20,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.20.gec43e518.dirty
+// @version     258.22.g5e17a1a1
 // ==/UserScript==
 (function() {
 
@@ -36203,7 +36203,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.20.gec43e518.dirty"}\`);
+      console.log(\`vview setup: \${"r258.22.g5e17a1a1"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -36252,7 +36252,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.20.gec43e518.dirty"}\`);
+      console.log(\`ppixiv setup: \${"r258.22.g5e17a1a1"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
