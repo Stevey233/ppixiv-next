@@ -1,0 +1,970 @@
+// The redesigned interface.  See docs/design.md for the direction and the reasons.
+//
+// This comes after the upstream styles in main.scss.  It sets the design tokens, points upstream's
+// own color variables at them, and restyles the main surfaces.  Rules for the new widgets in
+// web/vview/next/ are here too.
+
+// ------------------------------------------------------------------ tokens
+
+html, html.mobile {
+    --n-bg: #1C1D20;
+    --n-surface: #25272B;
+    --n-surface-2: #2E3136;
+    --n-rule: #383B41;
+    --n-text: #ECEAE6;
+    --n-pencil: #9B9EA5;
+    --n-blue: #7DBDEB;
+    --n-heart: #FF6482;
+    --n-view-bg: #111214;
+    --n-scrim: rgba(17, 18, 20, 0.72);
+
+    --n-font: "Sofia Sans", "MiSans", "HarmonyOS Sans SC", "PingFang SC", "Noto Sans CJK SC",
+        "Source Han Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --n-font-num: "Sofia Sans Condensed", var(--n-font);
+
+    --n-rail-width: 56px;
+    --n-radius: 6px;
+
+    color-scheme: dark;
+}
+
+html[data-theme="light"], html.mobile[data-theme="light"] {
+    --n-bg: #F3F5F6;
+    --n-surface: #FFFFFF;
+    --n-surface-2: #EAEEF1;
+    --n-rule: #D3DBE1;
+    --n-text: #1E2328;
+    --n-pencil: #5D6570;
+    --n-blue: #2D83C6;
+    --n-heart: #E2365D;
+    --n-scrim: rgba(243, 245, 246, 0.78);
+
+    color-scheme: light;
+}
+
+// Upstream's own variables, pointed at the tokens.
+html, html.mobile {
+    --main-background-color: var(--n-bg);
+    --background-noise: none;
+
+    --button-color: var(--n-pencil);
+    --button-highlight-color: var(--n-text);
+    --button-disabled-color: var(--n-rule);
+
+    --input-outline: var(--n-rule);
+    --input-outline-focused: var(--n-blue);
+
+    --ui-bg-color: var(--n-surface);
+    --ui-fg-color: var(--n-text);
+    --ui-border-color: var(--n-rule);
+    --ui-bg-section-color: var(--n-surface-2);
+
+    --frame-bg-color: var(--n-surface);
+    --frame-fg-color: var(--n-text);
+    --frame-border-color: var(--n-rule);
+    --dropdown-menu-hover-color: var(--n-surface-2);
+
+    --box-link-fg-color: var(--n-text);
+    --box-link-bg-color: transparent;
+    --box-link-disabled-color: var(--n-pencil);
+    --box-link-hover-color: var(--n-surface-2);
+    --box-link-selected-color: transparent;
+    --box-link-selected-hover-color: var(--n-surface-2);
+
+    --minor-text-fg-color: var(--n-pencil);
+    --minor-text-shadow-color: transparent;
+    --title-fg-color: var(--n-text);
+    --title-bg-color: var(--n-surface-2);
+
+    --like-button-color: var(--n-pencil);
+    --like-button-liked-color: var(--n-text);
+    --like-button-hover-color: var(--n-text);
+}
+
+body {
+    font-family: var(--n-font);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--n-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+html.mobile > body {
+    font-size: 16px;
+}
+
+.title-font {
+    font-family: var(--n-font);
+    font-weight: 700;
+}
+
+:focus-visible {
+    outline: 2px solid var(--n-blue);
+    outline-offset: 2px;
+}
+
+html:not(.macos) {
+    .search-results::-webkit-scrollbar,
+    ::-webkit-scrollbar {
+        width: 10px;
+        background-color: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--n-rule);
+        border: 3px solid transparent;
+        border-radius: 10px;
+        background-clip: padding-box;
+        &:hover { background-color: var(--n-pencil); }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0s !important;
+        animation-duration: 0s !important;
+    }
+}
+
+// ------------------------------------------------------------------ crop marks
+//
+// Four L-shaped marks just outside a box's corners, like the trim marks on manga manuscript paper.
+// They mark the thumbnail under the mouse, the focused one, and the one the viewer was showing.
+
+@mixin crop-marks($offset: 6px, $length: 12px, $weight: 1.5px)
+{
+    content: "";
+    position: absolute;
+    inset: calc(-1 * #{$offset});
+    pointer-events: none;
+    z-index: 2;
+
+    --mark: linear-gradient(var(--n-blue), var(--n-blue));
+    background:
+        var(--mark) left top / #{$length} #{$weight} no-repeat,
+        var(--mark) left top / #{$weight} #{$length} no-repeat,
+        var(--mark) right top / #{$length} #{$weight} no-repeat,
+        var(--mark) right top / #{$weight} #{$length} no-repeat,
+        var(--mark) left bottom / #{$length} #{$weight} no-repeat,
+        var(--mark) left bottom / #{$weight} #{$length} no-repeat,
+        var(--mark) right bottom / #{$length} #{$weight} no-repeat,
+        var(--mark) right bottom / #{$weight} #{$length} no-repeat;
+}
+
+// ------------------------------------------------------------------ navigation rail
+
+.screen-search-container.has-nav-rail {
+    .search-results {
+        margin-left: var(--n-rail-width);
+
+        // Upstream reserves a scrollbar gutter on both sides to keep the grid centered.  The grid
+        // is left-aligned next to the rail here, so only the right one is needed.
+        scrollbar-gutter: stable;
+    }
+
+    .search-view {
+        margin: 0 24px 24px !important;
+        .thumbnails { margin: 0; }
+    }
+}
+
+.nav-rail {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--n-rail-width);
+    z-index: 2;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 4px;
+
+    background: var(--n-bg);
+    border-right: 1px solid var(--n-rule);
+
+    .rail-button {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: var(--n-radius);
+        background: none;
+        color: var(--n-pencil);
+        cursor: pointer;
+        font: inherit;
+
+        .font-icon { font-size: 22px; }
+
+        &:hover {
+            color: var(--n-text);
+            background: var(--n-surface-2);
+        }
+    }
+
+    .rail-destinations {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 12px 0 4px;
+    }
+
+    .rail-destination {
+        position: relative;
+        display: block;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        width: var(--n-rail-width);
+        padding: 12px 0;
+        text-align: center;
+
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        line-height: var(--n-rail-width);
+        color: var(--n-pencil);
+
+        &:hover { color: var(--n-text); }
+
+        // The current list: full-strength text and a guide line on the inner edge.
+        &.selected {
+            color: var(--n-text);
+            font-weight: 700;
+
+            &::after {
+                content: "";
+                position: absolute;
+                right: -1px;
+                top: 10px;
+                bottom: 10px;
+                width: 2px;
+                background: var(--n-blue);
+            }
+        }
+    }
+
+    .rail-spacer { flex: 1; }
+}
+
+.rail-more-menu {
+    min-width: 12em;
+}
+
+// ------------------------------------------------------------------ desktop header
+
+.screen-search-container .search-desktop-ui {
+    justify-content: flex-start;
+    padding: 20px 24px 12px;
+    background: var(--n-bg);
+    box-shadow: none;
+
+    // ui-on-hover leaves the header's last 40px showing.  Keep it opaque so thumbnails scrolling
+    // under it don't show through.
+    &.ui-on-hover:not(.hover):not(.force-open) {
+        border-bottom: 1px solid var(--n-rule);
+    }
+}
+
+.screen-search-container .thumbnail-ui-box {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .header-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .header-title-block {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .avatar-container > .avatar-widget {
+        float: none;
+        width: 48px;
+        margin: 0;
+    }
+
+    .image-for-suggestions {
+        float: none;
+        margin: 0;
+        > img {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--n-radius);
+        }
+    }
+
+    .search-title {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.25;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-search {
+        width: min(420px, 36vw);
+
+        .input-field-container {
+            outline: none;
+            border: 1px solid var(--n-rule);
+            border-radius: var(--n-radius);
+            background: var(--n-surface);
+            padding: 0 6px 0 12px;
+            height: 38px;
+
+            &:focus-within { border-color: var(--n-blue); }
+
+            > input {
+                font-size: 15px;
+                font-family: var(--n-font);
+                background: none;
+                color: var(--n-text);
+                border: none;
+                &::placeholder { color: var(--n-pencil); }
+            }
+
+            > .right-side-button {
+                color: var(--n-pencil);
+                font-size: 20px;
+                &:hover { color: var(--n-text); }
+                &.disabled { display: none; }
+            }
+        }
+    }
+
+    .header-tools {
+        margin: 0 !important;
+        gap: 2px;
+    }
+
+    // On a tag search, the header's search box replaces the one in the search options.
+    .data-source-ui .tag-search-box-container { display: none; }
+}
+
+.thumbnail-ui-box .header-tools .icon-button {
+    color: var(--n-pencil);
+    border-radius: var(--n-radius);
+    padding: 6px;
+
+    .font-icon { font-size: 22px; }
+
+    @media(hover: hover) {
+        &:hover {
+            color: var(--n-text);
+            background: var(--n-surface-2);
+        }
+    }
+}
+
+// ------------------------------------------------------------------ list options
+//
+// Upstream's per-list options (age rating, sort, bookmark tags...) are rows of box links.  They
+// become plain text options; the selected one gets the blue guide line under it.
+
+.box-button-row {
+    gap: 4px 2px;
+
+    > .box-link {
+        margin: 0;
+    }
+}
+
+.box-link {
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--n-radius);
+    color: var(--n-pencil);
+    font-size: 14px;
+
+    &:hover { color: var(--n-text); }
+
+    &.selected {
+        color: var(--n-text);
+        font-weight: 600;
+        background: none;
+        box-shadow: inset 0 -2px 0 var(--n-blue);
+        border-radius: var(--n-radius) var(--n-radius) 0 0;
+    }
+
+    .vertical-list > & {
+        color: var(--n-text);
+        &.selected {
+            box-shadow: inset 2px 0 0 var(--n-blue);
+            border-radius: 0 var(--n-radius) var(--n-radius) 0;
+        }
+    }
+
+    &.menu-dropdown-button, &.popup-menu-box-button {
+        border: 1px solid var(--n-rule);
+    }
+}
+
+// ------------------------------------------------------------------ filter bar
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+
+    .filter-groups {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .filter-group {
+        display: flex;
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        overflow: hidden;
+    }
+
+    .filter-toggle {
+        padding: 5px 12px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--n-pencil);
+        cursor: pointer;
+        user-select: none;
+
+        & + .filter-toggle { border-left: 1px solid var(--n-rule); }
+
+        &:hover { color: var(--n-text); background: var(--n-surface-2); }
+
+        &.selected {
+            color: var(--n-blue);
+            font-weight: 600;
+            box-shadow: inset 0 -2px 0 var(--n-blue);
+        }
+    }
+
+    .filter-stopped {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--n-pencil);
+        font-size: 14px;
+    }
+}
+
+.n-text-button, .filter-continue {
+    border: 1px solid var(--n-blue);
+    border-radius: var(--n-radius);
+    background: none;
+    color: var(--n-blue);
+    font: inherit;
+    font-size: 14px;
+    padding: 4px 12px;
+    cursor: pointer;
+    &:hover { background: var(--n-surface-2); }
+}
+
+// ------------------------------------------------------------------ thumbnails
+
+.search-view {
+    .thumbnails .row {
+        // Give each row room around its thumbnails for the crop marks.  Rows contain their paint
+        // (content-visibility), so the marks would be clipped at the row's edges otherwise.  The
+        // negative margins keep the layout where upstream puts it.
+        padding: 8px;
+        margin: -8px;
+        width: calc(100% + 16px);
+    }
+
+    .thumbnail-box {
+        // Keep the crop marks' z-index inside the thumbnail, so they never draw over the viewer.
+        isolation: isolate;
+
+        a.thumbnail-link {
+            html:not(.mobile) & { border-radius: 2px; }
+            background: var(--n-surface);
+        }
+
+        // Upstream zooms thumbnails in until hovered.  The crop marks frame the work instead.
+        @media(hover: hover) {
+            body:not(.disable-thumbnail-zooming) &:not(:hover) { --zoom-thumb: 1; }
+        }
+
+        &:hover::after,
+        &:focus-within::after,
+        &.flash::after,
+        &.last-viewed::after {
+            @include crop-marks();
+        }
+
+        &.seen:not(:hover) .thumb {
+            filter: grayscale(0.6) brightness(0.5);
+        }
+        html[data-theme="light"] &.seen:not(:hover) .thumb {
+            filter: grayscale(0.6) brightness(1.08) contrast(0.55);
+        }
+    }
+
+    // The upstream "last viewed" arrow is replaced by the crop marks.
+    .thumbnail-box .last-viewed-image-marker { display: none !important; }
+
+    .thumbnail-box .bottom-row {
+        bottom: 6px;
+        padding: 0 6px;
+        justify-content: space-between;
+
+        .manga-info-box, .ugoira-icon {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 22px;
+            padding: 0 7px;
+            border-radius: 4px;
+            background: var(--n-scrim);
+            color: var(--n-text);
+            font-family: var(--n-font-num);
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        .page-icon { display: none; }
+        .manga-info-box .page-count { display: inline !important; }
+        .manga-info-box .page-count::after { content: "P"; margin-left: 1px; }
+
+        .ugoira-icon svg { width: 12px; height: 12px; }
+
+        .heart svg { width: 22px; height: 22px; }
+        .heart svg .heart { fill: var(--n-heart); stroke: none; }
+    }
+
+    > .no-results {
+        background: none;
+        color: var(--n-pencil);
+    }
+}
+
+// ------------------------------------------------------------------ dropdowns and popups
+
+.popup-menu-box, .dropdown-box .popup-menu-box, .input-dropdown {
+    background: var(--n-surface);
+    color: var(--n-text);
+    border: 1px solid var(--n-rule);
+    border-radius: var(--n-radius);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    padding: 4px;
+}
+
+.popup::after {
+    background: var(--n-text) !important;
+    color: var(--n-bg) !important;
+    border-radius: 4px !important;
+    font-family: var(--n-font) !important;
+    font-size: 13px !important;
+    padding: 4px 8px !important;
+}
+
+// The search screen stays in the document under the viewer.  Its rail is fixed, so hide it there.
+.screen-search-container[inert] .nav-rail {
+    visibility: hidden;
+}
+
+// ------------------------------------------------------------------ viewer
+//
+// The work's information sits in a margin panel on the right.  On wide windows it's pinned open
+// and the image fits in the space left of it.  Otherwise it slides in when the mouse reaches the
+// right edge, or with I.
+
+html, html.mobile {
+    --n-info-width: 360px;
+}
+
+.screen-illust-container {
+    // Upstream fades the search view to black behind the image.  Fade to the viewer color instead.
+    .fade-search {
+        background-color: rgb(17 18 20 / calc(1 - (var(--illust-hidden) - 0.1) / 0.9));
+    }
+
+    &:has(.image-ui.pinned) .view-container {
+        right: var(--n-info-width);
+    }
+}
+
+.image-ui {
+    .hover-sphere {
+        left: auto;
+        right: 0;
+        > svg { transform: translate(50%, -50%); }
+    }
+
+    &.pinned .hover-sphere { display: none; }
+
+    .ui-box {
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: auto;
+        width: var(--n-info-width);
+        min-width: 0;
+        max-height: none;
+        box-sizing: border-box;
+        padding: 12px 20px 24px;
+
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+
+        background: var(--n-surface);
+        color: var(--n-text);
+        border: none;
+        border-left: 1px solid var(--n-rule);
+        border-radius: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
+
+        transition: transform .2s ease-out, opacity .2s ease-out;
+
+        body:not(.force-ui) &.ui-hidden {
+            transform: translate(24px, 0);
+        }
+
+        .image-ui:not(.pinned) & {
+            box-shadow: -16px 0 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .info-spacer { flex: 1; }
+
+        .info-top-row {
+            display: flex;
+            align-items: center;
+            margin: 0 -8px;
+
+            button.icon-button {
+                border: none;
+                background: none;
+                width: auto;
+                height: auto;
+            }
+        }
+
+        .info-pin .font-icon { transform: scaleX(-1); }
+        .image-ui.pinned & .info-pin { color: var(--n-blue); }
+
+        .info-author-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 44px;
+
+            .avatar-popup {
+                position: static;
+                width: 44px;
+                flex-shrink: 0;
+            }
+
+            .info-author-text {
+                min-width: 0;
+                font-size: 15px;
+                font-weight: 600;
+                a { color: var(--n-text); }
+                a:hover { color: var(--n-blue); }
+            }
+
+            .edit-post { color: var(--n-blue); }
+        }
+
+        .ui-title-box {
+            margin: 0;
+
+            .title-block {
+                display: block;
+                margin: 0;
+                padding: 0;
+                background: none;
+                border-radius: 0;
+                font-size: 20px;
+                line-height: 1.35;
+                font-weight: 700;
+                overflow-wrap: anywhere;
+                a { color: var(--n-text); }
+            }
+        }
+
+        .post-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 14px;
+            margin-top: -6px;
+
+            > * {
+                padding: 0;
+                background: none;
+                color: var(--n-pencil);
+                font-family: var(--n-font-num);
+                font-size: 14px;
+                font-weight: 500;
+            }
+        }
+
+        .info-actions {
+            --icon-size: 1.75;
+            gap: 10px;
+            padding: 8px 0;
+            border-top: 1px solid var(--n-rule);
+            border-bottom: 1px solid var(--n-rule);
+
+            .button.button-bookmark .count,
+            .button.button-like .count {
+                font-family: var(--n-font-num);
+                color: var(--n-pencil);
+            }
+        }
+
+        .info-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            font-size: 14px;
+
+            a {
+                color: var(--n-blue);
+                &:hover { text-decoration: underline; text-underline-offset: 3px; }
+            }
+        }
+
+        .tag-list-container .tag-list {
+            gap: 6px;
+        }
+
+        .description {
+            padding: 0;
+            background: none;
+            color: var(--n-text);
+            font-size: 14px;
+            line-height: 1.7;
+
+            a { color: var(--n-blue); }
+        }
+    }
+}
+
+// ------------------------------------------------------------------ mobile lists
+//
+// A title bar at the top with the filter button, and a tab bar at the bottom.  Both slide away
+// while scrolling down, as upstream's did.
+
+.screen-search-container {
+    .search-ui-mobile {
+        background: var(--n-bg);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom: 1px solid var(--n-rule);
+        font-size: 16px;
+        padding: 8px 16px 10px;
+        padding-top: calc(max(8px, env(safe-area-inset-top)));
+        box-sizing: border-box;
+
+        .mobile-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 40px;
+        }
+
+        .search-title {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+            font-size: 20px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-height: none;
+        }
+
+        .avatar-container:empty { display: none; }
+        .avatar-widget { width: 40px; }
+
+        .data-source-ui {
+            .box-button-row, .box-button-row-group { justify-content: flex-start; }
+        }
+    }
+
+    .filter-sheet-button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        background: none;
+        color: var(--n-pencil);
+        font: inherit;
+        font-size: 14px;
+
+        .font-icon { font-size: 18px; }
+
+        &.active {
+            color: var(--n-blue);
+            border-color: var(--n-blue);
+        }
+
+        .filter-count {
+            font-family: var(--n-font-num);
+            font-weight: 700;
+        }
+    }
+
+    .mobile-navigation-bar {
+        background: var(--n-bg);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-top: 1px solid var(--n-rule);
+
+        html.mobile:not([data-has-bottom-inset]) & {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        html.mobile[data-has-bottom-inset] & {
+            padding-top: 0;
+        }
+
+        .tab-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .tab {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            height: 56px;
+            border: none;
+            background: none;
+            color: var(--n-pencil);
+            font: inherit;
+            -webkit-tap-highlight-color: transparent;
+
+            .font-icon { font-size: 24px; }
+            .tab-label { font-size: 12px; line-height: 1; }
+
+            // The current list: full-strength text and a guide line on the inner (top) edge, like
+            // the desktop rail.
+            &.selected {
+                color: var(--n-text);
+                .tab-label { font-weight: 700; }
+
+                &::before {
+                    content: "";
+                    position: absolute;
+                    top: -1px;
+                    left: 30%;
+                    right: 30%;
+                    height: 2px;
+                    background: var(--n-blue);
+                }
+            }
+        }
+    }
+}
+
+// Sheets from the bottom: "more" and the filters.
+.dialog.more-sheet, .dialog.filter-sheet {
+    .more-sheet-list {
+        padding: 4px 0 12px;
+    }
+
+    .more-sheet-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 48px;
+        padding: 0 20px;
+        color: var(--n-text);
+        font-size: 16px;
+        border-radius: 0;
+
+        .font-icon { font-size: 22px; color: var(--n-pencil); }
+    }
+
+    .more-sheet-rule {
+        height: 1px;
+        margin: 6px 20px;
+        background: var(--n-rule);
+    }
+
+    .filter-sheet-bar {
+        display: block;
+        padding: 8px 20px 0;
+    }
+
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+
+        .filter-groups { flex-direction: column; gap: 12px; }
+        .filter-group { align-self: flex-start; }
+        .filter-group[data-group="hide"] { flex-direction: column; align-self: stretch; }
+        .filter-group[data-group="hide"] .filter-toggle + .filter-toggle {
+            border-left: none;
+            border-top: 1px solid var(--n-rule);
+        }
+        .filter-toggle { padding: 10px 16px; font-size: 15px; }
+    }
+
+    .filter-sheet-done {
+        display: block;
+        margin: 16px 20px 20px auto;
+        padding: 8px 24px;
+        font-size: 15px;
+    }
+}
+
+// ------------------------------------------------------------------ dialogs
+//
+// Upstream's dialogs are translucent black over the page.  Here they're opaque panels in the
+// surface color, so text in them reads the same over any artwork.
+
+:not(.simple-button-dialog) > .dialog {
+    background-color: var(--n-surface) !important;
+    color: var(--n-text);
+    border: 1px solid var(--n-rule);
+}
+
+.floating > .dialog {
+    border-radius: 8px !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+:not(.floating) > .dialog {
+    border-radius: 12px 12px 0 0 !important;
+    border-bottom: none;
+}
+
+.dialog > .header {
+    .header-text {
+        font-size: 17px;
+        font-weight: 700;
+    }
+}

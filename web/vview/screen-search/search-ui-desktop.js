@@ -5,6 +5,8 @@ import { AvatarWidget } from '/vview/widgets/user-widgets.js';
 import { SettingsDialog } from '/vview/widgets/settings-widgets.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import CreateSearchMenu from '/vview/screen-search/search-menu.js';
+import FilterBar from '/vview/next/filter-bar.js';
+import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers } from '/vview/misc/helpers.js';
 
@@ -16,60 +18,61 @@ export default class DesktopSearchUI extends Widget
             ...options,
             template: `
             <div class=thumbnail-ui-box data-context-menu-target=off>
-                <!-- The images for the artist view (avatar) and related images, which shows the starting image. -->
-                <vv-container class=avatar-container></vv-container>
+                <div class=header-row>
+                    <div class=header-title-block>
+                        <!-- The images for the artist view (avatar) and related images, which shows the starting image. -->
+                        <vv-container class=avatar-container></vv-container>
 
-                <a href=# class=image-for-suggestions>
-                    <!-- A blank image, so we don't load anything: -->
-                    <img src="${helpers.other.blankImage}">
-                </a>
+                        <a href=# class=image-for-suggestions>
+                            <!-- A blank image, so we don't load anything: -->
+                            <img src="${helpers.other.blankImage}">
+                        </a>
 
-                <div class=title-with-button-row-container>
-                    <div class=title-with-button-row>
-                        <div class="search-title title-font"></div>
-                    </div>
-                </div>
-
-                <div class=button-row style="margin-bottom: 0.5em;">
-                    <div class="icon-button toggle-local-navigation-button popup" data-popup="Show navigation" hidden>
-                        ${ helpers.createIcon("mat:keyboard_double_arrow_left") }
+                        <h1 class="search-title title-font"></h1>
                     </div>
 
-                    <a class="icon-button disable-ui-button popup pixiv-only" data-popup="Return to Pixiv" href="#no-ppixiv">
-                        ${ helpers.createIcon("ppixiv:pixiv") }
-                    </a>
+                    <div class="header-search pixiv-only"></div>
 
-                    <div class="main-search-menu-button icon-button popup pixiv-only" data-popup="Search">
-                        ${ helpers.createIcon("menu") }
-                    </div>
+                    <div class="button-row header-tools">
+                        <div class="icon-button toggle-local-navigation-button popup" data-popup="Show navigation" hidden>
+                            ${ helpers.createIcon("mat:keyboard_double_arrow_left") }
+                        </div>
 
-                    <div class="refresh-search-button icon-button popup" data-popup="Refresh">
-                        ${ helpers.createIcon("refresh") }
-                    </div>
+                        <div class="main-search-menu-button icon-button popup native-only" data-popup="Search">
+                            ${ helpers.createIcon("menu") }
+                        </div>
 
-                    <div class="refresh-search-from-page-button icon-button popup" data-popup="Refresh from page">
-                        ${ helpers.createIcon("restart_alt") }
-                    </div>
+                        <div class="refresh-search-button icon-button popup" data-popup="刷新">
+                            ${ helpers.createIcon("refresh") }
+                        </div>
 
-                    <div class="expand-manga-posts icon-button popup pixiv-only">
-                        ${ helpers.createIcon("") /* filled in by refreshExpandMangaPostsButton */ }
-                    </div>
+                        <div class="refresh-search-from-page-button icon-button popup" data-popup="Refresh from page">
+                            ${ helpers.createIcon("restart_alt") }
+                        </div>
 
-                    <a class="slideshow icon-button popup" data-popup="Slideshow" href="#">
-                        ${ helpers.createIcon("wallpaper") }
-                    </a>
+                        <div class="expand-manga-posts icon-button popup pixiv-only">
+                            ${ helpers.createIcon("") /* filled in by refreshExpandMangaPostsButton */ }
+                        </div>
 
-                    <div class="settings-menu-box popup" data-popup="Preferences">
-                        <div class="icon-button preferences-button">
-                            ${ helpers.createIcon("settings") }
+                        <a class="slideshow icon-button popup" data-popup="幻灯片" href="#">
+                            ${ helpers.createIcon("wallpaper") }
+                        </a>
+
+                        <div class="settings-menu-box popup native-only" data-popup="Preferences">
+                            <div class="icon-button preferences-button">
+                                ${ helpers.createIcon("settings") }
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class=data-source-ui></div>
+                <vv-container class=filter-bar-container></vv-container>
             </div>
             `
         });
+
+        this.filterBar = new FilterBar({ container: this.querySelector(".filter-bar-container") });
 
         // Create the search menu dropdown.
         new DropdownMenuOpener({
@@ -133,8 +136,32 @@ export default class DesktopSearchUI extends Widget
         this.avatarWidget.visible = false;
         this.imageForSuggestions.hidden = true;
 
+        this.filterBar.setDataSource(dataSource);
+
+        // The search box is in the header on every page, so a tag search is always one click
+        // away.  It's recreated with each data source, since it follows the data source's related
+        // tags.
+        this.headerSearchBox?.shutdown();
+        this.headerSearchBox = null;
+
         if(dataSource == null)
             return;
+
+        if(!ppixiv.native)
+        {
+            this.headerSearchBox = new TagSearchBoxWidget({
+                container: this.querySelector(".header-search"),
+                dataSource,
+            });
+
+            // On a tag search, start from the current search.  Add a space, so another tag can be
+            // typed right after focusing it.
+            let input = this.headerSearchBox.querySelector("input");
+            input.placeholder = "搜索标签";
+            let search = dataSource._searchTags;
+            if(search)
+                input.value = search + " ";
+        }
 
         // Create the new data source's UI.
         if(this.dataSource.ui)

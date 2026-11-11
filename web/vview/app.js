@@ -27,6 +27,7 @@ import SitePixiv from '/vview/sites/pixiv/site-pixiv.js';
 import { getResources } from '/vview/app-resources.js';
 import { startTranslating } from '/vview/zh/i18n.js';
 import SeenWorks from '/vview/misc/seen-works.js';
+import { startTheme } from '/vview/next/theme.js';
 
 import appCss from '/resources/css/main.scss';
 
@@ -178,6 +179,9 @@ export default class App
             meta.setAttribute("content", "#000");
             document.head.appendChild(meta);
         }
+
+        // Set the theme before unhiding the document, so the page doesn't flash the other theme.
+        startTheme();
 
         // Now that we've cleared the document and added our style so our background color is
         // correct, we can unhide the document.

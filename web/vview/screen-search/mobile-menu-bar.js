@@ -3,11 +3,12 @@ import CreateSearchMenu from '/vview/screen-search/search-menu.js';
 import { SettingsDialog } from '/vview/widgets/settings-widgets.js';
 import { DataSource_BookmarksBase } from '/vview/sites/pixiv/data-sources/bookmarks.js';
 import DialogWidget from '/vview/widgets/dialog.js';
-import LocalAPI from '/vview/misc/local-api.js';
+import { mainDestinations, otherDestinations } from '/vview/next/nav.js';
 import { helpers } from '/vview/misc/helpers.js';
 
-// The bottom navigation bar for mobile, showing the current search and exposing a smaller
-// action bar when open.  This vaguely follows the design language of iOS Safari.
+// The bottom tab bar for mobile: the main lists, search, and a "more" sheet with everything
+// else.  Upstream's bar had back, refresh, a search menu, slideshow and settings, so changing
+// lists took a dialog and a scroll.  See docs/design.md.
 export default class MobileSearchUI extends Widget
 {
     constructor(options)
@@ -16,52 +17,38 @@ export default class MobileSearchUI extends Widget
             ...options,
             template: `
             <div class=mobile-navigation-bar>
-                <div class="header-contents button-row">
-                    <div class="icon-button back-button disabled">
-                        ${ helpers.createIcon("mat:arrow_back_ios_new") }
-                    </div>
-
-                    <div class="icon-button refresh-search-button">
-                        ${ helpers.createIcon("refresh") }
-                    </div>
-
-                    <div class="icon-button menu">
-                        ${ helpers.createIcon("search") }
-                    </div>
-
-                    <div class="icon-button slideshow">
-                        ${ helpers.createIcon("wallpaper") }
-                    </div>
-
-                    <div class="icon-button preferences-button">
-                        ${ helpers.createIcon("settings") }
-                    </div>
-                </div>
+                <nav class="header-contents tab-bar" aria-label="列表"></nav>
             </div>
         `});
 
-        this.root.querySelector(".refresh-search-button").addEventListener("click", () => this.parent.refreshSearch());
-        this.root.querySelector(".preferences-button").addEventListener("click", (e) => new SettingsDialog());
-        this.root.querySelector(".slideshow").addEventListener("click", (e) => helpers.navigate(ppixiv.app.slideshowURL));
-        this.root.querySelector(".menu").addEventListener("click", (e) => new MobileEditSearchDialog());
+        let bar = this.root.querySelector(".tab-bar");
+        let main = mainDestinations();
+        let tabs = [
+            main.find((d) => d.key == "discovery"),
+            main.find((d) => d.key == "following"),
+            { key: "search", label: "搜索", icon: "mat:search", url: "/search?s_mode=tag&type=artwork#ppixiv",
+              matches: (ds) => ds?.name == "search" },
+            main.find((d) => d.key == "bookmarks"),
+        ];
 
-        this.root.querySelector(".back-button").addEventListener("click", () => {
-            if(ppixiv.native)
-            {
-                if(this.parent.displayedMediaId == null)
-                    return;
+        this._tabs = [];
+        for(let tab of tabs)
+        {
+            let link = document.createElement("a");
+            link.className = "tab";
+            link.href = tab.url;
+            link.innerHTML = `${ helpers.createIcon(tab.icon) }<span class=tab-label></span>`;
+            link.querySelector(".tab-label").textContent = tab.label;
+            bar.appendChild(link);
+            this._tabs.push({ link, tab });
+        }
 
-                let parentFolderId = LocalAPI.getParentFolder(this.parent.displayedMediaId);
-
-                let args = helpers.args.location;
-                LocalAPI.getArgsForId(parentFolderId, args);
-                helpers.navigate(args);
-            }
-            else if(ppixiv.phistory.permanent)
-            {
-                ppixiv.phistory.back();
-            }
-        });
+        let more = document.createElement("button");
+        more.type = "button";
+        more.className = "tab tab-more";
+        more.innerHTML = `${ helpers.createIcon("mat:menu") }<span class=tab-label>更多</span>`;
+        more.addEventListener("click", () => new MobileMoreSheet({ searchUi: this.parent }));
+        bar.appendChild(more);
     }
 
     applyVisibility()
@@ -71,15 +58,70 @@ export default class MobileSearchUI extends Widget
 
     refreshUi()
     {
-        // The back button navigate to parent locally, otherwise it's browser back if we're in
-        // permanent history mode.
-        let backButton = this.root.querySelector(".back-button");
-        let showBackButton;
-        if(ppixiv.native)
-            showBackButton = LocalAPI.getParentFolder(this.parent.displayedMediaId) != null;
-        else if(ppixiv.phistory.permanent)
-            showBackButton = ppixiv.phistory.length > 1;
-        helpers.html.setClass(backButton, "disabled", !showBackButton);
+        let dataSource = this.parent.dataSource;
+        for(let { link, tab } of this._tabs)
+        {
+            let current = tab.matches(dataSource);
+            helpers.html.setClass(link, "selected", current);
+            if(current)
+                link.setAttribute("aria-current", "page");
+            else
+                link.removeAttribute("aria-current");
+        }
+    }
+}
+
+// The "more" sheet: the other lists, and the actions that used to be on the bar.
+class MobileMoreSheet extends DialogWidget
+{
+    constructor({ searchUi, ...options }={})
+    {
+        super({...options,
+            dialogClass: "edit-search-dialog",
+            classes: "more-sheet",
+            header: "更多",
+            template: `<div class="vertical-list more-sheet-list"></div>`,
+        });
+
+        let list = this.root.querySelector(".more-sheet-list");
+        let addLink = ({ label, icon, url }) => {
+            let link = document.createElement("a");
+            link.className = "box-link more-sheet-row";
+            link.href = url;
+            link.innerHTML = `${ helpers.createIcon(icon) }<span class=label></span>`;
+            link.querySelector(".label").textContent = label;
+            list.appendChild(link);
+            return link;
+        };
+        let addAction = (label, icon, action) => {
+            let row = addLink({ label, icon, url: "#" });
+            row.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.visible = false;
+                action();
+            });
+        };
+
+        let main = mainDestinations();
+        for(let destination of main.filter((d) => d.key == "rankings" || d.key == "new"))
+            addLink(destination);
+        for(let destination of otherDestinations())
+            if(destination.url.indexOf("/search?") == -1)
+                addLink(destination);
+        addAction("全部列表", "mat:list", () => new MobileEditSearchDialog());
+
+        list.appendChild(Object.assign(document.createElement("div"), { className: "more-sheet-rule" }));
+
+        addAction("刷新", "refresh", () => searchUi.refreshSearch());
+        addAction("幻灯片", "wallpaper", () => helpers.navigate(ppixiv.app.slideshowURL));
+        addAction("设置", "settings", () => new SettingsDialog());
+        addLink({ label: "回到 Pixiv 原页面", icon: "ppixiv:pixiv", url: "#no-ppixiv" });
+
+        // Close after following a link.
+        list.addEventListener("click", (e) => {
+            if(e.target.closest("a[href]:not([href='#'])"))
+                this.visible = false;
+        });
     }
 }
 
@@ -178,5 +220,5 @@ class MobileEditSearchDialog extends DialogWidget
     }
 
     // Tell DialogWidget not to close us on popstate.  It'll still close us if the screen changes.
-    get _closeOnPopstate() { return false; }
+    get _close_on_popstate() { return false; }
 }

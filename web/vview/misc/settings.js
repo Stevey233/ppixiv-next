@@ -75,6 +75,7 @@ export default class Settings extends EventTarget
         this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
         this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
         this.configure("double_click_fullscreen", { defaultValue: false });
+        this.configure("info_panel_pinned", { defaultValue: true });
 
         // Run any one-time settings migrations.
         this.migrate();

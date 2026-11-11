@@ -28,70 +28,51 @@ export default class DesktopImageInfo extends Widget
     </div>
 
     <div class=ui-box>
-        <div class=avatar-popup></div>
+        <div class=info-top-row>
+            <button type=button class="info-back icon-button popup" data-popup="返回列表 (Esc)">
+                ${ helpers.createIcon("mat:arrow_back") }
+            </button>
+            <div class=info-spacer></div>
+            <button type=button class="info-pin icon-button popup" data-popup="固定或收起信息栏 (I)">
+                ${ helpers.createIcon("mat:view_sidebar") }
+            </button>
+        </div>
 
-        <div class=ui-title-box>
-            <div>
-                <span class="title-block">
-                    <!-- Put the title and author in separate inline-blocks, to encourage
-                        the browser to wrap between them if possible, putting the author
-                        on its own line if they won't both fit, but still allowing the
-                        title to wrap if it's too long by itself. -->
-                    <span style="display: inline-block;" class="title-font">
-                        <a class="title"></a>
-                    </span>
-                    <span style="display: inline-block;" class="author-block title-font">
-                        <span style="font-size: 12px;">by</span>
-                        <a class="author" data-scroll-to-top></a>
-                    </span>
-                    <span style="display: inline-block;" class=folder-block>
-                        <span style="font-size: 12px;">in</span>
-                        <a class="folder-text title-font"></a>
-                    </span>
-
-                    <a class=edit-post href=#>Edit post</a>
+        <div class=info-author-row>
+            <div class=avatar-popup></div>
+            <div class=info-author-text>
+                <span class=author-block>
+                    <a class="author" data-scroll-to-top></a>
                 </span>
+                <span class=folder-block>
+                    <a class="folder-text"></a>
+                </span>
+                <a class=edit-post href=#>编辑作品</a>
             </div>
         </div>
 
-        <div class=button-row style="margin: 0.5em 0">
-            <a class="icon-button disable-ui-button popup pixiv-only" data-popup="Return to Pixiv" href="#no-ppixiv">
-                ${ helpers.createIcon("ppixiv:pixiv") }
-            </a>
+        <div class=ui-title-box>
+            <h2 class="title-block"><a class="title"></a></h2>
+        </div>
 
-            <div class="view-manga-button popup" data-popup="View manga pages">
-                <div class="icon-button">
-                    ${ helpers.createIcon("ppixiv:thumbnails") }
-                </div>
-            </div>
+        <div class=post-info>
+            <div class="post-age popup" hidden></div>
+            <div class=image-info hidden></div>
+            <div class=page-count hidden></div>
+            <div class=ugoira-duration hidden></div>
+            <div class=ugoira-frames hidden></div>
+        </div>
 
-            <div class="download-button download-image-button popup pixiv-only" data-download="image" data-popup="Download image">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
-                </div>
-            </div>
-
-            <div class="download-button download-manga-button popup pixiv-only" data-download="ZIP" data-popup="Download ZIP of all images">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-manga-icon.svg"></ppixiv-inline>
-                </div>
-            </div>
-
-            <div class="download-button download-video-button popup pixiv-only" data-download="MKV" data-popup="Download MKV">
-                <div class="icon-button button enabled">
-                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
-                </div>
-            </div>
-
+        <div class="button-row info-actions">
             <div class=button-container>
                 <!-- position: relative positions the bookmark count. -->
                 <vv-container class=bookmark-button-container data-bookmark-type=public></vv-container>
             </div>
 
             <vv-container class="bookmark-button-container button-container" data-bookmark-type=private></vv-container>
-            
+
             <div style="position: relative;">
-                <div class="button icon-button button-bookmark-tags popup" data-popup="Bookmark tags">
+                <div class="button icon-button button-bookmark-tags popup" data-popup="收藏标签">
                     ${ helpers.createIcon("ppixiv:tag") }
                     <div style="position: absolute; bottom: 2px; left: 4px;">
                         <div class=tag-dropdown-arrow hidden></div>
@@ -101,36 +82,47 @@ export default class DesktopImageInfo extends Widget
 
             <vv-container class="button-like-container button-container"></vv-container>
 
-            <a class="similar-illusts-button popup pixiv-only" data-popup="Similar illustrations" href=#>
-                <div class=icon-button>
-                    ${ helpers.createIcon("ppixiv:suggestions") }
+            <div class="download-button download-image-button popup pixiv-only" data-download="image" data-popup="下载图片">
+                <div class="icon-button button enabled">
+                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
                 </div>
+            </div>
+
+            <div class="download-button download-manga-button popup pixiv-only" data-download="ZIP" data-popup="下载全部页面 (ZIP)">
+                <div class="icon-button button enabled">
+                    <ppixiv-inline src="resources/download-manga-icon.svg"></ppixiv-inline>
+                </div>
+            </div>
+
+            <div class="download-button download-video-button popup pixiv-only" data-download="MKV" data-popup="下载动图 (MKV)">
+                <div class="icon-button button enabled">
+                    <ppixiv-inline src="resources/download-icon.svg"></ppixiv-inline>
+                </div>
+            </div>
+
+            <div class="view-manga-button popup" data-popup="查看全部页面">
+                <div class="icon-button">
+                    ${ helpers.createIcon("ppixiv:thumbnails") }
+                </div>
+            </div>
+
+            <div class=info-spacer></div>
+
+            <a class="icon-button disable-ui-button popup pixiv-only" data-popup="在 Pixiv 打开" href="#no-ppixiv">
+                ${ helpers.createIcon("ppixiv:pixiv") }
             </a>
 
-            <a class="similar-artists-button popup pixiv-only" data-popup="Similar artists" href=#>
-                <div class=icon-button>
-                    ${ helpers.createIcon("ppixiv:suggestions") }
-                </div>
-            </a>
-
-            <a class="similar-bookmarks-button popup pixiv-only" data-popup="Similar bookmarks" href=#>
-                <div class=icon-button>
-                    ${ helpers.createIcon("ppixiv:suggestions") }
-                </div>
-            </a>
-
-            <div class="image-settings-menu-box popup" data-popup="Preferences">
+            <div class="image-settings-menu-box popup" data-popup="设置">
                 <div class="icon-button preferences-button">
                     ${ helpers.createIcon("settings") }
                 </div>
             </div>
         </div>
-        <div class=post-info>
-            <div class="post-age popup" hidden></div>
-            <div class=image-info hidden></div>
-            <div class=page-count hidden></div>
-            <div class=ugoira-duration hidden></div>
-            <div class=ugoira-frames hidden></div>
+
+        <div class="info-links pixiv-only">
+            <a class="similar-illusts-button" href=#>相似作品</a>
+            <a class="similar-bookmarks-button" href=#>收藏了这张的人还收藏了</a>
+            <a class="similar-artists-button" href=#>相似画师</a>
         </div>
 
         <vv-container class=tag-list-container></vv-container>
@@ -225,13 +217,41 @@ export default class DesktopImageInfo extends Widget
         ppixiv.settings.addEventListener("image_editing_mode", () => { this.refreshOverlayUiVisibility(); });
         ClassFlags.get.addEventListener("hide-ui", () => this.refreshOverlayUiVisibility(), this._signal);
 
+        // The panel is pinned open on wide windows, and shown on hover otherwise.  See docs/design.md.
+        this._wideQuery = window.matchMedia("(min-width: 1100px)");
+        this._wideQuery.addEventListener("change", () => this.refreshOverlayUiVisibility(), this._signal);
+        ppixiv.settings.addEventListener("info_panel_pinned", () => this.refreshOverlayUiVisibility(), this._signal);
+
+        this.root.querySelector(".info-pin").addEventListener("click", () => this.togglePinned());
+        this.root.querySelector(".info-back").addEventListener("click", () => this.returnToSearch());
+
         this.refreshOverlayUiVisibility();
+    }
+
+    get pinned()
+    {
+        return ppixiv.settings.get("info_panel_pinned") && this._wideQuery.matches;
+    }
+
+    togglePinned()
+    {
+        ppixiv.settings.set("info_panel_pinned", !ppixiv.settings.get("info_panel_pinned"));
+    }
+
+    returnToSearch()
+    {
+        let searchUrl = this._dataSource?.searchUrl;
+        if(searchUrl == null)
+            return;
+        ppixiv.app.navigateFromIllustToSearch(new helpers.args(searchUrl.toString()));
     }
 
     refreshOverlayUiVisibility()
     {
         // Hide widgets inside the hover UI when it's hidden.
-        let visible = this.hoveringOverBox || this.hoveringOverSphere;
+        let pinned = this.pinned;
+        helpers.html.setClass(this.root, "pinned", pinned);
+        let visible = pinned || this.hoveringOverBox || this.hoveringOverSphere;
 
         // Don't show the hover UI while editing, since it can get in the way of trying to
         // click the image.
@@ -243,7 +263,9 @@ export default class DesktopImageInfo extends Widget
         if(this.bookmarkTagsDropdownOpener?.visible || this.avatarWidget.followDropdownOpener.visible)
             visible = true;
 
-        if(ClassFlags.get.get("hide-ui"))
+        // hide-ui is set while dragging the image and while the context menu is open.  A pinned
+        // panel stays, since hiding it would resize the image under the mouse.
+        if(ClassFlags.get.get("hide-ui") && !pinned)
             visible = false;
         
         // Tell the image UI when it's visible.
@@ -296,6 +318,29 @@ export default class DesktopImageInfo extends Widget
 
     async handleKeydown(e)
     {
+        if(e.code == "KeyI" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey)
+        {
+            e.preventDefault();
+            e.stopPropagation();
+            if(this._wideQuery.matches)
+                this.togglePinned();
+            else
+            {
+                // On narrow windows, I shows and hides the panel instead.
+                this.hoveringOverBox = !this.visible;
+                this.refreshOverlayUiVisibility();
+            }
+            return;
+        }
+
+        if(e.key == "Escape" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey)
+        {
+            e.preventDefault();
+            e.stopPropagation();
+            this.returnToSearch();
+            return;
+        }
+
         if(!this.visible)
             return;
 
@@ -491,15 +536,15 @@ export default class DesktopImageInfo extends Widget
                 seconds += frame.delay / 1000;
 
             duration = seconds.toFixed(duration >= 10? 0:1);
-            duration += seconds == 1? " second":" seconds";
+            duration += " 秒";
         }
         setInfo(".ugoira-duration", duration);
-        setInfo(".ugoira-frames", (mediaInfo.full && mediaInfo.ugoiraMetadata)? (mediaInfo.ugoiraMetadata.frames.length + " frames"):"");
+        setInfo(".ugoira-frames", (mediaInfo.full && mediaInfo.ugoiraMetadata)? (mediaInfo.ugoiraMetadata.frames.length + " 帧"):"");
 
         // Add the page count for manga.
         let pageText = "";
         if(mediaInfo.pageCount > 1 && this.displayedPage != null)
-            pageText = "Page " + (this.displayedPage+1) + "/" + mediaInfo.pageCount;
+            pageText = `第 ${this.displayedPage+1} / ${mediaInfo.pageCount} 页`;
         setInfo(".page-count", pageText);
     }
 

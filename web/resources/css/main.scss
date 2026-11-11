@@ -4134,7 +4134,5 @@ svg.heart-image .delete {
     flex: 1;
 }
 
-// Works opened before, see misc/seen-works.js.  The redesign restyles this.
-.screen-search-container .thumbnail-box.seen:not(:hover) .thumb {
-    filter: brightness(0.45) saturate(0.6);
-}
+// The redesigned interface.  It comes last so it overrides the styles above.
+@import "next";

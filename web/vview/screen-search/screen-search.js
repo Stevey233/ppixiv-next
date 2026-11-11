@@ -5,6 +5,7 @@ import MobileMenuBar from '/vview/screen-search/mobile-menu-bar.js';
 import ScrollListener from '/vview/actors/scroll-listener.js';
 import LocalNavigationTreeWidget from '/vview/widgets/folder-tree.js';
 import SearchView from '/vview/screen-search/search-view.js';
+import NavRail from '/vview/next/nav-rail.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import HoverWithDelay from '/vview/actors/hover-with-delay.js';
 import { helpers, OpenWidgets } from '/vview/misc/helpers.js';
@@ -23,6 +24,8 @@ export default class ScreenSearch extends Screen
 
                 <vv-container class=search-mobile-ui></vv-container>
 
+                <vv-container class=nav-rail-container></vv-container>
+
                 <div class="search-results scroll-container">
                     <div class=search-desktop-ui hidden></div>
 
@@ -39,7 +42,16 @@ export default class ScreenSearch extends Screen
             container: this.root.querySelector(".thumbnail-container-box"),
         });
 
-        // Add the top search UI if we're on desktop.
+        // Add the navigation rail and the top search UI if we're on desktop.
+        if(!ppixiv.mobile && !ppixiv.native)
+        {
+            this.navRail = new NavRail({
+                container: this.root.querySelector(".nav-rail-container"),
+                onSearch: () => this.focusSearch(),
+            });
+            this.root.classList.add("has-nav-rail");
+        }
+
         if(!ppixiv.mobile)
         {
             let searchDesktopUiBox = this.root.querySelector(".search-desktop-ui");
@@ -200,6 +212,7 @@ export default class ScreenSearch extends Screen
         this.searchView.setDataSource(dataSource, { targetMediaId });
         if(this.desktopSearchUi)
             this.desktopSearchUi.setDataSource(dataSource);
+        this.navRail?.setDataSource(dataSource);
         if(this.mobileSearchUi)
             this.mobileSearchUi.setDataSource(dataSource);
 
@@ -285,10 +298,29 @@ export default class ScreenSearch extends Screen
         return super.displayedMediaId;
     }
 
+    // Scroll to the top, where the header and its search box are, and focus the search box.
+    focusSearch()
+    {
+        let input = this.root.querySelector(".header-search input");
+        if(input == null)
+            return;
+        this.querySelector(".search-results").scrollTo({ top: 0 });
+        input.focus();
+    }
+
     async handleKeydown(e)
     {
         if(e.repeat)
             return;
+
+        // "/" focuses the search box, as on most sites with search.
+        if(e.key == "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !ppixiv.mobile && !e.target.closest?.("input, textarea, [contenteditable]"))
+        {
+            e.preventDefault();
+            e.stopPropagation();
+            this.focusSearch();
+            return;
+        }
 
         if(this.dataSource.name == "vview" || this.dataSource.name == "vview-search")
         {
