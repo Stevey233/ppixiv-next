@@ -449,9 +449,6 @@ export default class ContextMenu extends Widget
     // Return the element that should be under the cursor when the menu is opened.
     get elementToCenter()
     {
-        // The cross is built around its middle cell, so that's where the cursor goes.
-        if(this.menuStyle == "cross")
-            return this.displayedMenu.querySelector(".button-zoom");
         return null;
     }
 
@@ -772,9 +769,15 @@ export default class ContextMenu extends Widget
 
     // Put the zoom toggle button under the cursor, so right-left click is a quick way
     // to toggle zoom lock.
+    //
+    // The list style leaves the zoom row out where there's nothing to zoom.  Put the cursor on
+    // the size and date line then, which does nothing when clicked.
     get elementToCenter()
     {
-        return this.displayedMenu.querySelector(".button-zoom");
+        let zoom = this.displayedMenu.querySelector(".button-zoom");
+        if(zoom.offsetParent != null)
+            return zoom;
+        return this.displayedMenu.querySelector(".context-menu-image-info-container");
     }
         
     get _isZoomUiEnabled()
