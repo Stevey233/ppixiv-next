@@ -20,7 +20,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.24.ge00ae138.dirty
+// @version     258.27.gdd61aa2e.dirty
 // ==/UserScript==
 (function() {
 
@@ -18549,6 +18549,7 @@ This can be enabled in preferences, and may become the default in a future relea
       preloadMangaPages(null);
       super.deactivate();
       this._active = false;
+      this.nombre.hidden = true;
       if (this.viewer != null)
         this.viewer.active = false;
       if (this.mobileImageChanger)
@@ -24542,8 +24543,6 @@ This can be enabled in preferences, and may become the default in a future relea
       this.hide();
     };
     get elementToCenter() {
-      if (this.menuStyle == "cross")
-        return this.displayedMenu.querySelector(".button-zoom");
       return null;
     }
     show({ x, y, target }) {
@@ -24731,7 +24730,10 @@ This can be enabled in preferences, and may become the default in a future relea
       this.refresh();
     }
     get elementToCenter() {
-      return this.displayedMenu.querySelector(".button-zoom");
+      let zoom = this.displayedMenu.querySelector(".button-zoom");
+      if (zoom.offsetParent != null)
+        return zoom;
+      return this.displayedMenu.querySelector(".context-menu-image-info-container");
     }
     get _isZoomUiEnabled() {
       return this._currentViewer != null && this._currentViewer.slideshowMode == null;
@@ -36607,7 +36609,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.24.ge00ae138.dirty"}\`);
+      console.log(\`vview setup: \${"r258.27.gdd61aa2e.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -36656,7 +36658,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.24.ge00ae138.dirty"}\`);
+      console.log(\`ppixiv setup: \${"r258.27.gdd61aa2e.dirty"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
