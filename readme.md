@@ -1,17 +1,20 @@
-# ppixiv 新界面（实验）
+# ppixiv 新界面
 
-这是 Stevey 的 ppixiv 分支（`stevey` 分支），把 ppixiv-zh 的功能直接并进 ppixiv 源码，并从头重做了界面。它和原版 ppixiv、ppixiv-zh 互相独立：脚本名是"ppixiv 新界面（实验）"，命名空间 `stevey-ppixiv-next`，装上不会覆盖原来的两个脚本。
+这是 Stevey 的 ppixiv 分支（`stevey` 分支），把 ppixiv-zh 的功能直接并进 ppixiv 源码，并从头重做了界面。它取代原版 ppixiv 加 ppixiv-zh 的组合：装这一个脚本就够了，不需要再装那两个。脚本名是"ppixiv 新界面"，命名空间 `stevey-ppixiv-next`。
 
 - 设计方向、配色和字体、每处功能和交互改动的原因：[docs/design.md](docs/design.md)
 - 构建好的脚本：`dist/ppixiv-next.user.js`
+- 最近一次界面审计和修复记录：[docs/audit-2026-11-11.md](docs/audit-2026-11-11.md)
 
-## 试用
+## 安装
 
 1. 在 Tampermonkey 里打开"添加新脚本"，把 `dist/ppixiv-next.user.js` 的内容整个粘进去保存（或者从文件导入）。
-2. 在 Tampermonkey 里停用 ppixiv 和 ppixiv-zh。三个同时启用时，新脚本会在页面上提示并且不启动。
+2. 在 Tampermonkey 里停用或删除 ppixiv 和 ppixiv-zh。原版 ppixiv 同时启用时，新脚本会在页面上提示并且不启动。
 3. 刷新 pixiv.net 的页面。
 
-切回原来的界面：停用"ppixiv 新界面（实验）"，重新启用 ppixiv 和 ppixiv-zh，刷新。设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。
+更新：在 Tampermonkey 里打开已装的"ppixiv 新界面"，把编辑器里的内容整个换成新的 `dist/ppixiv-next.user.js`，保存。Tampermonkey 按脚本名加命名空间认脚本，2026-11-11 之前装的版本叫"ppixiv 新界面（实验）"；从文件导入新版会多出一个脚本，这时删掉带"（实验）"的旧脚本。
+
+设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。想退回旧组合，停用"ppixiv 新界面"，重新启用 ppixiv 和 ppixiv-zh，刷新。
 
 ## 构建
 

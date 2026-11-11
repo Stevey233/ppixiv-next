@@ -94,7 +94,7 @@ class AppStartup
                 this._warnedLoadedTwice = true;
                 window.addEventListener("DOMContentLoaded", () => {
                     let warning = document.createElement("div");
-                    warning.textContent = "ppixiv 新界面（实验）没有启动：原版 ppixiv 已在运行。请在 Tampermonkey 中停用 ppixiv 和 ppixiv-zh，再刷新页面。";
+                    warning.textContent = "ppixiv 新界面没有启动：原版 ppixiv 已在运行。请在 Tampermonkey 中停用 ppixiv 和 ppixiv-zh，再刷新页面。";
                     warning.style.cssText = "position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;padding:12px 16px;border-radius:8px;background:#222;color:#fff;font:14px/1.5 system-ui,sans-serif;";
                     document.body?.appendChild(warning);
                 }, { once: true });

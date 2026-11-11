@@ -923,8 +923,22 @@ html, html.mobile {
             }
         }
 
+        // Tags are links, so give each a thin outline to set them apart from the description.
         .tag-list-container .tag-list {
             gap: 6px;
+
+            > .box-link {
+                height: auto;
+                min-height: 28px;
+                padding: 0 10px;
+                border: 1px solid var(--n-rule);
+                border-radius: 999px;
+                color: var(--n-text);
+                font-size: 13px;
+                @media(hover: hover) {
+                    &:hover { border-color: var(--n-blue); color: var(--n-blue); background: none; }
+                }
+            }
         }
 
         .description {
@@ -1415,4 +1429,30 @@ html:not(.mobile) .floating > .dialog > .header {
     }
     .center-header-helper { order: 1; }
     .header-text { order: 2; }
+}
+
+// ------------------------------------------------------------------ settings and menus
+
+// Sliders: upstream's unfilled track is plain white, which glares on the dark theme.
+.slider {
+    --on-color: var(--n-blue);
+    --off-color: var(--n-rule);
+    @media(hover: hover) {
+        &:hover { --on-color: color-mix(in srgb, var(--n-blue) 80%, white); }
+    }
+    &:active { --on-color: color-mix(in srgb, var(--n-blue) 80%, white); }
+}
+
+// Upstream puts the dropdown arrow before the value ("⌄ 跟随系统").  Put it after.
+.menu-dropdown-button .label-box {
+    display: flex;
+    align-items: center;
+    > .icon { order: 1; margin-left: 4px; margin-right: 0; }
+}
+
+// The avatar's follow menu is a long list of small rows.  Make it readable and easier to hit.
+.follow-widget.vertical-list > .box-link {
+    font-size: 14px;
+    min-height: 34px;
+    padding: 0 12px;
 }

@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        ppixiv 新界面（实验）
+// @name        ppixiv 新界面
 // @author      ppixiv, Stevey233
 // @namespace   stevey-ppixiv-next
 // @description 基于 ppixiv 的 Pixiv 看图脚本：简体中文界面、中文标签译名、筛选、看过标记、高清缩略图和重新设计的界面。不要和原版 ppixiv 或 ppixiv-zh 同时启用。
