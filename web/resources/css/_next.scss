@@ -2282,3 +2282,50 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         }
     }
 }
+
+// ------------------------------------------------------------------ bookmark tag dropdown
+//
+// The tags on the current bookmark are .selected.  Upstream showed that with
+// --box-link-selected-color, which the redesign sets to transparent, so the dropdown didn't
+// show which tags the work has.  Mark them like other selected rows: text color, weight and the
+// guide line on the inner edge, plus a check at the end.
+.popup-bookmark-tag-dropdown .popup-bookmark-tag-entry {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 4px;
+    color: var(--n-pencil);
+    font-size: 14px;
+
+    > .tag-name { align-items: center; gap: 8px; }
+    .font-icon { font-size: 18px; }
+
+    &.add-button, &.refresh-button { color: var(--n-text); }
+
+    &.selected {
+        background: none;
+        color: var(--n-text);
+        font-weight: 600;
+        box-shadow: inset 2px 0 0 var(--n-blue);
+
+        &::after {
+            content: "";
+            width: 10px;
+            height: 5px;
+            margin: -3px 0 0 12px;
+            border-left: 2px solid var(--n-blue);
+            border-bottom: 2px solid var(--n-blue);
+            transform: rotate(-45deg);
+        }
+    }
+
+    @media(hover: hover) {
+        &:hover, &.selected:hover { background-color: var(--n-surface-2); color: var(--n-text); }
+    }
+}
+
+// The search dropdown can be resized sideways.  Its resize grip was a black square, which stood
+// out in both themes.
+.input-dropdown::-webkit-resizer {
+    background: linear-gradient(135deg, transparent 60%, var(--n-rule) 60%);
+}
+.input-dropdown::-webkit-scrollbar-corner { background: transparent; }
