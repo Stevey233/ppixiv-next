@@ -2025,3 +2025,55 @@ html:not(.mobile) .floating > .dialog > .header {
     max-width: 420px;
 }
 
+// ------------------------------------------------------------------ tag search dropdown
+//
+// The dropdown under the search box: recent and saved searches, autocomplete, and the edit mode.
+
+.input-dropdown .input-dropdown-list {
+    margin: 0;
+
+    // Section headers ("最近的标签", "「碧蓝」的建议", saved groups) were navy bars.
+    .tag-section {
+        margin-bottom: 2px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background-color: var(--n-surface-2);
+        color: var(--n-pencil);
+        font-size: 13px;
+        line-height: 22px;
+
+        .section-icon { font-size: 18px; }
+    }
+
+    .entry {
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 15px;
+        &.selected { background-color: var(--n-surface-2); box-shadow: inset 2px 0 0 var(--n-blue); }
+    }
+
+    // Autocomplete shows the Chinese name and then the Japanese tag.  Without a style the two ran
+    // together as one word ("碧蓝档案ブルーアーカイブ").
+    .word .original-tag {
+        margin-left: 8px;
+        color: var(--n-pencil);
+        font-size: 13px;
+    }
+
+    .search .word.or { color: var(--n-pencil); }
+}
+
+// Edit-mode buttons and the collapse button: upstream's #bbb outlined squares, white on hover.
+.input-dropdown .edit-button, .input-dropdown .group-suggestions-button {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--n-rule);
+    border-radius: 4px;
+    color: var(--n-pencil);
+    .font-icon { font-size: 18px; }
+    &.selected { color: var(--n-text); background: none; }
+    @media(hover: hover) { &:hover { border-color: var(--n-pencil); color: var(--n-text); } }
+}
+
+// With no recent or saved searches, the dropdown was an empty bordered strip under the box.
+.input-dropdown:not(.editing):not(:has(.entry)) { visibility: hidden; }
