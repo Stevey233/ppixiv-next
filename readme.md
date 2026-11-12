@@ -1,6 +1,6 @@
 # ppixiv 新界面
 
-这是 Stevey 的 ppixiv 分支（`stevey` 分支），把 ppixiv-zh 的功能直接并进 ppixiv 源码，并从头重做了界面。它取代原版 ppixiv 加 ppixiv-zh 的组合：装这一个脚本就够了，不需要再装那两个。脚本名是"ppixiv 新界面"，命名空间 `stevey-ppixiv-next`。
+这是 Stevey 的 ppixiv 分支（`stevey` 分支），把 ppixiv-zh 的功能直接并进 ppixiv 源码，并从头重做了界面。它取代原版 ppixiv 加 ppixiv-zh 的组合：装这一个脚本就够了。ppixiv-zh 的仓库已在 2026-11-13 删除。脚本名是"ppixiv 新界面"，命名空间 `stevey-ppixiv-next`。
 
 - 设计方向、配色和字体、每处功能和交互改动的原因：[docs/design.md](docs/design.md)
 - 构建好的脚本：`dist/ppixiv-next.user.js`
@@ -14,7 +14,7 @@
 
 更新：脚本的 `@updateURL` 指向上面这个地址，Tampermonkey 按它的检查间隔自动更新，也可以在 Tampermonkey 里对"ppixiv 新界面"点"检查更新"。新版本要推到 GitHub 的 `stevey` 分支才会被检查到。
 
-设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。想退回旧组合，停用"ppixiv 新界面"，重新启用 ppixiv 和 ppixiv-zh，刷新。
+设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。
 
 ## 构建
 

@@ -5,7 +5,7 @@ This is Stevey's fork of ppixiv, branch `stevey`. It folds the ppixiv-zh feature
 ## Language
 
 - Code, code comments and commit messages are in English.
-- Repo docs for Stevey (the top of `readme.md`, `docs/design.md`) are in Simplified Chinese, like ppixiv-zh.
+- Repo docs for Stevey (the top of `readme.md`, `docs/design.md`) are in Simplified Chinese.
 - UI strings are Chinese. Strings written in this fork are Chinese in the source. Upstream's English strings are translated at runtime by `web/vview/zh/` (`dict.js` and `i18n.js`), so add missing upstream strings to `dict.js` instead of editing upstream templates.
 
 ## Where things are
