@@ -6,6 +6,7 @@ import { SettingsDialog } from '/vview/widgets/settings-widgets.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { MenuOptionButton } from '/vview/widgets/menu-option.js';
 import { mainDestinations, otherDestinations } from '/vview/next/nav.js';
+import DialogWidget from '/vview/widgets/dialog.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 export default class NavRail extends Widget
@@ -52,6 +53,18 @@ export default class NavRail extends Widget
 
         this.querySelector(".rail-search").addEventListener("click", () => onSearch?.());
         this.querySelector(".rail-settings").addEventListener("click", () => new SettingsDialog());
+
+        // ? opens the shortcut list, on the list and in the viewer.  The rail lives as long as the
+        // search screen, which stays alive while viewing.
+        window.addEventListener("keydown", (e) => {
+            if(e.key != "?" || e.repeat || e.ctrlKey || e.altKey || e.metaKey)
+                return;
+            if(e.target.closest?.("input, textarea, [contenteditable]") || DialogWidget.activeDialogs.length > 0)
+                return;
+
+            e.preventDefault();
+            new SettingsDialog({ showPage: "shortcuts" });
+        }, this._signal);
 
         new DropdownMenuOpener({
             button: this.querySelector(".rail-more"),

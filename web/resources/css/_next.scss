@@ -1721,6 +1721,56 @@ html[data-whats-new-updated] .nav-rail .rail-settings {
     }
 }
 
+.settings-dialog .shortcuts-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 4px 4px 16px;
+    color: var(--n-text);
+
+    h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .note {
+        margin: -4px 0 8px;
+        font-size: 13px;
+        color: var(--n-pencil);
+    }
+
+    dl {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 6px 24px;
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    dt {
+        color: var(--n-pencil);
+        white-space: nowrap;
+    }
+
+    dd { margin: 0; }
+
+    kbd {
+        display: inline-block;
+        min-width: 1.6em;
+        padding: 0 6px;
+        border: 1px solid var(--n-rule);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        font-family: var(--n-font-num);
+        font-size: 13px;
+        line-height: 20px;
+        text-align: center;
+        color: var(--n-text);
+    }
+}
+
 // ------------------------------------------------------------------ mobile viewer menu
 
 .mobile-illust-ui-container {

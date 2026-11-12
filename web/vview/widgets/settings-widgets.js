@@ -11,6 +11,7 @@ import PointerListener from '/vview/actors/pointer-listener.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { importAllData, exportAllData } from '/vview/misc/data-export.js';
 import WhatsNew from '/vview/widgets/whats-new.js';
+import { ShortcutsPage } from '/vview/next/shortcuts.js';
 import { ConfirmPrompt } from '/vview/widgets/prompts.js';
 import LocalAPI from '/vview/misc/local-api.js';
 
@@ -456,6 +457,10 @@ function createSettingsWidget({ globalOptions })
 
             return widget;
         },
+        shortcuts: () => {
+            return new ShortcutsPage({ ...globalOptions });
+        },
+
         whatsNew: async() => {
             let widget = new WhatsNew({
                 ...globalOptions,
@@ -638,6 +643,7 @@ let pageTitles = {
     translation: "Translation",
     translationOverride: "Translation",
     other: "Other",
+    shortcuts: "快捷键",
     whatsNew: "更新日志",
 };
 
@@ -697,6 +703,8 @@ export class SettingsDialog extends DialogWidget
         if(!ppixiv.native)
             this._createPageButton("download");
         this._createPageButton("other");
+        if(!ppixiv.mobile)
+            this._createPageButton("shortcuts");
         this._createPageButton("whatsNew");
     }
 
@@ -936,6 +944,10 @@ export class SettingsDialog extends DialogWidget
 
                 if(!ppixiv.native)
                     settingsWidgets.showAiIcon();
+            },
+
+            shortcuts: () => {
+                settingsWidgets.shortcuts();
             },
 
             whatsNew: () => {
