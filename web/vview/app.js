@@ -28,6 +28,7 @@ import { getResources } from '/vview/app-resources.js';
 import { startTranslating } from '/vview/zh/i18n.js';
 import SeenWorks from '/vview/misc/seen-works.js';
 import { startTheme } from '/vview/next/theme.js';
+import { applyFilterDefaults } from '/vview/misc/result-filters.js';
 
 import appCss from '/resources/css/main.scss';
 
@@ -369,6 +370,10 @@ export default class App
     async _setCurrentDataSource({cause, refresh, scrollToTop, startAtBeginning})
     {
         let args = helpers.args.location;
+
+        // Add the list's remembered result filters, and convert upstream's type options to filters.
+        if(applyFilterDefaults(args, ppixiv.site.getDataSourceForUrl(args.url)?.prototype.name))
+            helpers.navigate(args, { addToHistory: false, cause: "result-filters", sendPopstate: false });
 
         // Get the data source for the current URL.  If refresh is true, force a new data
         // source to be created instead of reusing an existing one.

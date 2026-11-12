@@ -113,6 +113,8 @@ export const DICT = {
     "Square": "正方形",
     "Landscape": "横图",
     "Portrait": "竖图",
+    "Long landscape": "长横图",
+    "Long portrait": "长竖图",
     "Public bookmarks": "公开收藏",
     "Private bookmarks": "非公开收藏",
     "This week": "本周",

@@ -1,6 +1,7 @@
 import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { newWorksApiType } from '/vview/misc/result-filters.js';
 
 // new_illust.php
 export default class DataSource_NewPostsByEveryone extends DataSource
@@ -12,11 +13,11 @@ export default class DataSource_NewPostsByEveryone extends DataSource
 
     async loadPageInternal(page)
     {
-        let args = new helpers.args(this.url);
-
         // new_illust.php or new_illust_r18.php:
         let r18 = this.url.pathname == "/new_illust_r18.php";
-        let type = args.query.get("type") || "illust";
+
+        // The API returns one type at a time, so the filter bar's type picks it.
+        let type = newWorksApiType(this.resultFilters);
         
         // Everything Pixiv does has always been based on page numbers, but this one uses starting IDs.
         // That's a better way (avoids duplicates when moving forward in the list), but it's inconsistent
@@ -73,19 +74,11 @@ class UI extends Widget
             <div>
                 <div class=box-button-row>
                     <div class=box-button-row>
-                        ${ helpers.createBoxLink({label: "Illustrations", popup: "Show illustrations",     dataType: "new-illust-type-illust" }) }
-                        ${ helpers.createBoxLink({label: "Manga",         popup: "Show manga only",        dataType: "new-illust-type-manga" }) }
-                    </div>
-
-                    <div class=box-button-row>
                         ${ helpers.createBoxLink({label: "R18",           popup: "Show only R18 works",         dataType: "new-illust-ages-r18" }) }
                     </div>
                 </div>
             </div>
         `});
-
-        dataSource.setItem(this.root, { type: "new-illust-type-illust", fields: {type: null} });
-        dataSource.setItem(this.root, { type: "new-illust-type-manga", fields: {type: "manga"} });
 
         dataSource.setItem(this.root, { type: "new-illust-ages-r18", toggle: true, urlFormat: "path",
             fields: {"/path": "new_illust_r18.php"},

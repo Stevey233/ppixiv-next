@@ -4,7 +4,7 @@ import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import IllustIdList from '/vview/sites/illust-id-list.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers, SafetyBackoffTimer } from '/vview/misc/helpers.js';
-import { dataSourceSupportsFilters, getFilters, makeFilter, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
+import { dataSourceSupportsFilters, getFilters, makeFilter, filterListKey, filterAvailable, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 
 export default class DataSource extends EventTarget
 {
@@ -380,7 +380,14 @@ export default class DataSource extends EventTarget
     {
         if(!dataSourceSupportsFilters(this))
             return new Set();
-        return getFilters(this.args);
+        let key = this.filterListKey;
+        return new Set([...getFilters(this.args)].filter((value) => filterAvailable(key, value)));
+    }
+
+    // The key this list's filters are remembered under, see misc/result-filters.js.
+    get filterListKey()
+    {
+        return filterListKey(this.name, this.url);
     }
 
     // Return a function that says whether to keep a media ID, or null if nothing is filtered.

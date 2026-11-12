@@ -34,6 +34,7 @@ import SavedSearchTags from '/vview/misc/saved-search-tags.js';
 import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { searchApiArgs } from '/vview/misc/result-filters.js';
 
 export default class DataSource_Search extends DataSource
 {
@@ -125,33 +126,14 @@ export default class DataSource_Search extends DataSource
 
         args.p = page;
 
-        // "artworks" and "illustrations" are different on the search page: "artworks" uses "/tag/TAG/artworks",
-        // and "illustrations" is "/tag/TAG/illustrations?type=illust_and_ugoira".
-        let searchType = this.url.searchParams.get("type");
-        let apiSearchType = null;
-
-        if(searchType == "artwork")
-        {
-            // "artwork" doesn't use the type field.
-            apiSearchType = "artworks";
-        }
-        else if(searchType == "illust_ugoira")
-        {
-            apiSearchType = "illustrations";
-            args.type = "illust_and_ugoira";
-        }
-        else if(searchType == "manga")
-        {
-            apiSearchType = "manga";
-            args.type = "manga";
-        }
-        else if(searchType == "ugoira")
-        {
-            apiSearchType = "illustrations";
-            args.type = "ugoira";
-        }
-        else
-            console.error("Invalid search type:", searchType);
+        // The filter bar's type and 隐藏 AI pick the API and its type and ai_type arguments, see
+        // searchApiArgs.  Upstream's own type option in the URL is converted to a filter before
+        // the data source is created.
+        let { searchType: apiSearchType, type, ai_type } = searchApiArgs(this.resultFilters);
+        if(type != null)
+            args.type = type;
+        if(ai_type != null)
+            args.ai_type = ai_type;
 
         let tag = this._searchTags;
 
@@ -264,14 +246,12 @@ class UI extends Widget
                 <div class=box-button-row>
                     ${ helpers.createBoxLink({label: "Ages",    classes: ["ages-button"] }) }
                     ${ helpers.createBoxLink({label: "Sort",    classes: ["sort-button"] }) }
-                    ${ helpers.createBoxLink({label: "Type",    classes: [["search-type-button"]] }) }
                     ${ helpers.createBoxLink({label: "Search mode",    classes: ["search-mode-button"] }) }
                     ${ helpers.createBoxLink({label: "Image size",    classes: ["image-size-button"] }) }
                     ${ helpers.createBoxLink({label: "Aspect",    classes: ["aspect-ratio-button"] }) }
                     ${ helpers.createBoxLink({label: "# Bookmarks",    classes: ["bookmark-count-button", "premium-only"] }) }
                     ${ helpers.createBoxLink({label: "Bookmarked",    classes: ["bookmarked-by-user", "premium-only"] }) }
                     ${ helpers.createBoxLink({label: "Time",    classes: ["time-ago-button"] }) }
-                    ${ helpers.createBoxLink({label: "Hide AI",    popup: "Show or hide AI works",   dataType: "hide-ai" }) }
                     ${ helpers.createBoxLink({label: "Reset", popup: "Clear all search options", classes: ["reset-search"] }) }
                 </div>
             </div>
@@ -308,30 +288,7 @@ class UI extends Widget
             setupOptions:  { fields: {order: "popular_female_d"} }
         }]);
 
-        dataSource.setupDropdown(this.querySelector(".search-type-button"), [{
-            createOptions: { label: "All",             dataset: { default: true } },
-            setupOptions: { fields: {type: "artwork"} }
-        }, {
-            createOptions: { label: "Illustrations" },
-            setupOptions: { fields: {type: "illust_ugoira"} }
-        }, {
-            createOptions: { label: "Manga" },
-            setupOptions: { fields: {type: "manga"} }
-        }, {
-            createOptions: { label: "Animations" },
-            setupOptions: { fields: {type: "ugoira"} }
-        }]);
-
-        dataSource.setItem(this.root, {
-            type: "hide-ai",
-            toggle: true,
-            fields: {ai_type: "1"},
-        });
-
-        // Hide "Hide AI" if the user's global setting hides it.  This API doesn't really
-        // make sense, it would be a lot cleaner if the global setting just set the default.
-        if(ppixiv.pixivInfo.hideAiWorks)
-            this.root.querySelector(`[data-type='hide-ai']`).hidden = true;
+        // Type and "Hide AI" are in the filter bar, which asks the search API for them.
 
         // The fields in the URL ("tc") and the fields in the API ("s_tc") don't match
         // up (they used to).  We'll adjust the API parameters in loadPageInternal.
@@ -371,10 +328,10 @@ class UI extends Widget
             createOptions: {label: "All",               icon: "", dataset: { default: true } },
             setupOptions: { fields: {ratio: null} },
         }, {
-            createOptions: {label: "Landscape",         icon: "panorama" },
+            createOptions: {label: "Long landscape",    icon: "panorama" },
             setupOptions: { fields: {ratio: "0.5"} },
         }, {
-            createOptions: {label: "Portrait",          icon: "portrait" },
+            createOptions: {label: "Long portrait",     icon: "portrait" },
             setupOptions: { fields: {ratio: "-0.5"} },
         }, {
             createOptions: {label: "Square",            icon: "crop_square" },

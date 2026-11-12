@@ -77,6 +77,7 @@ export default class Settings extends EventTarget
         this.configure("double_click_fullscreen", { defaultValue: false });
         this.configure("context_menu_style", { defaultValue: "list" });
         this.configure("info_panel_pinned", { defaultValue: true });
+        this.configure("result_filters_remembered", { defaultValue: {} }); // see misc/result-filters.js
 
         // Upstream's default thumbnail size fits one column on a phone.  Two to three columns
         // suit scanning a list.  See docs/design.md.

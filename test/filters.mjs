@@ -118,6 +118,68 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     log('ok   A page left with only a duplicate continues');
 }
 
+// Server-side filtering, upstream's type options in old URLs, and remembered filters.
+{
+    let filters = await import('/vview/misc/result-filters.js');
+    let set = (...values) => new Set(values);
+    let fakeSettings = () => {
+        let values = {};
+        return { get: (key) => values[key], set: (key, value) => { values[key] = value; } };
+    };
+
+    assert.deepEqual(filters.searchApiArgs(set()), { searchType: 'artworks', type: null, ai_type: null });
+    assert.deepEqual(filters.searchApiArgs(set('illust', 'hide-ai')), { searchType: 'illustrations', type: 'illust_and_ugoira', ai_type: '1' });
+    assert.deepEqual(filters.searchApiArgs(set('manga')), { searchType: 'manga', type: 'manga', ai_type: null });
+    assert.deepEqual(filters.searchApiArgs(set('ugoira')), { searchType: 'illustrations', type: 'ugoira', ai_type: null });
+    assert.equal(filters.newWorksApiType(set()), 'illust');
+    assert.equal(filters.newWorksApiType(set('manga')), 'manga');
+    assert.equal(filters.newWorksApiType(set('ugoira')), 'illust');
+    assert.deepEqual(filters.artistWorkKinds(set()), ['illusts', 'manga']);
+    assert.deepEqual(filters.artistWorkKinds(set('ugoira', 'portrait')), ['illusts']);
+    assert.deepEqual(filters.artistWorkKinds(set('manga')), ['manga']);
+    log('ok   The type and hide-ai filters map to the search, new works and artist APIs');
+
+    let { default: Args } = await import('/vview/util/args.js');
+    let apply = (url, name) => {
+        let args = new Args(url);
+        let changed = filters.applyFilterDefaults(args, name);
+        return changed? decodeURIComponent(args.url.toString().replace('https://www.pixiv.net', '')):null;
+    };
+
+    setupPpixiv();
+    ppixiv.settings = fakeSettings();
+    ppixiv.pixivInfo = { userId: '77' };
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=manga&ai_type=1#ppixiv', 'search'),
+        '/search?q=a&s_mode=tag&type=artwork#ppixiv?filter=manga,hide-ai');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=illust_ugoira#ppixiv?filter=ugoira', 'search'),
+        '/search?q=a&s_mode=tag&type=artwork#ppixiv?filter=ugoira', 'an explicit filter wins');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=artwork#ppixiv', 'search'), null);
+    assert.equal(apply('https://www.pixiv.net/new_illust.php?type=manga#ppixiv', 'new_illust'), '/new_illust.php#ppixiv?filter=manga');
+    assert.equal(apply('https://www.pixiv.net/new_illust.php?type=illust#ppixiv', 'new_illust'), '/new_illust.php#ppixiv');
+    assert.equal(apply('https://www.pixiv.net/users/5/illustrations/%E5%A5%B3#ppixiv', 'artist'), '/users/5/artworks/女#ppixiv?filter=illust');
+    assert.equal(apply('https://www.pixiv.net/en/users/5/manga#ppixiv', 'artist'), '/en/users/5/artworks#ppixiv?filter=manga');
+    log('ok   Upstream type options in old URLs become filters');
+
+    // Remembered per list: only the hide filters, not on other lists, and turning them off is
+    // remembered too.
+    filters.rememberFilters('discovery', set('manga', 'hide-ai', 'hide-seen'));
+    assert.equal(apply('https://www.pixiv.net/discovery#ppixiv', 'discovery'), '/discovery#ppixiv?filter=hide-ai,hide-seen');
+    assert.equal(apply('https://www.pixiv.net/discovery#ppixiv?filter=portrait', 'discovery'), null, 'filters in the URL win');
+    assert.equal(apply('https://www.pixiv.net/ranking.php#ppixiv', 'rankings'), null);
+    assert.equal(apply('https://www.pixiv.net/discovery/users#ppixiv', 'discovery_users'), null);
+    filters.rememberFilters('discovery', set('manga'));
+    assert.equal(apply('https://www.pixiv.net/discovery#ppixiv', 'discovery'), null);
+    log('ok   The hide filters are remembered per list');
+
+    // The user's own bookmarks are a separate list without 隐藏已收藏.
+    assert.equal(filters.filterListKey('bookmarks', 'https://www.pixiv.net/users/77/bookmarks/artworks#ppixiv'), 'bookmarks-own');
+    assert.equal(filters.filterListKey('bookmarks', 'https://www.pixiv.net/users/5/bookmarks/artworks#ppixiv'), 'bookmarks');
+    filters.rememberFilters('bookmarks-own', set('hide-bookmarked', 'hide-ai'));
+    assert.equal(apply('https://www.pixiv.net/users/77/bookmarks/artworks#ppixiv', 'bookmarks'), '/users/77/bookmarks/artworks#ppixiv?filter=hide-ai');
+    assert.equal(apply('https://www.pixiv.net/users/5/bookmarks/artworks#ppixiv', 'bookmarks'), null);
+    log('ok   The own bookmarks list has its own remembered filters, without 隐藏已收藏');
+}
+
 // A list that keeps returning the same works, with filters on: the duplicates count as emptied
 // pages, so loading stops.
 {

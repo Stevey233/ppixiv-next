@@ -2,7 +2,7 @@ import Widget from '/vview/widgets/widget.js';
 import { AvatarWidget } from '/vview/widgets/user-widgets.js';
 import DialogWidget from '/vview/widgets/dialog.js';
 import FilterBar from '/vview/next/filter-bar.js';
-import { dataSourceSupportsFilters, getFilters, filterLabel, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
+import { dataSourceSupportsFilters, filterLabel, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 export default class SearchUIMobile extends Widget
@@ -70,7 +70,7 @@ export default class SearchUIMobile extends Widget
         button.hidden = !dataSourceSupportsFilters(this.dataSource);
         // Name the first filter that's on, so the button says what's filtered ("竖图 +1"), not
         // just how many.
-        let filters = [...getFilters(helpers.args.location)];
+        let filters = [...(this.dataSource?.resultFilters ?? [])];
         let count = filters.length;
         this.querySelector(".filter-label").textContent = count? filterLabel(filters[0]):"筛选";
         let countNode = this.querySelector(".filter-count");

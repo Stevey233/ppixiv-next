@@ -1,11 +1,12 @@
 // The result filters as a row of toggles, shown on every list of works.  The filters live in the
 // URL (see misc/result-filters.js), so each toggle is a link to the same list with that filter
-// turned on or off.
+// turned on or off.  Clicking one also remembers the list's hide filters.
 
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
 import {
     FILTER_GROUPS, HIDE_FILTERS, dataSourceSupportsFilters, getFilters, setFilters, toggleFilter, MAX_EMPTY_PAGES,
+    defaultTypeFilter, typeFilter, filterAvailable, rememberFilters,
 } from '/vview/misc/result-filters.js';
 
 export default class FilterBar extends Widget
@@ -57,7 +58,10 @@ export default class FilterBar extends Widget
                 return;
             e.preventDefault();
             e.stopPropagation();
-            helpers.navigate(new URL(link.href), { addToHistory: false, scrollToTop: true });
+            let args = new helpers.args(link.href);
+            if(this.dataSource)
+                rememberFilters(this.dataSource.filterListKey, getFilters(args));
+            helpers.navigate(args, { addToHistory: false, scrollToTop: true });
         });
 
         this.querySelector(".filter-continue").addEventListener("click", () => this.dataSource?.loadMoreFiltered());
@@ -94,13 +98,26 @@ export default class FilterBar extends Widget
         if(!supported)
             return;
 
-        let filters = getFilters(helpers.args.location);
+        // A list whose API can't show every type at once shows its default type as selected.  Turning
+        // it off leaves the list as it is, and it's left out of URLs, so the list has one data source.
+        //
+        // Read the filters from the URL and not the data source: the phone sheet refreshes before
+        // the app has switched to the new URL's data source.
+        let listKey = this.dataSource.filterListKey;
+        let filters = new Set([...getFilters(helpers.args.location)].filter((value) => filterAvailable(listKey, value)));
+        let defaultType = defaultTypeFilter(this.dataSource.name);
+        if(defaultType != null && typeFilter(filters) == null)
+            filters.add(defaultType);
+
         for(let link of this.root.querySelectorAll(".filter-toggle"))
         {
             let value = link.dataset.filter;
+            link.hidden = !filterAvailable(listKey, value);
             let on = filters.has(value);
             let args = helpers.args.location;
-            setFilters(args, toggleFilter(filters, value, !on));
+            let result = toggleFilter(filters, value, !on);
+            result.delete(defaultType);
+            setFilters(args, result);
             args.query.delete("p");
             link.href = args.url;
             helpers.html.setClass(link, "selected", on);

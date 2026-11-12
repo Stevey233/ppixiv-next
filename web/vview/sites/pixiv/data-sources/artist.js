@@ -12,6 +12,7 @@ import Widget from '/vview/widgets/widget.js';
 import SavedSearchTags from '/vview/misc/saved-search-tags.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { artistWorkKinds } from '/vview/misc/result-filters.js';
 
 export default class DataSources_Artist extends DataSource
 {
@@ -44,25 +45,6 @@ export default class DataSources_Artist extends DataSource
         // /users/13245
         return helpers.strings.getPathPart(this.url, 1);
     };
-
-    // Return "artworks" (all), "illustrations" or "manga".
-    get viewingType()
-    {
-        // The URL is one of:
-        //
-        // /users/12345
-        // /users/12345/artworks
-        // /users/12345/illustrations
-        // /users/12345/manga
-        //
-        // The top /users/12345 page is the user's profile page, which has the first page of images, but
-        // instead of having a link to page 2, it only has "See all", which goes to /artworks and shows you
-        // page 1 again.  That's pointless, so we treat the top page as /artworks the same.  /illustrations
-        // and /manga filter those types.
-        let url = helpers.pixiv.getUrlWithoutLanguage(this.url);
-        let parts = url.pathname.split("/");
-        return parts[3] || "artworks";
-    }
 
     async loadPageInternal(page)
     {
@@ -104,15 +86,10 @@ export default class DataSources_Artist extends DataSource
         }
         else
         {
-            // We're filtering by tag.
-            let type = args.query.get("type");
-
-            // For some reason, this API uses a random field in the URL for the type instead of a normal
-            // query parameter.
-            let typeForUrl =
-                type == null? "illustmanga":
-                type == "illust"?"illusts":
-                "manga";
+            // We're filtering by tag.  For some reason, this API uses a random field in the URL for
+            // the type instead of a normal query parameter.
+            let kinds = artistWorkKinds(this.resultFilters);
+            let typeForUrl = kinds.length == 2? "illustmanga":kinds[0];
 
             let requestUrl = `/ajax/user/${this.viewingUserId}/${typeForUrl}/tag`;
             let result = await helpers.pixivRequest.get(requestUrl, {
@@ -152,16 +129,15 @@ export default class DataSources_Artist extends DataSource
 
     async loadAllResults()
     {
-        let type = this.viewingType;
+        // The filter bar's type picks the lists to load.  Upstream's /illustrations and /manga
+        // paths are converted to filters before the data source is created.
+        let kinds = artistWorkKinds(this.resultFilters);
 
         let result = await helpers.pixivRequest.get(`/ajax/user/${this.viewingUserId}/profile/all`);
 
         let illustIds = [];
-        if(type == "artworks" || type == "illustrations")
-            for(let illustId in result.body.illusts)
-                illustIds.push(illustId);
-        if(type == "artworks" || type == "manga")
-            for(let illustId in result.body.manga)
+        for(let kind of kinds)
+            for(let illustId in result.body[kind])
                 illustIds.push(illustId);
 
         // Sort the two sets of IDs back together, putting higher (newer) IDs first.
@@ -305,7 +281,6 @@ class UI extends Widget
         super({ ...options, template: `
             <div>
                 <div class="box-button-row" style="align-items: flex-start">
-                    ${ helpers.createBoxLink({label: "Search mode",    classes: ["search-type-button"] }) }
                     ${ helpers.createBoxLink({label: "Newest",         classes: ["sort-button"] }) }
                     ${ helpers.createBoxLink({label: "Tags",     popup: "Tags", icon: "bookmark", classes: ["member-tags-button"] }) }
                 </div>
@@ -319,17 +294,8 @@ class UI extends Widget
             this.tagDropdown.setButtonPopupHighlight();
         }, this._signal);
 
+        // The type (works, illustrations, manga) is in the filter bar.
         let urlFormat = "users/id/type/tag";
-        dataSource.setupDropdown(this.querySelector(".search-type-button"), [{
-            createOptions: { label: "Works" },
-            setupOptions:  { urlFormat, fields: {"/type": "artworks"} },
-        }, {
-            createOptions: { label: "Illusts" },
-            setupOptions:  { urlFormat, fields: {"/type": "illustrations"} },
-        }, {
-            createOptions: { label: "Manga" },
-            setupOptions:  { urlFormat, fields: {"/type": "manga"} },
-        }]);
 
         // Sorts are currently only supported when viewing all bookmarks, not when searching
         // by tag.
