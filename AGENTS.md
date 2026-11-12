@@ -1,6 +1,6 @@
 # Agent notes
 
-This is Stevey's fork of ppixiv, branch `stevey`. It folds the ppixiv-zh features into the source and adds a redesigned interface. `origin` is upstream ppixiv, so never push there. Ask Stevey before creating a remote.
+This is Stevey's fork of ppixiv, branch `stevey`. It folds the ppixiv-zh features into the source and adds a redesigned interface. `origin` is upstream ppixiv, so never push there. The fork's own repo is the remote `fork` (public, `github.com/Stevey233/ppixiv-next`); the script's `@updateURL` reads `dist/ppixiv-next.user.js` from its `stevey` branch, so a push there updates every install. Push only when Stevey asks.
 
 ## Language
 

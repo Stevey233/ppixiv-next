@@ -8,11 +8,11 @@
 
 ## 安装
 
-1. 在 Tampermonkey 里打开"添加新脚本"，把 `dist/ppixiv-next.user.js` 的内容整个粘进去保存（或者从文件导入）。
-2. 在 Tampermonkey 里停用或删除 ppixiv 和 ppixiv-zh。原版 ppixiv 同时启用时，新脚本会在页面上提示并且不启动。
+1. 在 Tampermonkey 里停用或删除 ppixiv 和 ppixiv-zh。原版 ppixiv 同时启用时，新脚本会在页面上提示并且不启动。
+2. 打开 <https://raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js>，Tampermonkey 会弹出安装页，点"安装"。
 3. 刷新 pixiv.net 的页面。
 
-更新：在 Tampermonkey 里打开已装的"ppixiv 新界面"，把编辑器里的内容整个换成新的 `dist/ppixiv-next.user.js`，保存。Tampermonkey 按脚本名加命名空间认脚本，2026-11-11 之前装的版本叫"ppixiv 新界面（实验）"；从文件导入新版会多出一个脚本，这时删掉带"（实验）"的旧脚本。
+更新：脚本的 `@updateURL` 指向上面这个地址，Tampermonkey 按它的检查间隔自动更新，也可以在 Tampermonkey 里对"ppixiv 新界面"点"检查更新"。新版本要推到 GitHub 的 `stevey` 分支才会被检查到。
 
 设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。想退回旧组合，停用"ppixiv 新界面"，重新启用 ppixiv 和 ppixiv-zh，刷新。
 

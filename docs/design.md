@@ -211,6 +211,11 @@ ppixiv 是给 Pixiv 插画用的看图工具。用的人每天刷几个固定的
 
 - 主题有自动、深色、浅色，自动跟随系统。浅色按原稿纸配色。`<meta name=theme-color>` 跟着主题变，iOS 和 Android 浏览器的地址栏颜色一致。
 
+### 发布和自动更新
+
+- 脚本从公开仓库 `github.com/Stevey233/ppixiv-next` 的 `stevey` 分支发布。`@updateURL` 和 `@downloadURL` 都指向 `raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js`，Tampermonkey 比较 `@version` 后自动更新，不再手动粘贴。
+- 没有单独的 `.meta.js`：脚本只有几百 KB，检查更新时多下载的这点数据不值得多维护一个文件。
+
 ### 更新日志
 
 - 设置里的"更新日志"是这个分支自己的中文记录（`web/vview/widgets/whats-new.js` 里的 `changelog`），新的在上，写的是用的人能感觉到的变化，不是提交标题。原版的英文记录只讲原版 r254 之前的功能，对这个分支没用，所以删掉，页底留一个链接到原版的 GitHub 发布页。

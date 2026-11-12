@@ -9,6 +9,13 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-13",
+        title: "自动更新",
+        items: [
+            "脚本放到了 GitHub 的 Stevey233/ppixiv-next 仓库，Tampermonkey 会从那里自动更新，不用再手动粘贴新版本。",
+        ],
+    },
+    {
         id: "2026-11-12.2",
         title: "筛选重做",
         items: [
