@@ -1890,3 +1890,45 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 }
 
+// ------------------------------------------------------------------ tooltips
+//
+// Upstream's tooltips (data-popup on .popup) sit 2em above the element, starting at its left
+// edge.  In the list header and the info panel's top row that puts them above the window or past
+// its right edge.  Show them under the element there, and right-align them on the right side.
+
+@media(hover: hover) {
+    .screen-search-container .search-desktop-ui .popup:hover::after,
+    .image-ui .info-top-row .popup:hover::after {
+        top: calc(100% + 4px);
+        bottom: auto;
+    }
+
+    .screen-search-container .search-desktop-ui .header-tools .popup:hover::after,
+    .image-ui .info-top-row .popup:hover::after {
+        left: auto;
+        right: 0;
+    }
+
+    // The rail's buttons have names in data-popup but weren't .popup, so they had no tooltip.
+    // Show it to the right of the rail.
+    .nav-rail .rail-button[data-popup] {
+        position: relative;
+        &:hover::after {
+            content: attr(data-popup);
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 98;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: var(--n-text);
+            color: var(--n-bg);
+            font-family: var(--n-font);
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+    }
+}
