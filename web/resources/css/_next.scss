@@ -1652,6 +1652,75 @@ html { accent-color: var(--n-blue); }
     }
 }
 
+// Changelog and shortcut pages, and the marker for an unread changelog.  See docs/design.md.
+
+// A dot on the rail's settings button while the changelog has unread entries.  Settings then
+// opens on the changelog, and viewing it clears the dot.
+html[data-whats-new-updated] .nav-rail .rail-settings {
+    position: relative;
+    color: var(--n-text);
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 7px;
+        right: 7px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--n-blue);
+        box-shadow: 0 0 0 2px var(--n-bg);
+    }
+}
+
+.settings-dialog .whats-new-dialog {
+    gap: 28px;
+    padding: 4px 4px 16px;
+    color: var(--n-text);
+
+    .contents {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    h3 {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.25;
+
+        .date {
+            font-family: var(--n-font-num);
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--n-pencil);
+        }
+    }
+
+    ul {
+        margin: 0;
+        padding-left: 1.2em;
+    }
+
+    li {
+        font-size: 15px;
+        line-height: 1.6;
+        margin: 4px 0;
+        &::marker { color: var(--n-pencil); }
+    }
+
+    .upstream-changelog {
+        align-self: flex-start;
+        font-size: 13px;
+        color: var(--n-pencil);
+        &:hover { color: var(--n-blue); }
+    }
+}
+
 // ------------------------------------------------------------------ mobile viewer menu
 
 .mobile-illust-ui-container {

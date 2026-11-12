@@ -638,12 +638,12 @@ let pageTitles = {
     translation: "Translation",
     translationOverride: "Translation",
     other: "Other",
-    whatsNew: "What's New",
+    whatsNew: "更新日志",
 };
 
 export class SettingsDialog extends DialogWidget
 {
-    constructor({showPage="thumbnail", ...options}={})
+    constructor({showPage=null, ...options}={})
     {
         super({
             ...options,
@@ -667,8 +667,9 @@ export class SettingsDialog extends DialogWidget
 
         this.addPages();
 
-        // If we're not on the phone UI, show the default page.
-        showPage ??= "thumbnail";
+        // If we're not on the phone UI, show the default page.  Open on the changelog while it
+        // has unread entries, so the marker on the settings button leads straight to it.
+        showPage ??= WhatsNew.hasUnread()? "whatsNew":"thumbnail";
 
         if(!this.phone)
             this.showPage(showPage);
