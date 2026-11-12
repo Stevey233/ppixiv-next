@@ -182,7 +182,9 @@ export default class DataSource extends EventTarget
         if(mediaIds)
             await this.addPage(page, mediaIds, { allowEmpty });
 
-        if(mediaIds?.length)
+        // Count emptied pages only after addPage, which drops works already on an earlier page.
+        // Otherwise a list that keeps returning the same works never stops loading.
+        if(this.idList.mediaIdsByPage.get(page)?.length)
             this._filteredEmptyPages = 0;
 
         // Reduce the start page, which will update the "load more results" button if any.

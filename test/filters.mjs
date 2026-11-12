@@ -117,3 +117,16 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.equal(await dataSource.getOrLoadNeighboringMediaId('illust:102-0', true), 'illust:300-0');
     log('ok   A page left with only a duplicate continues');
 }
+
+// A list that keeps returning the same works, with filters on: the duplicates count as emptied
+// pages, so loading stops.
+{
+    let dataSource = await makeDataSource(["ii", "ii", "ii", "ii", "ii", "ii", "ii", "ii"], {
+        loadPageInternal: (page, pages) => ({ mediaIds: page <= 8? pages[1]:[] }),
+    });
+    await dataSource.loadPage(1);
+    await dataSource.loadPage(2);
+    assert.deepEqual(dataSource.requested, [1, 2, 3, 4, 5]);
+    assert.equal(dataSource.filteredStopPage, 5);
+    log('ok   Pages with only duplicates count towards the pause');
+}
