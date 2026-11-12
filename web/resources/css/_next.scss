@@ -1965,6 +1965,7 @@ html:not(.mobile) .floating > .dialog > .header {
 // upstream's icons are about 13px next to 15px text.
 .popup-menu-box .vertical-list > .box-link,
 .popup-menu-box.vertical-list > .box-link,
+.more-options-dropdown .vertical-list > .box-link,
 .vertical-list.rail-more-menu > .box-link,
 .follow-widget.vertical-list > .box-link {
     .label-box { gap: 10px; }
@@ -2388,5 +2389,17 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
     > .box-link.yes {
         border-color: var(--n-blue);
         color: var(--n-blue);
+    }
+}
+
+// The "更多" dropdown from the right-click menu: 13px icons, rows about 30px high, and 20px
+// settings gears next to the toggles.
+.more-options-dropdown {
+    padding: 4px;
+    .vertical-list > .box-link {
+        min-height: 34px;
+        font-size: 14px;
+        .label-box > .widget-box { display: flex; align-items: center; gap: 6px; }
+        .font-icon:not(.icon) { font-size: 20px; color: var(--n-pencil); }
     }
 }
