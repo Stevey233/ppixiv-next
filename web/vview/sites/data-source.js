@@ -165,17 +165,17 @@ export default class DataSource extends EventTarget
         // Run the actual load.
         let { mediaIds, allowEmpty } = await this.loadPageInternal(page) ?? { };
 
-        // Apply the result filters.  If they removed everything, add the page empty so the next
-        // page loads, see below.
+        // Apply the result filters.  If the page had results, add it even if nothing is left, so
+        // the next page loads, see below.  Nothing can be left after filtering, or after addPage
+        // removes works already on an earlier page, which with few works left is often all of them.
         let filteredAway = false;
         let keep = await this._getResultFilter();
         if(mediaIds && keep)
         {
-            let kept = mediaIds.filter(keep);
-            filteredAway = mediaIds.length > 0 && kept.length == 0;
+            filteredAway = mediaIds.length > 0;
             if(filteredAway)
                 allowEmpty = true;
-            mediaIds = kept;
+            mediaIds = mediaIds.filter(keep);
         }
 
         // Register the page if media IDs were returned.

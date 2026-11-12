@@ -102,3 +102,18 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.equal(dataSource.canLoadPage(4), false);
     log('ok   An emptied last page ends the list');
 }
+
+// New works push the last work of page 1 onto page 2 while browsing a fast list.  When that
+// duplicate is all the filters leave on page 2, the list goes on instead of ending.
+{
+    let dataSource = await makeDataSource(["iim", "iii", "mii"], {
+        filter: 'manga',
+        loadPageInternal: (page, pages) => ({ mediaIds: page == 2? ['illust:102-0', ...pages[2]]:pages[page] ?? [] }),
+    });
+    await dataSource.loadPage(1);
+    await dataSource.loadPage(2);
+    assert.equal(dataSource.loadedAllPages, false);
+    assert.deepEqual(dataSource.requested, [1, 2, 3]);
+    assert.equal(await dataSource.getOrLoadNeighboringMediaId('illust:102-0', true), 'illust:300-0');
+    log('ok   A page left with only a duplicate continues');
+}
