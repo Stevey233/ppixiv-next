@@ -401,7 +401,7 @@ export default class DataSource extends EventTarget
 
     // After loading stopped because the filters removed everything on several pages, load
     // the next pages.
-    loadMoreFiltered()
+    async loadMoreFiltered()
     {
         let page = this.filteredStopPage;
         if(page == null)
@@ -409,7 +409,10 @@ export default class DataSource extends EventTarget
         this.filteredStopPage = null;
         this._filteredEmptyPages = 0;
         this.callUpdateListeners();
-        return this.loadPage(page+1, { cause: "load more filtered" });
+        await this.loadPage(page+1, { cause: "load more filtered" });
+
+        // The search view didn't start this load, so tell it about the new results.
+        this.callUpdateListeners();
     }
 
     // Register a page of data.

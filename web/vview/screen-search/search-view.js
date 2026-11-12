@@ -612,6 +612,14 @@ export default class SearchView extends Widget
     dataSourceUpdated = () =>
     {
         this.refreshHeader();
+
+        // Pages can load without loadDataSourcePage, like the filter bar's "继续查找" after the
+        // filters emptied several pages, so create their thumbnails here.  setDataSource makes
+        // its own first refresh.
+        if(this._setDataSourceRunner.isRunning)
+            return;
+        this.refreshImages({cause: "data-source-updated"});
+        this.root.querySelector(".no-results").hidden = !this.dataSource?.hasNoResults;
     }
 
     // Return all media IDs currently loaded in the data source, and the page

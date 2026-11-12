@@ -255,25 +255,31 @@ export default class IllustIdList
         return newMediaId;
     };
     
-    // Return the first ID, or null if we don't have any.
+    // Return the first ID, or null if we don't have any.  Pages emptied by the result filters
+    // are skipped.
     getFirstId()
     {
-        if(this.mediaIdsByPage.size == 0)
-            return null;
-
-        let firstPage = this.getLowestLoadedPage();
-        return this.mediaIdsByPage.get(firstPage)[0];
+        let pages = [...this.mediaIdsByPage.keys()].sort((a, b) => a - b);
+        for(let page of pages)
+        {
+            let ids = this.mediaIdsByPage.get(page);
+            if(ids.length)
+                return ids[0];
+        }
+        return null;
     }
 
     // Return the last ID, or null if we don't have any.
     getLastId()
     {
-        if(this.mediaIdsByPage.size == 0)
-            return null;
-
-        let lastPage = this.getHighestLoadedPage();
-        let ids = this.mediaIdsByPage.get(lastPage);
-        return ids[ids.length-1];
+        let pages = [...this.mediaIdsByPage.keys()].sort((a, b) => b - a);
+        for(let page of pages)
+        {
+            let ids = this.mediaIdsByPage.get(page);
+            if(ids.length)
+                return ids[ids.length-1];
+        }
+        return null;
     }
 
     // Return true if the given page is loaded.

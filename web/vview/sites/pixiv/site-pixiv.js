@@ -304,8 +304,11 @@ export default class SitePixiv extends Site.Site
         let path = helpers.pixiv.getPathWithoutLanguage(args.path);
         if(path.startsWith("/tags/"))
         {
+            // Keep the hash arguments, like the result filters.
             let tag = path.split("/")[2];
-            args = new helpers.args("/search?q=" + tag + "&s_mode=tag_full&type=artwork#ppixiv");
+            let searchArgs = new helpers.args("/search?q=" + tag + "&s_mode=tag_full&type=artwork#ppixiv");
+            searchArgs.hash = args.hash;
+            args = searchArgs;
         }
 
         // If we're active but we're on a page that isn't directly supported, redirect to
