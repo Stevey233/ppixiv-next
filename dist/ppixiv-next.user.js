@@ -20,7 +20,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.27.gdd61aa2e.dirty
+// @version     258.29.g12d8df38
 // ==/UserScript==
 (function() {
 
@@ -19305,17 +19305,22 @@ This can be enabled in preferences, and may become the default in a future relea
       return newMediaId;
     }
     getFirstId() {
-      if (this.mediaIdsByPage.size == 0)
-        return null;
-      let firstPage = this.getLowestLoadedPage();
-      return this.mediaIdsByPage.get(firstPage)[0];
+      let pages = [...this.mediaIdsByPage.keys()].sort((a, b) => a - b);
+      for (let page of pages) {
+        let ids = this.mediaIdsByPage.get(page);
+        if (ids.length)
+          return ids[0];
+      }
+      return null;
     }
     getLastId() {
-      if (this.mediaIdsByPage.size == 0)
-        return null;
-      let lastPage = this.getHighestLoadedPage();
-      let ids = this.mediaIdsByPage.get(lastPage);
-      return ids[ids.length - 1];
+      let pages = [...this.mediaIdsByPage.keys()].sort((a, b) => b - a);
+      for (let page of pages) {
+        let ids = this.mediaIdsByPage.get(page);
+        if (ids.length)
+          return ids[ids.length - 1];
+      }
+      return null;
     }
     isPageLoaded(page) {
       return this.mediaIdsByPage.has(page);
@@ -19539,14 +19544,15 @@ This can be enabled in preferences, and may become the default in a future relea
         return filter(mediaId);
       };
     }
-    loadMoreFiltered() {
+    async loadMoreFiltered() {
       let page = this.filteredStopPage;
       if (page == null)
         return;
       this.filteredStopPage = null;
       this._filteredEmptyPages = 0;
       this.callUpdateListeners();
-      return this.loadPage(page + 1, { cause: "load more filtered" });
+      await this.loadPage(page + 1, { cause: "load more filtered" });
+      this.callUpdateListeners();
     }
     async addPage(page, mediaIds, { ...options } = {}) {
       let initialMediaId = this.getUrlMediaId(this.args);
@@ -22857,6 +22863,10 @@ This can be enabled in preferences, and may become the default in a future relea
     }
     dataSourceUpdated = () => {
       this.refreshHeader();
+      if (this._setDataSourceRunner.isRunning)
+        return;
+      this.refreshImages({ cause: "data-source-updated" });
+      this.root.querySelector(".no-results").hidden = !this.dataSource?.hasNoResults;
     };
     getDataSourceMediaIds() {
       let allMediaIds = [];
@@ -29422,7 +29432,9 @@ This can be enabled in preferences, and may become the default in a future relea
       let path = helpers.pixiv.getPathWithoutLanguage(args.path);
       if (path.startsWith("/tags/")) {
         let tag = path.split("/")[2];
-        args = new helpers.args("/search?q=" + tag + "&s_mode=tag_full&type=artwork#ppixiv");
+        let searchArgs = new helpers.args("/search?q=" + tag + "&s_mode=tag_full&type=artwork#ppixiv");
+        searchArgs.hash = args.hash;
+        args = searchArgs;
       }
       if (this.getDataSourceForUrl(args.url) == null)
         args = new helpers.args("/ranking.php?mode=daily#ppixiv");
@@ -36609,7 +36621,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.27.gdd61aa2e.dirty"}\`);
+      console.log(\`vview setup: \${"r258.29.g12d8df38"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -36658,7 +36670,7 @@ html:not(.mobile) .floating > .dialog > .header .header-text {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.27.gdd61aa2e.dirty"}\`);
+      console.log(\`ppixiv setup: \${"r258.29.g12d8df38"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
