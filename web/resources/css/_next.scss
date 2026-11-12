@@ -1818,3 +1818,75 @@ html:not(.mobile) .floating > .dialog > .header {
     min-height: 34px;
     padding: 0 12px;
 }
+
+// ------------------------------------------------------------------ thumbnail details
+//
+// Upstream pieces of the thumbnail that the redesign hadn't restyled.
+
+.search-view {
+    .thumbnail-box {
+        // The crop marks already show keyboard focus.  The global focus outline drew a second,
+        // full frame on top of them.
+        a.thumbnail-link:focus-visible { outline: none; }
+
+        // Upstream's AI marker is a green pixel-art robot.  Show a small "AI" plate like the
+        // page count instead.
+        .bottom-row {
+            .ai-image { display: none; }
+            .bottom-left-icon:has(> .ai-image:not([hidden]))::after {
+                content: "AI";
+                display: flex;
+                align-items: center;
+                height: 22px;
+                padding: 0 6px;
+                border-radius: 4px;
+                background: var(--n-scrim);
+                color: var(--n-text);
+                font-family: var(--n-font-num);
+                font-size: 13px;
+                font-weight: 600;
+            }
+            html:not(.mobile) & .bottom-left-icon { height: 22px; }
+        }
+
+        // The page count expands a manga post.  Upstream turned it navy on hover.
+        .bottom-row .manga-info-box:hover {
+            background: var(--n-scrim);
+            color: var(--n-blue);
+            box-shadow: inset 0 0 0 1px var(--n-blue);
+        }
+
+        // User names on user lists.  Upstream sets them in the theme's text color on translucent
+        // black, which is unreadable in the light theme.
+        .bottom-row .thumbnail-label {
+            align-self: center;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--n-scrim);
+            color: var(--n-text);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        // The pages of an expanded manga post share a line along their bottom edge.  Upstream drew
+        // a 5px bar with 30px rounded ends.  search-view.js colors each post's line by its ID, so
+        // two expanded posts side by side stay apart; keep that color and only thin the line.
+        &.expanded-thumb a.thumbnail-link {
+            border-bottom-width: 2px;
+            html:not(.mobile) & { &.first-page, &.last-page { border-radius: 2px; } }
+        }
+    }
+
+    // "No results": plain secondary text where the first row would be, instead of a black box.
+    > .no-results {
+        justify-content: flex-start;
+        margin-top: 16px;
+        > .message {
+            padding: 0;
+            background: none;
+            color: var(--n-pencil);
+            font-size: 15px;
+        }
+    }
+}
+
