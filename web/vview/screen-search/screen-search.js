@@ -81,13 +81,23 @@ export default class ScreenSearch extends Screen
             // The header slides away while scrolling down the list and comes back on any scroll
             // up, like the phone's title bar.  Upstream keeps it pinned, which costs about 15% of
             // a laptop screen's height.  See docs/design.md.
-            this.desktopScrollListener = new ScrollListener({
-                scroller: this.querySelector(".search-results"),
-                parent: this,
-                threshold: 80,
-                stickyUiNode: searchDesktopUiBox,
-                onchange: (listener) => helpers.html.setClass(searchDesktopUiBox, "scrolled-away", listener.scrolledForwards),
+            //
+            // The listener measures the scroller when it's created.  Create it once the scroller
+            // has been laid out, so it doesn't force an extra layout during startup.
+            let scroller = this.querySelector(".search-results");
+            let laidOut = new ResizeObserver(() => {
+                laidOut.disconnect();
+                if(this.shutdownSignal.aborted)
+                    return;
+                this.desktopScrollListener = new ScrollListener({
+                    scroller,
+                    parent: this,
+                    threshold: 80,
+                    stickyUiNode: searchDesktopUiBox,
+                    onchange: (listener) => helpers.html.setClass(searchDesktopUiBox, "scrolled-away", listener.scrolledForwards),
+                });
             });
+            laidOut.observe(scroller);
         }
 
         if(ppixiv.mobile)
