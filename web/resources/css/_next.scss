@@ -2077,3 +2077,98 @@ html:not(.mobile) .floating > .dialog > .header {
 
 // With no recent or saved searches, the dropdown was an empty bordered strip under the box.
 .input-dropdown:not(.editing):not(:has(.entry)) { visibility: hidden; }
+
+// ------------------------------------------------------------------ viewer overlays
+//
+// Upstream widgets drawn over the image that still had their own look.
+
+// A muted work: upstream printed 30px black text with a white outline over the blurred image.
+// Use a small panel instead, with "查看图片" as a button.
+.viewer-error .error-text-container {
+    left: 50%;
+    width: auto;
+    max-width: min(480px, calc(100% - 32px));
+    transform: translate(-50%, -50%);
+    padding: 16px 24px;
+    box-sizing: border-box;
+    border: 1px solid var(--n-rule);
+    border-radius: var(--n-radius);
+    background: var(--n-surface);
+    color: var(--n-text);
+    text-shadow: none;
+    font-size: 15px;
+    line-height: 1.6;
+
+    .muted-label { color: var(--n-pencil); }
+
+    .view-muted-image {
+        display: block;
+        width: fit-content;
+        margin: 12px auto 0;
+        padding: 4px 14px;
+        border: 1px solid var(--n-blue);
+        border-radius: var(--n-radius);
+        color: var(--n-blue);
+        font-size: 14px;
+        cursor: pointer;
+        @media(hover: hover) { &:hover { background: var(--n-surface-2); } }
+    }
+}
+
+// Shown while an image translation loads.  Upstream's purple 2rem circle sat on top of the page
+// number in the bottom-left corner.  Put it above the page number, in the same plate style.
+.screen-illust-container .translation-status {
+    left: 16px;
+    bottom: 64px;
+
+    .translation-contents {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: var(--n-radius);
+        background-color: var(--n-scrim);
+        color: var(--n-blue);
+        font-size: 22px;
+    }
+}
+
+// The animation (ugoira) and video controls.
+.video-ui {
+    > .video-ui-strip {
+        padding: 4px 12px;
+        background-color: var(--n-scrim);
+        color: var(--n-text);
+
+        .font-icon { font-size: 28px; }
+
+        > .time {
+            font-family: var(--n-font-num);
+            font-size: 15px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .seek-bar[data-position="bottom"] > .seek-parts > [data-seek-part="empty"] {
+        background-color: var(--n-scrim);
+    }
+}
+
+.seek-bar > .seek-parts {
+    > [data-seek-part="fill"] { background-color: var(--n-blue); }
+    > [data-seek-part="loaded"] { background-color: color-mix(in srgb, var(--n-blue) 40%, transparent); }
+}
+
+// Messages ("已收藏" and the like): upstream's translucent black box with 1.5rem text, which was
+// unreadable in the light theme.
+.hover-message {
+    font-size: 15px;
+
+    > .message {
+        padding: 10px 16px;
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        background-color: var(--n-surface);
+        color: var(--n-text);
+    }
+}
