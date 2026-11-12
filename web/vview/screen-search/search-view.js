@@ -2,6 +2,7 @@
 
 import { setThumbnail, forgetThumb, thumbnailLoaded, thumbnailFailed } from '/vview/misc/hd-thumbnails.js';
 import { thumbnailPointerOver, thumbnailPointerMove, cancelHoverPreload } from '/vview/misc/preload.js';
+import { setupQuickBookmark } from '/vview/next/quick-bookmark.js';
 import Widget from '/vview/widgets/widget.js';
 import { MenuOptionsThumbnailSizeSlider } from '/vview/widgets/menu-option.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js'
@@ -259,6 +260,11 @@ export default class SearchView extends Widget
 
         this.scrollContainer.addEventListener("scroll", (e) => this.scheduleStoreScrollPosition(), { passive: true });
         this.thumbnailBox.addEventListener("click", (e) => this.thumbnailClick(e));
+        setupQuickBookmark({
+            container: this.thumbnailBox,
+            refresh: (thumb) => this.refreshBookmarkIcon(thumb),
+            signal: this.shutdownSignal,
+        });
                 
         // As an optimization, start loading image info on mousedown.  We don't navigate until click,
         // but this lets us start loading image info a bit earlier.
@@ -997,6 +1003,9 @@ export default class SearchView extends Widget
 
                 <div class=bottom-row>
                     <div class=bottom-left-icon>
+                        <button type=button class=n-quick-bookmark aria-label=收藏 title="收藏（Alt+点击：私密收藏）">
+                            <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
+                        </button>
                         <div class="heart button-bookmark public bookmarked" hidden>
                             <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
                         </div>
@@ -1827,6 +1836,9 @@ export default class SearchView extends Widget
             showAI = false;
         if(!ppixiv.settings.get("show_ai_icon"))
             showAI = false;
+
+        // This shows the quick bookmark button on hover.
+        helpers.html.setClass(thumbnailElement, "n-unbookmarked", mediaInfo.bookmarkData == null);
 
         thumbnailElement.querySelector(".ai-image").hidden = !showAI;
         thumbnailElement.querySelector(".heart.public").hidden = !showBookmarkHeart || mediaInfo.bookmarkData.private;

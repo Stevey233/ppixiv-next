@@ -623,6 +623,60 @@ html:not(.macos) {
         .heart svg .heart { fill: var(--n-heart); stroke: none; }
     }
 
+    // One-click bookmarking (web/vview/next/quick-bookmark.js).  Hovering a work that isn't
+    // bookmarked shows an outlined heart on a scrim chip, in the slot of the filled heart.  The
+    // heart color is only used once the work is bookmarked.  Desktop only: touch has no hover.
+    .thumbnail-box .bottom-row .n-quick-bookmark {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 28px;
+        height: 28px;
+        margin: 2px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: var(--n-scrim);
+        color: var(--n-text);
+        cursor: pointer;
+        pointer-events: auto;
+
+        svg { width: 20px; height: 20px; }
+        svg .heart { fill: none; stroke: currentColor; stroke-width: 2.5; }
+        svg .lock, svg .delete { display: none; }
+
+        &:hover { background: var(--n-surface); }
+        &:focus-visible { outline: 2px solid var(--n-blue); outline-offset: 1px; }
+    }
+
+    html:not(.mobile) & .thumbnail-box {
+        &.n-unbookmarked:not(.muted):is(:hover, :focus-within) .n-quick-bookmark { display: flex; }
+
+        // Filled at once while the request runs.  The filled heart replaces it when it succeeds.
+        &.n-bookmarking .n-quick-bookmark {
+            display: flex;
+            background: none;
+            cursor: default;
+            svg { width: 22px; height: 22px; }
+            svg .heart { fill: var(--n-heart); stroke: none; }
+        }
+
+        // The filled heart takes clicks, so clicking it never opens the work by accident.  It's
+        // centered like the button, so the heart fills in place, on the line of the 3P chip.
+        .bottom-row .heart {
+            pointer-events: auto;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            &[hidden] { display: none; }
+        }
+
+        // Upstream fades the heart on hover.  Keep it solid now that it's where the button was.
+        &:hover .bottom-row .heart > svg { opacity: 1; }
+    }
+
     > .no-results {
         background: none;
         color: var(--n-pencil);
