@@ -3,7 +3,9 @@
 // @author      ppixiv, Stevey233
 // @namespace   stevey-ppixiv-next
 // @description 基于 ppixiv 的 Pixiv 看图脚本：简体中文界面、中文标签译名、筛选、看过标记、高清缩略图和重新设计的界面。不要和原版 ppixiv 或 ppixiv-zh 同时启用。
-// @homepage    https://github.com/ppixiv/ppixiv
+// @homepage    https://github.com/Stevey233/ppixiv-next
+// @updateURL   https://raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js
+// @downloadURL https://raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js
 // @noframes
 // @match       https://*.pixiv.net/*
 // @run-at      document-start
@@ -20,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.53.gd6aa14cb
+// @version     258.55.g3fb2b23c
 // ==/UserScript==
 (function() {
 
@@ -3174,6 +3176,13 @@ let bundle = `(() => {
 
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
+    {
+      id: "2026-11-13",
+      title: "自动更新",
+      items: [
+        "脚本放到了 GitHub 的 Stevey233/ppixiv-next 仓库，Tampermonkey 会从那里自动更新，不用再手动粘贴新版本。"
+      ]
+    },
     {
       id: "2026-11-12.2",
       title: "筛选重做",
@@ -37230,7 +37239,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.53.gd6aa14cb"}\`);
+      console.log(\`vview setup: \${"r258.55.g3fb2b23c"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -37279,7 +37288,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.53.gd6aa14cb"}\`);
+      console.log(\`ppixiv setup: \${"r258.55.g3fb2b23c"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
