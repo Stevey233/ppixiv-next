@@ -211,8 +211,14 @@ export default class DataSource extends EventTarget
                 return;
             }
 
+            // Continue in the direction the list is loading: backwards if the page after this
+            // one is already loaded, like scrolling up from a list opened at ?p=5.
+            let nextPage = this._nextFilteredPage(page);
+            if(nextPage < 1)
+                return;
+
             await helpers.other.sleep(500);
-            return await this.loadPage(page+1, { cause: "filtered page was empty" });
+            return await this.loadPage(nextPage, { cause: "filtered page was empty" });
         }
         else if(this.idList.mediaIdsByPage.get(page).length == 0)
         {
@@ -399,6 +405,13 @@ export default class DataSource extends EventTarget
         };
     }
 
+    // The page to load after page, which the filters emptied.  This is the next page, or the
+    // previous one if the list is loading backwards.
+    _nextFilteredPage(page)
+    {
+        return this.idList.isPageLoaded(page+1)? page-1:page+1;
+    }
+
     // After loading stopped because the filters removed everything on several pages, load
     // the next pages.
     async loadMoreFiltered()
@@ -409,7 +422,9 @@ export default class DataSource extends EventTarget
         this.filteredStopPage = null;
         this._filteredEmptyPages = 0;
         this.callUpdateListeners();
-        await this.loadPage(page+1, { cause: "load more filtered" });
+        let nextPage = this._nextFilteredPage(page);
+        if(nextPage >= 1)
+            await this.loadPage(nextPage, { cause: "load more filtered" });
 
         // The search view didn't start this load, so tell it about the new results.
         this.callUpdateListeners();
@@ -705,6 +720,13 @@ export default class DataSource extends EventTarget
         if(page != null)
         {
             page += next? +1:-1;
+
+            // Skip earlier pages the result filters emptied.  This happens when the list started
+            // on a page that was filtered empty and continued forwards.  Going forwards, an empty
+            // page means loading stopped, see filteredStopPage.
+            while(!next && this.idList.mediaIdsByPage.get(page)?.length === 0)
+                page--;
+
             if(page < 1)
                 return null;
         }

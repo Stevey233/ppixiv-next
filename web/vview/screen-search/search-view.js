@@ -538,6 +538,13 @@ export default class SearchView extends Widget
         if(firstThumb.dataset.nearby)
         {
             let loadPage = parseInt(firstThumb.dataset.searchPage) - 1;
+
+            // Skip pages the result filters emptied, like the first page when the list started
+            // on a page that had nothing left after filtering.  If loading stopped, wait for
+            // "继续查找".
+            while(this.dataSource.filteredStopPage == null && this.dataSource.idList.mediaIdsByPage.get(loadPage)?.length === 0)
+                loadPage--;
+
             if(!this.dataSource.isPageLoadedOrLoading(loadPage))
                 return loadPage;
         }
