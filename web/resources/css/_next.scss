@@ -2329,3 +2329,64 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
     background: linear-gradient(135deg, transparent 60%, var(--n-rule) 60%);
 }
 .input-dropdown::-webkit-scrollbar-corner { background: transparent; }
+
+// ------------------------------------------------------------------ prompts
+//
+// Text prompts ("要屏蔽的标签：") and yes/no confirmations.  Upstream's text box was a bare
+// contenteditable with an underline, with a 1px white outlined check box as the submit button.
+// The confirmation's "是" and "否" both had an image icon.
+
+.text-entry-popup .input-box {
+    gap: 8px;
+
+    > .editor {
+        min-height: 38px;
+        padding: 7px 12px;
+        box-sizing: border-box;
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        background: var(--n-bg);
+        color: var(--n-text);
+        font-size: 15px;
+        line-height: 22px;
+        outline: none;
+        &:focus { border-color: var(--n-blue); }
+    }
+
+    > .submit-button {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        border: 1px solid var(--n-blue);
+        border-radius: var(--n-radius);
+        color: var(--n-blue);
+        .font-icon { font-size: 22px; }
+        @media(hover: hover) { &:hover { background-color: var(--n-surface-2); } }
+    }
+}
+
+.confirm-dialog .scroll .input-box {
+    gap: 8px;
+    padding: 12px 0 4px;
+
+    > .box-link {
+        min-width: 72px;
+        height: 34px;
+        justify-content: center;
+        border: 1px solid var(--n-rule);
+        color: var(--n-text);
+        .label-box { flex: 1; justify-content: center; }
+        .label { flex: none; }
+        .icon { display: none; }
+        @media(hover: hover) { &:hover { background: var(--n-surface-2); } }
+    }
+
+    > .box-link.yes {
+        border-color: var(--n-blue);
+        color: var(--n-blue);
+    }
+}
