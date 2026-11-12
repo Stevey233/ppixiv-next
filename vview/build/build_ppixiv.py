@@ -548,6 +548,11 @@ class Build(object):
             if not path.is_file():
                 continue
 
+            # SCSS partials like _next.scss are only imported by other stylesheets, which
+            # already contain them.
+            if path.suffix == '.scss' and path.name.startswith('_'):
+                continue
+
             # Generate a name for this.  The particular name doesn't matter, since it
             # only appears in app-resources.js.
             relative_path = path.relative_to(resources_path)
