@@ -7,7 +7,7 @@ import { helpers } from '/vview/misc/helpers.js';
 export default class DataSource_Discovery extends DataSource
 {
     get name() { return "discovery"; }
-    get pageTitle() { return "Discovery"; }
+    get pageTitle() { return "Recommended Works"; }
     getDisplayingText() { return "Recommended Works"; }
     get ui() { return UI; }
     get estimatedItemsPerPage() { return 60; }

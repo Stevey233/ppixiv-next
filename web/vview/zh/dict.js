@@ -5,14 +5,14 @@
 export const DICT = {
     // Search menu and page titles
     "Search works": "搜索作品",
-    "New works by following": "关注用户的新作",
-    "New works by everyone": "所有人的新作",
+    "New works by following": "关注的新作",
+    "New works by everyone": "最新作品",
     "Bookmarks": "收藏",
     "all": "全部",
     "All": "全部",
     "Public": "公开",
     "Private": "非公开",
-    "Followed users": "已关注用户",
+    "Followed users": "关注的用户",
     "Rankings": "排行榜",
     "Recommended works": "推荐作品",
     "Recommended Works": "推荐作品",
@@ -25,7 +25,7 @@ export const DICT = {
     "Search": "搜索",
     "Search:": "搜索：",
     "Discovery": "发现",
-    "New Works": "新作",
+    "New Works": "最新作品",
     "Artist": "作者",
     "Similar Illustrations": "相似插画",
     "Similar Illusts": "相似插画",
@@ -517,9 +517,9 @@ export const PATTERNS = [
     [/^The file "(.+)" doesn't contain exported ppixiv data\.$/, "文件「$1」不包含 ppixiv 导出的数据。"],
     [/^Saved Tags (\d+)$/, "已保存的标签 $1"],
     // The heading of your own bookmarks: "1234 Private Bookmarks / tag".  The count is missing
-    // until it loads.
+    // until it loads.  The list's name comes first, as on every other list.
     [/^(?:(\d+) )?(Public |Private )?Bookmarks?(?: \/ (.+))?$/, (m, n, kind, tag) =>
-        (n ? `${n} 个` : "") + (kind == "Public " ? "公开" : kind == "Private " ? "非公开" : "") + "收藏" +
+        (kind == "Public " ? "公开" : kind == "Private " ? "非公开" : "") + "收藏" + (n ? ` ${n}` : "") +
         (tag == null ? "" : tag == "untagged" ? " / 未分类" : ` / ${tag}`)],
     [/^(\d+) frames$/, "$1 帧"],
     [/^Suggestions for (.+)$/, "「$1」的建议"],

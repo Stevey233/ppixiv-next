@@ -6,6 +6,10 @@
 
 // Return the main destinations.  Each has a label, a URL, and a test for whether a data source
 // belongs to it.
+//
+// Each list has one name, which its header title and tab title show in full (the data source's
+// getDisplayingText and pageTitle).  The rail label is the name's first two characters, which read
+// well set vertically.  The "more" menu uses the full name.
 export function mainDestinations()
 {
     let userId = ppixiv.pixivInfo?.userId;

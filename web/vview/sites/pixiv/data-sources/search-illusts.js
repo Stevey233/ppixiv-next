@@ -197,7 +197,7 @@ export default class DataSource_Search extends DataSource
 
     get pageTitle()
     {
-        return this.title;
+        return this.displayingTags? this.title:"Search works";
     }
 
     getDisplayingText()
