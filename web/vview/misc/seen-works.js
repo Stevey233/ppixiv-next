@@ -11,6 +11,7 @@
 const DB_NAME = "ppx-zh-seen";
 const STORE = "seen";
 const LIMIT = 50000; // the oldest are forgotten beyond this
+const PRUNE_EXTRA = 1000;
 
 export default class SeenWorks extends EventTarget
 {
@@ -130,17 +131,22 @@ export default class SeenWorks extends EventTarget
         // If they're cleared while this reads them, what it read may be from before.  Works opened
         // after the clear are added by the queued record operations.
         let clears = this._clears;
-        let requests = await this._dbOp("readonly", (store) => [store.getAllKeys(), store.getAll()]);
-        if(requests == null || this._clears != clears)
+        let request = await this._dbOp("readonly", (store) => store.getAllKeys());
+        if(request == null || this._clears != clears)
             return;
 
-        let [ids, times] = requests.map((request) => request.result);
+        let ids = request.result;
         for(let id of ids)
             this._ids.add(String(id));
 
-        if(ids.length > LIMIT)
+        // Reading the times as well takes about six times as long as the IDs alone, so they're
+        // only read to forget the oldest works.  Forget PRUNE_EXTRA more than needed, so this
+        // doesn't happen again on every startup once the limit is reached.
+        let requests = ids.length > LIMIT? await this._dbOp("readonly", (store) => [store.getAllKeys(), store.getAll()]):null;
+        if(requests != null && this._clears == clears)
         {
-            let oldest = ids.map((id, i) => [times[i], id]).sort((a, b) => a[0] - b[0]).slice(0, ids.length - LIMIT);
+            let [ids, times] = requests.map((request) => request.result);
+            let oldest = ids.map((id, i) => [times[i], id]).sort((a, b) => a[0] - b[0]).slice(0, Math.max(0, ids.length - (LIMIT - PRUNE_EXTRA)));
             for(let [, id] of oldest)
                 this._ids.delete(String(id));
             this._dbOp("readwrite", (store) => oldest.forEach(([, id]) => store.delete(id)));
