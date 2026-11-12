@@ -1932,3 +1932,96 @@ html:not(.mobile) .floating > .dialog > .header {
         }
     }
 }
+
+// ------------------------------------------------------------------ more dropdowns and inputs
+
+// Dropdown buttons that aren't made with setupDropdown() (the ranking's mode and content, the time
+// range of a search, the bookmark and artist tag lists) didn't get the caret.
+.box-link {
+    &.mode-button, &.content-type-button, &.time-ago-button,
+    &.bookmark-tag-button, &.member-tags-button {
+        .label-box::after {
+            content: "";
+            display: inline-block;
+            margin-left: 6px;
+            vertical-align: middle;
+            border: 4px solid transparent;
+            border-top-color: currentColor;
+            border-bottom-width: 0;
+            opacity: 0.7;
+        }
+    }
+
+    // The ranking's mode and content buttons are always marked selected, since they always show
+    // the current value.  The guide line under both made them read as two chosen tabs.
+    &.mode-button.selected, &.content-type-button.selected {
+        box-shadow: none;
+        border-radius: var(--n-radius);
+        font-weight: 500;
+    }
+}
+
+// Menu rows with an icon (the rail's "more" menu, the aspect ratio filter, the avatar menu):
+// upstream's icons are about 13px next to 15px text.
+.popup-menu-box .vertical-list > .box-link,
+.popup-menu-box.vertical-list > .box-link,
+.vertical-list.rail-more-menu > .box-link,
+.follow-widget.vertical-list > .box-link {
+    .label-box { gap: 10px; }
+    .label-box > .icon.font-icon { font-size: 18px; width: 18px; margin: 0; }
+}
+
+// The years in the search's time dropdown: upstream's #444 boxes.
+.years-ago {
+    display: flex;
+    gap: 4px;
+    margin: 4px 0 0;
+    padding: 6px 8px 4px;
+    border-top: 1px solid var(--n-rule);
+
+    > a.box-link {
+        height: 28px;
+        min-width: 28px;
+        padding: 0 6px;
+        justify-content: center;
+        background: none;
+        border: 1px solid var(--n-rule);
+        color: var(--n-pencil);
+        font-family: var(--n-font-num);
+        &:hover { color: var(--n-text); border-color: var(--n-pencil); }
+        &.selected { color: var(--n-blue); border-color: var(--n-blue); box-shadow: none; }
+    }
+}
+
+// Text inputs outside the header (user search, dialogs): upstream draws an outline around a box
+// that has its own darker input background inside it.
+.input-field-container {
+    outline: none;
+    border: 1px solid var(--n-rule);
+    border-radius: var(--n-radius);
+    background: var(--n-surface);
+    padding: 0 6px 0 12px;
+    min-height: 38px;
+    box-sizing: border-box;
+    &:focus-within { outline: none; border-color: var(--n-blue); }
+
+    > input {
+        font-family: var(--n-font);
+        font-size: 15px;
+        background: none;
+        color: var(--n-text);
+        border: none;
+        &::placeholder { color: var(--n-pencil); }
+    }
+
+    > .right-side-button {
+        color: var(--n-pencil);
+        font-size: 20px;
+        @media(hover: hover) { &:hover { color: var(--n-text); } }
+    }
+}
+
+.screen-search-container .search-desktop-ui .user-search-box {
+    max-width: 420px;
+}
+
