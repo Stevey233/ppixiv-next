@@ -88,6 +88,10 @@ function isOwnBookmarks(url)
 // Return whether a filter is offered on a list.
 export function filterAvailable(listKey, value)
 {
+    // Measured on pixiv.net on 2026-11-12: 1 of 400 new works was an animation, so 动图 on the new
+    // works list would pause after four empty pages nearly every time.
+    if(listKey == "new_illust" && value == "ugoira")
+        return false;
     return !(listKey == "bookmarks-own" && value == "hide-bookmarked");
 }
 
