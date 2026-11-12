@@ -48,10 +48,11 @@ export function filterLabel(value)
     return HIDE_FILTERS.find(([option]) => option == value)?.[1] ?? value;
 }
 
-// Data sources that list works, where filters make sense.
+// Data sources that list works, where filters make sense.  "illust-bookmarks" (收藏了这张的人还收藏了)
+// lists users, so it isn't one.
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",
-    "series", "related-illusts", "edited", "completed-requests", "illust-bookmarks",
+    "series", "related-illusts", "edited", "completed-requests",
 ]);
 
 export function dataSourceSupportsFilters(dataSource)
