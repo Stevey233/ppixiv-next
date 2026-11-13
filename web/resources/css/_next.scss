@@ -463,6 +463,105 @@ html:not(.macos) {
     }
 }
 
+// ------------------------------------------------------------------ ranking date
+//
+// "‹ 2026/11/12 周四 ›  最新": one bordered group with the arrows and the date, which opens the date
+// picker.  See docs/design.md.
+
+.n-rank-date {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-right: 8px;
+}
+
+.n-rank-stepper {
+    position: relative;
+    display: flex;
+    height: 32px;
+    box-sizing: border-box;
+    border: 1px solid var(--n-rule);
+    border-radius: var(--n-radius);
+    background: var(--n-surface);
+
+    > .n-rank-step, > .n-rank-day {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--n-pencil);
+    }
+
+    > .n-rank-step {
+        width: 32px;
+        .font-icon { font-size: 20px; }
+
+        &.n-rank-prev { border-radius: var(--n-radius) 0 0 var(--n-radius); }
+        &.n-rank-next { border-radius: 0 var(--n-radius) var(--n-radius) 0; }
+
+        &[aria-disabled="true"] {
+            opacity: 0.4;
+            cursor: default;
+        }
+    }
+
+    > .n-rank-day {
+        gap: 6px;
+        align-items: baseline;
+        min-width: 136px;
+        padding: 0 12px;
+        border: 0;
+        background: none;
+        font: inherit;
+        line-height: 30px;
+        cursor: pointer;
+
+        .n-rank-day-date {
+            font-family: var(--n-font-num);
+            font-size: 15px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--n-text);
+        }
+
+        .n-rank-day-sub { font-size: 13px; }
+    }
+
+    // Inside the cell, so the outline doesn't cover the next cell.
+    > .n-rank-step:focus-visible, > .n-rank-day:focus-visible { outline-offset: -2px; }
+
+    @media(hover: hover) {
+        > .n-rank-step[href]:hover, > .n-rank-day:hover {
+            background: var(--n-surface-2);
+            color: var(--n-text);
+        }
+    }
+
+    // The native date input is only there for showPicker(), which places the picker under it.
+    > .n-rank-picker {
+        position: absolute;
+        left: 32px;
+        bottom: 0;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.n-rank-latest {
+    font-size: 14px;
+    color: var(--n-pencil);
+    &:hover { color: var(--n-text); }
+}
+
+html.mobile .n-rank-stepper {
+    height: 44px;
+    > .n-rank-step { width: 44px; }
+    > .n-rank-day { line-height: 42px; }
+}
+
 // ------------------------------------------------------------------ filter bar
 
 .filter-bar {

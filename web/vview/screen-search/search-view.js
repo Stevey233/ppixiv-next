@@ -463,6 +463,10 @@ export default class SearchView extends Widget
             targetMediaId: targetMediaId ?? scrollMediaId,
         });
 
+        // A list that was already loaded loads no page above, which is what hides the empty-list
+        // text, so the previous list's text would stay.
+        this._refreshNoResults();
+
         // If a media ID to display was given, try to scroll to it.  Otherwise try to restore the
         // previous scroll position around scrollMediaId.
         if(targetMediaId != null)
@@ -503,7 +507,7 @@ export default class SearchView extends Widget
 
         // If we have no IDs and nothing is loading, the data source is empty (no results).
         if(this.dataSource?.hasNoResults)
-            noResults.hidden = false;
+            this._refreshNoResults();
 
         // See if there's another page we want to load.  This is async, since the current
         // loadDataSourcePage call should complete as soon as we've loaded a single page.
@@ -635,7 +639,16 @@ export default class SearchView extends Widget
         if(this._setDataSourceRunner.isRunning)
             return;
         this.refreshImages({cause: "data-source-updated"});
-        this.root.querySelector(".no-results").hidden = !this.dataSource?.hasNoResults;
+        this._refreshNoResults();
+    }
+
+    // Show "没有结果" when the list is empty, or the data source's own reason, like a ranking date
+    // Pixiv has no ranking for.
+    _refreshNoResults()
+    {
+        let noResults = this.root.querySelector(".no-results");
+        noResults.querySelector(".message").textContent = this.dataSource?.noResultsText ?? "没有结果";
+        noResults.hidden = !this.dataSource?.hasNoResults;
     }
 
     // Return all media IDs currently loaded in the data source, and the page

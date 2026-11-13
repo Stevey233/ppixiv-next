@@ -13,12 +13,91 @@ import Widget from '/vview/widgets/widget.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
 
+// The latest ranking date ("YYYYMMDD") seen this session, by mode.  It's the date picker's last day.
+// Each date is its own data source, so this isn't kept on one.
+let latestDates = new Map();
+
+// The first day of each ranking, from Pixiv's answers on 2026-11-13.  The modes not measured then
+// (male_r18, female_r18, r18g) use their all-ages mode's day.  The date picker's first day.
+const firstDates = {
+    daily: "20070913", daily_r18: "20070913",
+    weekly: "20080415", weekly_r18: "20080415", r18g: "20080415", monthly: "20080415",
+    rookie: "20100331",
+    male: "20111012", male_r18: "20111012", female: "20111012", female_r18: "20111012",
+    original: "20120502",
+    daily_ai: "20221031", daily_r18_ai: "20221031",
+};
+
+// Ranking dates are Japanese calendar days, so all date math here is UTC on the day itself and never
+// uses the local time zone.  Return a Date at UTC midnight for "YYYYMMDD" or "YYYY-MM-DD", or null.
+function parseDate(text)
+{
+    let match = String(text ?? "").match(/^(\d{4})-?(\d{2})-?(\d{2})$/);
+    if(match == null)
+        return null;
+    return new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+}
+
+// Format a Date from parseDate as "YYYYMMDD", or with separator, "YYYY-MM-DD".
+function formatDate(date, separator="")
+{
+    let year = date.getUTCFullYear();
+    let month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    let day = String(date.getUTCDate()).padStart(2, "0");
+    return [year, month, day].join(separator);
+}
+
+function addDays(date, days)
+{
+    return new Date(date.getTime() + days * 24*60*60*1000);
+}
+
+// The last day the date picker offers: the latest ranking seen for the mode, any mode's latest if this
+// one hasn't been loaded yet, or else yesterday in Japan, since Pixiv publishes a day's ranking the
+// next day.
+function lastDate(mode)
+{
+    let latest = latestDates.get(mode) ?? latestDates.values().next().value;
+    if(latest)
+        return parseDate(latest);
+
+    let japanNow = new Date(Date.now() + 9*60*60*1000);
+    let today = new Date(Date.UTC(japanNow.getUTCFullYear(), japanNow.getUTCMonth(), japanNow.getUTCDate()));
+    return addDays(today, -1);
+}
+
+function firstDate(mode)
+{
+    return parseDate(firstDates[mode] ?? firstDates.daily);
+}
+
+// When Pixiv has no ranking for a date it doesn't say which days are next to it, so work them out:
+// one day either side, kept inside the mode's first and last day.  A date before the first day steps
+// forward to it, and one after the last day steps back to it.
+function neighborDates(date, mode)
+{
+    let day = parseDate(date);
+    if(day == null)
+        return { prevDate: null, nextDate: null };
+
+    let first = firstDate(mode), last = lastDate(mode);
+    let prev = day > last? last: addDays(day, -1);
+    let next = day < first? first: addDays(day, +1);
+    return {
+        prevDate: prev >= first? formatDate(prev):null,
+        nextDate: next <= last? formatDate(next):null,
+    };
+}
+
 export default class DataSource_Rankings extends DataSource
 {
     get name() { return "rankings"; }
     get pageTitle() { return "Rankings"; }
     getDisplayingText() { return "Rankings"; }
     get ui() { return UI; }
+
+    // The list's empty text when Pixiv has no ranking for the date.  Read by the search view.
+    get noResultsText() { return this.rankingError? "这一天没有排行榜":null; }
 
     // This gives a tiny number of results per page on mobile.
     get estimatedItemsPerPage() { return ppixiv.mobile? 18:50; }
@@ -114,27 +193,28 @@ export default class DataSource_Rankings extends DataSource
             data.date = date;
 
         let result = await helpers.pixivRequest.get("/ranking.php", data);
-        let thisDate = result.date;
 
-        let nextDate = result.next_date;
-        let prevDate = result.prev_date;
+        // Pixiv answers {error: "不在排行榜统计范围内"} for a date it has no ranking for: before the
+        // mode's first day, a day not published yet, or a mode that didn't exist then.  Keep the
+        // requested date, so the stepper still shows it and can step out of it.
+        if(result.error)
+        {
+            console.log(`Ranking for ${date} not available: ${result.error}`);
+            this.rankingError = true;
+            return { mediaIds: [], thisDate: date, lastPage: true, ...neighborDates(date, mode) };
+        }
+
+        // The latest ranking: loaded without a date, or the date has no next day.
+        if(!date || !result.next_date)
+            latestDates.set(mode, result.date);
+
+        let thisDate = result.date;
+        let nextDate = result.next_date || null;
+        let prevDate = result.prev_date || null;
         let lastPage = !result.next;
 
-        // Fix nextDate and prevDate being false instead of null if there's no previous
-        // or next date.
-        if(!nextDate)
-            nextDate = null;
-        if(!prevDate)
-            prevDate = null;
-
-        // This is "YYYYMMDD".  Reformat it to YYYY-MM-DD.
-        if(thisDate.length == 8)
-        {
-            let year = thisDate.slice(0,4);
-            let month = thisDate.slice(4,6);
-            let day = thisDate.slice(6,8);
-            thisDate = year + "/" + month + "/" + day;
-        }
+        // Weekly and monthly rankings cover a range ending on the date, like "2026年11月6日 ～ 2026年11月12日".
+        this.dateRangeText = result.date_range_text ?? null;
 
         // This API doesn't return aiType, but we can fill it in ourself since we know whether
         // we're on an AI rankings page or not.
@@ -195,7 +275,7 @@ export default class DataSource_Rankings extends DataSource
         if(lastPage)
             this.maxPage = Math.min(page, this.maxPage);
 
-        this.todayText ??= thisDate;
+        this.rankingDate = thisDate;
         this.prevDate = prevDate;
         this.nextDate = nextDate;
         this.callUpdateListeners();
@@ -210,10 +290,17 @@ class UI extends Widget
     {
         super({ ...options, template: `
             <div class="ranking-data-source box-button-row">
-                <div class="box-button-row date-row">
-                    ${ helpers.createBoxLink({label: "Previous day", popup: "Show the previous day",     dataType: "new-illust-type-illust", classes: ["nav-yesterday"] }) }
-                    <span class=nav-today></span>
-                    ${ helpers.createBoxLink({label: "Next day", popup: "Show the next day",     dataType: "new-illust-type-illust", classes: ["nav-tomorrow"] }) }
+                <div class=n-rank-date>
+                    <div class=n-rank-stepper>
+                        <a class="n-rank-step n-rank-prev" aria-label="前一天" title="前一天">${ helpers.createIcon("mat:chevron_left") }</a>
+                        <button type=button class=n-rank-day title="选择日期">
+                            <span class=n-rank-day-date></span>
+                            <span class=n-rank-day-sub></span>
+                        </button>
+                        <a class="n-rank-step n-rank-next" aria-label="后一天" title="后一天">${ helpers.createIcon("mat:chevron_right") }</a>
+                        <input type=date class=n-rank-picker tabindex=-1 aria-hidden=true>
+                    </div>
+                    <a class=n-rank-latest hidden>最新</a>
                 </div>
 
                 <div class=box-button-row>
@@ -227,8 +314,10 @@ class UI extends Widget
 
         this.dataSource = dataSource;
 
-        dataSource.addEventListener("updated", () => this.refreshDates(), this._signal);
+        dataSource.addEventListener("updated", () => this.refreshDates(), { signal: this.shutdownSignal });
         this.refreshDates();
+        this.querySelector(".n-rank-day").addEventListener("click", () => this._openPicker(), { signal: this.shutdownSignal });
+        this.querySelector(".n-rank-picker").addEventListener("change", () => this._pickedDate(), { signal: this.shutdownSignal });
 
         /*
          * Pixiv has a fixed list of rankings, but it displays them as a set of buttons
@@ -297,6 +386,16 @@ class UI extends Widget
             return mode;
         }
 
+        // Switching rankings keeps the date, like Pixiv.  A date before the new ranking's first day
+        // moves to that day, which is the closest one it has.
+        function keepDateInRange(args)
+        {
+            let day = parseDate(args.query.get("date"));
+            let first = firstDate(args.query.get("mode") ?? "daily");
+            if(day && day < first)
+                args.query.set("date", formatDate(first, ppixiv.mobile? "-":""));
+        }
+
         let currentArgs = new helpers.args(dataSource.url);
 
         // The current content type: all, illust, manga, ugoira
@@ -358,6 +457,7 @@ class UI extends Widget
                     // switch to the all-ages link.
                     if(currentAges == agesToggle)
                         args.query.set("mode", modeDisabled);
+                    keepDateInRange(args);
                 }
             });
         }
@@ -439,6 +539,7 @@ class UI extends Widget
                     dataSource.setItem(button, {
                         fields: {mode},
                         defaults: {mode: "daily"},
+                        adjustUrl: keepDateInRange,
                     });
                 }
 
@@ -447,29 +548,99 @@ class UI extends Widget
         });
     }
 
+    // The date stepper: "‹ 2026/11/12 周四 ›", or for weekly and monthly "‹ 11/06 – 11/12 2026 ›".  See
+    // docs/design.md.
     refreshDates = () =>
     {
-        if(this.dataSource.todayText)
-            this.querySelector(".nav-today").innerText = this.dataSource.todayText;
+        let dataSource = this.dataSource;
+        let url = new URL(dataSource.url);
+        let urlDate = url.searchParams.get("date");
+        let mode = url.searchParams.get("mode") ?? "daily";
 
-        // This UI is greyed rather than hidden before we have the dates, so the UI doesn't
-        // shift around as we load.
-        let yesterday = this.querySelector(".nav-yesterday");
-        helpers.html.setClass(yesterday, "disabled", this.dataSource.prevDate == null);
-        if(this.dataSource.prevDate)
+        // Before the first page loads, show the date from the URL, so the row doesn't change size.
+        let day = parseDate(dataSource.rankingDate ?? urlDate);
+        let range = dataSource.rankingError? null:compactRange(dataSource.dateRangeText);
+        let dateText = "", subText = "";
+        if(range)
+            [dateText, subText] = range;
+        else if(day)
         {
-            let url = new URL(this.dataSource.url);
-            url.searchParams.set("date", this.dataSource.prevDate);
-            yesterday.href = url;
+            dateText = formatDate(day, "/");
+            subText = "周" + "日一二三四五六"[day.getUTCDay()];
+        }
+        else
+            dateText = dataSource.rankingDate ?? urlDate ?? "";
+        this.querySelector(".n-rank-day-date").textContent = dateText;
+        this.querySelector(".n-rank-day-sub").textContent = subText;
+        this.querySelector(".n-rank-day").title = dataSource.dateRangeText && !dataSource.rankingError?
+            `${dataSource.dateRangeText}，选择日期`:"选择日期";
+
+        // The arrows are disabled until the first page says which days exist, rather than hidden,
+        // so the row doesn't shift as it loads.
+        for(let [selector, date] of [[".n-rank-prev", dataSource.prevDate], [".n-rank-next", dataSource.nextDate]])
+        {
+            let link = this.querySelector(selector);
+            link.setAttribute("aria-disabled", date == null? "true":"false");
+            if(date == null)
+                link.removeAttribute("href");
+            else
+                link.href = this._urlForDate(date);
         }
 
-        let tomorrow = this.querySelector(".nav-tomorrow");
-        helpers.html.setClass(tomorrow, "disabled", this.dataSource.nextDate == null);
-        if(this.dataSource.nextDate)
-        {
-            let url = new URL(this.dataSource.url);
-            url.searchParams.set("date", this.dataSource.nextDate);
-            tomorrow.href = url;
-        }
-    }            
+        // "最新" goes back to the latest ranking from an earlier day.  The latest day has no next day.
+        let isLatest = !dataSource.rankingError && dataSource.rankingDate != null && dataSource.nextDate == null;
+        let latest = this.querySelector(".n-rank-latest");
+        latest.hidden = urlDate == null || isLatest;
+        latest.href = this._urlForDate(null);
+
+        let picker = this.querySelector(".n-rank-picker");
+        picker.min = formatDate(firstDate(mode), "-");
+        picker.max = formatDate(lastDate(mode), "-");
+    }
+
+    // The URL of this ranking on date ("YYYYMMDD", or YYYY-MM-DD on mobile), or the latest if null.
+    _urlForDate(date)
+    {
+        let url = new URL(this.dataSource.url);
+        if(date == null)
+            url.searchParams.delete("date");
+        else
+            url.searchParams.set("date", date);
+        url.searchParams.delete("p");
+        return url.toString();
+    }
+
+    // Open the browser's own date picker under the date.  The click is the user gesture showPicker needs.
+    _openPicker()
+    {
+        let picker = this.querySelector(".n-rank-picker");
+        let day = parseDate(this.dataSource.rankingDate ?? new URL(this.dataSource.url).searchParams.get("date"));
+        picker.value = day? formatDate(day, "-"):"";
+        picker.showPicker();
+    }
+
+    _pickedDate()
+    {
+        let day = parseDate(this.querySelector(".n-rank-picker").value);
+        if(day == null)
+            return;
+
+        // The mobile API takes YYYY-MM-DD, the desktop one YYYYMMDD.
+        let date = formatDate(day, ppixiv.mobile? "-":"");
+        helpers.navigate(new URL(this._urlForDate(date)));
+    }
+}
+
+// Shorten Pixiv's date_range_text for weekly and monthly rankings to ["11/06 – 11/12", "2026"].  Return
+// null for a single day.  The text is Pixiv's, "2026年11月6日 ～ 2026年11月12日"; the second year may be
+// missing.  The year shown is the last day's.
+function compactRange(text)
+{
+    let days = [...String(text ?? "").matchAll(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日/g)];
+    if(days.length < 2)
+        return null;
+
+    let [start, end] = [days[0], days.at(-1)];
+    let monthDay = (match) => `${match[2].padStart(2, "0")}/${match[3].padStart(2, "0")}`;
+    return [`${monthDay(start)} – ${monthDay(end)}`, end[1] ?? start[1] ?? ""];
 }
