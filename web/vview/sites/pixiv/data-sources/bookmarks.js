@@ -45,7 +45,13 @@ export class DataSource_BookmarksBase extends DataSource
             this.callUpdateListeners();
         });
 
-        return await this.continueLoadingPageInternal(page);
+        // The header shows the total, which the first page sets.  Tell the UI, since nothing else
+        // refreshes it once that page fills the window and no second page loads.
+        let total = this.totalBookmarks;
+        let result = await this.continueLoadingPageInternal(page);
+        if(this.totalBookmarks != total)
+            this.callUpdateListeners();
+        return result;
     };
 
     get supportsStartPage()
