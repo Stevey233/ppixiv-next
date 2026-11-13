@@ -384,7 +384,12 @@ html:not(.macos) {
     border-radius: var(--n-radius);
     padding: 6px;
 
-    .font-icon { font-size: 22px; }
+    // Upstream's .icon-button is 1.7em (26px) high, so the 22px icon plus padding hung out of
+    // its bottom: the icons sat 4px below the search box's center line and the hover fill was
+    // cut off under them.  (The button's own display stays, since .pixiv-only and the like hide
+    // it with display: none.)
+    height: auto;
+    .font-icon { font-size: 22px; display: block; }
 
     @media(hover: hover) {
         &:hover {
@@ -405,6 +410,12 @@ html:not(.macos) {
     > .box-link {
         margin: 0;
     }
+}
+
+// Upstream's ".box-button-row > .box-link" padding (0.5em, 7px) beat the 10px below, so the list
+// options sat 3px left of the filter bar under them.
+.search-desktop-ui .box-button-row > .box-link {
+    padding: 0 10px;
 }
 
 .box-link {
