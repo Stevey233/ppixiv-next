@@ -3,7 +3,7 @@
     xmlns:xlink="http://www.w3.org/1999/xlink"
     width="580px" height="250px" viewBox="0 0 580 250" fill="#ff0;">
     <defs>
-        <g id="monitors" fill="#fff" stroke-linejoin="round">
+        <g id="monitors" fill="none" stroke-linejoin="round">
             <g transform="translate(20 65)">
                 <path d="M 0 -5 L 160 0 L 160 90 L 0 95 L 0 0 z" />
             </g>

@@ -379,7 +379,7 @@ export class LinkTabsPopup extends Widget
             <div class="link-tab-popup">
                 <div class=explanation>
                     <ppixiv-inline src="resources/multi-monitor.svg" class=tutorial-monitor></ppixiv-inline>
-                    <div style="margin: 10px 0 15px 0; font-size: 125%;">
+                    <div class=link-tab-text>
                         Open a 
                         <img src="ppixiv:resources/activate-icon.png" style="width: 28px; vertical-align: bottom;">
                         tab on another monitor and click "Link this tab" to send images to it

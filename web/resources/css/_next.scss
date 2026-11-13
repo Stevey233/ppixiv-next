@@ -3066,6 +3066,23 @@ html:not(.mobile) .floating > .dialog > .header {
 
 // ------------------------------------------------------------------ settings pages
 
+// Linked tabs: upstream drew three white monitors with black and gray outlines and set the
+// explanation at 125%.  Pencil outlines (the fill is "none" in multi-monitor.svg, since styles
+// don't reach into its <use> copies), and the dialog's text size.
+.link-tab-popup {
+    .tutorial-monitor {
+        color: var(--n-pencil);
+        g[stroke="#ccc"] { stroke: none; }
+        g[stroke="#000"] { stroke: currentColor; stroke-width: 6px; }
+    }
+
+    .link-tab-text {
+        margin: 12px 0 16px;
+        font-size: 15px;
+        color: var(--n-text);
+    }
+}
+
 // Upstream only sets a minimum height, so the dialog grew and shrank (and moved, since it's
 // centered) with every page.  Give it one height.
 html:not(.mobile) .settings-dialog.floating > .dialog {
