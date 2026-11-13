@@ -17,6 +17,7 @@ import RelatedFavorites from '/vview/sites/pixiv/data-sources/related-favorites.
 import SearchUsers from '/vview/sites/pixiv/data-sources/search-users.js';
 import CompletedRequests from '/vview/sites/pixiv/data-sources/completed-requests.js';
 import EditedImages from '/vview/sites/pixiv/data-sources/edited-images.js';
+import History from '/vview/sites/pixiv/data-sources/history.js';
 import { Bookmarks, BookmarksMerged } from '/vview/sites/pixiv/data-sources/bookmarks.js';
 
 let allDataSources = {
@@ -38,6 +39,7 @@ let allDataSources = {
     SearchUsers,
     CompletedRequests,
     EditedImages,
+    History,
 };
 
 export default class SitePixiv extends Site.Site
@@ -405,6 +407,8 @@ export default class SitePixiv extends Site.Site
             // Data sources that don't have a corresponding Pixiv page:
             if(args.hashPath == "/edits")
                 return allDataSources.EditedImages;
+            else if(args.hashPath == "/history")
+                return allDataSources.History;
             else
                 return null;
         }

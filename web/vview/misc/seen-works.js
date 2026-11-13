@@ -142,16 +142,33 @@ export default class SeenWorks extends EventTarget
         // Reading the times as well takes about six times as long as the IDs alone, so they're
         // only read to forget the oldest works.  Forget PRUNE_EXTRA more than needed, so this
         // doesn't happen again on every startup once the limit is reached.
-        let requests = ids.length > LIMIT? await this._dbOp("readonly", (store) => [store.getAllKeys(), store.getAll()]):null;
-        if(requests != null && this._clears == clears)
+        let byTime = ids.length > LIMIT? await this._readByTime():null;
+        if(byTime != null && this._clears == clears)
         {
-            let [ids, times] = requests.map((request) => request.result);
-            let oldest = ids.map((id, i) => [times[i], id]).sort((a, b) => a[0] - b[0]).slice(0, Math.max(0, ids.length - (LIMIT - PRUNE_EXTRA)));
-            for(let [, id] of oldest)
+            let oldest = byTime.slice(LIMIT - PRUNE_EXTRA);
+            for(let id of oldest)
                 this._ids.delete(String(id));
-            this._dbOp("readwrite", (store) => oldest.forEach(([, id]) => store.delete(id)));
+            this._dbOp("readwrite", (store) => oldest.forEach((id) => store.delete(id)));
         }
         this._changed(null);
+    }
+
+    // Resolve to the illust IDs of every recorded work, the most recently opened first, or to null
+    // if IndexedDB is unavailable.  Writes queued before this are included.
+    async readByTime()
+    {
+        await this._writing;
+        return (await this._readByTime())?.map(String);
+    }
+
+    // The keys as stored, the newest first.  ppixiv-zh may have stored numbers.
+    async _readByTime()
+    {
+        let requests = await this._dbOp("readonly", (store) => [store.getAllKeys(), store.getAll()]);
+        if(requests == null)
+            return null;
+        let [ids, times] = requests.map((request) => request.result);
+        return ids.map((id, i) => [times[i], id]).sort((a, b) => b[0] - a[0]).map(([, id]) => id);
     }
 
     // Run func(store) in a transaction, and resolve to what it returned once the transaction

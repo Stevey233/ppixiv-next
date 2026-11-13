@@ -1875,10 +1875,11 @@ export default class SearchView extends Widget
     }
 
     // Dim the thumbnails of works opened before.  Thumbnails in the manga view are pages of the
-    // work being viewed, so they're never dimmed.
+    // work being viewed, and every work in 最近看过 is seen, so neither is dimmed.
     refreshSeen(thumbnailElement)
     {
-        let seen = this.dataSource?.name != "manga" && ppixiv.seenWorks.shouldDim(thumbnailElement.dataset.id);
+        let name = this.dataSource?.name;
+        let seen = name != "manga" && name != "history" && ppixiv.seenWorks.shouldDim(thumbnailElement.dataset.id);
         helpers.html.setClass(thumbnailElement, "seen", seen);
     }
 

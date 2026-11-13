@@ -415,6 +415,8 @@ class AppStartup
             return true; // completed_requests
         else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/edits"))
             return true; // edited_images
+        else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/history"))
+            return true; // history
         else
             return false;
     }

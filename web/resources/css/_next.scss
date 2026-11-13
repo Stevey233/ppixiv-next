@@ -630,6 +630,13 @@ html.mobile .n-rank-stepper {
     &:hover { background: var(--n-surface-2); }
 }
 
+// 最近看过: why the list is empty, or that recording is off, as secondary text under the title.
+.history-note {
+    color: var(--n-pencil);
+    font-size: 13px;
+    &[hidden] { display: none; }
+}
+
 // ------------------------------------------------------------------ thumbnails
 
 .search-view {
