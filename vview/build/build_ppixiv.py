@@ -62,6 +62,7 @@ def to_javascript_string(s):
 class Build(object):
     # Source maps will point to here:
     github_root = 'https://raw.githubusercontent.com/ppixiv/ppixiv/'
+    fork_source_root = 'https://raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/web'
 
     # Info for deployment.  If you're just building locally, these won't be used.
     deploy_s3_bucket = 'ppixiv'
@@ -392,7 +393,9 @@ class Build(object):
         if self.is_release:
             embed_source_root = self.github_root + self.git_tag
         else:
-            embed_source_root = local_root_url
+            # This fork publishes its development builds (dist/ppixiv-next.user.js), so the
+            # checkout's local path must not end up in them.  Point at the published source.
+            embed_source_root = self.fork_source_root
 
         path = path.resolve()
 
