@@ -19,6 +19,13 @@ export default class MoreOptionsDropdown extends IllustWidget
         // clutter.
         showExtra=false,
 
+        // If true, the rows are shown inside the right-click menu (its 更多 row), with Chinese
+        // names that match the menu and without the rows the menu already has.
+        inline=false,
+
+        // Called after the rows are rebuilt, so the right-click menu can fit them in the window.
+        onrefreshed=null,
+
         ...options
     })
     {
@@ -31,6 +38,8 @@ export default class MoreOptionsDropdown extends IllustWidget
 
 
         this.showExtra = showExtra;
+        this.inline = inline;
+        this._onrefreshed = onrefreshed;
         this._menuOptions = [];
     }
 
@@ -410,6 +419,12 @@ export default class MoreOptionsDropdown extends IllustWidget
         };
 
         let screenName = ppixiv.app.getDisplayedScreen();
+        if(this.inline)
+        {
+            this._createInlineMenuOptions(menuOptions, screenName);
+            return;
+        }
+
         this._menuOptions = [];
         if(!ppixiv.native)
         {
@@ -471,6 +486,49 @@ export default class MoreOptionsDropdown extends IllustWidget
         window.vviewHooks?.dropdownMenuOptions?.({ moreOptionsDropdown: this, sharedOptions });
     }
 
+    // The rows inside the right-click menu.  相似插画 is left out, since the menu already has
+    // 相似作品 for the same page.  编辑屏蔽 comes first: it's the one used most.  See docs/design.md.
+    _createInlineMenuOptions(menuOptions, screenName)
+    {
+        let rows = [
+            ["editMutes", "编辑屏蔽"],
+            ["similarArtists", "相似画师"],
+            this.showExtra && ["similarBookmarks", "收藏了这张的人还收藏了"],
+            ["downloadImage", "下载原图"],
+            ["downloadManga", "下载 ZIP"],
+            ["downloadVideo", "下载 MKV"],
+            ppixiv.settings.get("show_share") && ["shareImage", "分享图片"],
+            screenName == "illust" && ppixiv.imageTranslations.supported && ["toggleTranslations", "翻译"],
+            ppixiv.sendImage.enabled && ["sendToTab", "发送到标签页"],
+            ppixiv.sendImage.enabled && ["linkedTabs", "联动标签页"],
+            screenName == "illust" && ["toggleSlideshow", "幻灯片", { closes: true }],
+            screenName == "illust" && ["toggleLoop", "循环", { closes: true }],
+            ["imageEditing", "图片编辑"],
+            this.showExtra && ["refreshImage", "刷新图片"],
+            ["exit", "返回 Pixiv", { closes: true }],
+        ];
+
+        this._menuOptions = [];
+        for(let row of rows)
+        {
+            if(!row)
+                continue;
+
+            let [name, label, { closes=false }={}] = row;
+            let option = menuOptions[name]();
+            option.root.querySelector(".label").innerText = label;
+
+            // The strip style shows the hovered row's name in its caption line.
+            option.root.dataset.popup = label;
+
+            // Rows that leave the page close the menu, like the rows that open something.
+            if(closes)
+                option.root.addEventListener("click", () => { if(option.enabled) this.parent.hide(); });
+
+            this._menuOptions.push(option);
+        }
+    }
+
     setUserId(userId)
     {
         this._userId = userId;
@@ -479,6 +537,8 @@ export default class MoreOptionsDropdown extends IllustWidget
 
     visibilityChanged()
     {
+        super.visibilityChanged();
+
         if(this.visible)
             this.refresh();
     }
@@ -518,5 +578,7 @@ export default class MoreOptionsDropdown extends IllustWidget
             if(option.options.hideIfUnavailable)
                 option.root.hidden = !enable;
         }
+
+        this._onrefreshed?.();
     }
 }

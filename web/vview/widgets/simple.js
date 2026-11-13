@@ -28,6 +28,8 @@ export class CheckboxWidget extends Widget
     async refresh()
     {
         this.root.innerText = this.checked? "check_box":"check_box_outline_blank";
+        // Lets a menu draw its own mark for the state (the right-click menu's 更多 rows).
+        helpers.html.setClass(this.root, "checked", this.checked);
     }
 }
 

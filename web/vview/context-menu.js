@@ -18,7 +18,6 @@ import FixChromeClicks from '/vview/misc/fix-chrome-clicks.js';
 import { ViewInExplorerWidget } from '/vview/widgets/local-widgets.js';
 import { IllustWidget } from '/vview/widgets/illust-widgets.js';
 import PointerListener from '/vview/actors/pointer-listener.js';
-import { DropdownBoxOpener } from '/vview/widgets/dropdown.js';
 import ClickOutsideListener from '/vview/widgets/click-outside-listener.js';
 import DialogWidget from '/vview/widgets/dialog.js';
 import Actions from '/vview/misc/actions.js';
@@ -66,43 +65,51 @@ export default class ContextMenu extends Widget
                         ${ helpers.createIcon("mat:photo_library") }
                         <span class=cm-label>相似作品</span>
                     </a>
-                    <a href=# class="cm-cell button button-view-manga" data-popup="View manga pages">
-                        ${ helpers.createIcon("mat:grid_view", { classes: ["manga"] }) }
-                        ${ helpers.createIcon("mat:menu_book", { classes: ["series"] }) }
-                        <span class="cm-label manga">全部页面</span>
-                        <span class="cm-label series">系列</span>
+                    <a href=# class="cm-cell button button-view-manga" data-popup="全部页面">
+                        ${ helpers.createIcon("mat:grid_view") }
+                        <span class=cm-label>全部页面</span>
                     </a>
-                    <div class="cm-cell button button-browser-back enabled" data-popup="Back">
+                    <!-- Upstream turned 全部页面 into 系列 for works in a series, which left no way to
+                         open a multi-page work's pages from the menu.  Both show when both apply. -->
+                    <a href=# class="cm-cell button button-view-series enabled" data-popup="系列" hidden>
+                        ${ helpers.createIcon("mat:menu_book") }
+                        <span class=cm-label>系列</span>
+                    </a>
+                    <div class="cm-cell button button-browser-back enabled" data-popup="返回">
                         ${ helpers.createIcon("mat:arrow_back") }
                         <span class=cm-label>返回</span>
                     </div>
                 </div>
 
                 <div class="cm-group cm-zoom">
-                    <div class="cm-cell button requires-zoom button-zoom" data-popup="Mousewheel to zoom">
+                    <div class="cm-cell button requires-zoom button-zoom" data-popup="缩放">
                         ${ helpers.createIcon("mat:zoom_in") }
                         <span class=cm-label>缩放</span>
                     </div>
-                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="cover" data-popup="Zoom to cover">
+                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="cover" data-popup="铺满">
                         ${ helpers.createIcon("mat:fit_screen") }
                         <span class=cm-label>铺满</span>
                     </div>
-                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="actual" data-popup="Zoom to actual size">
+                    <div class="cm-cell button requires-zoom button-zoom-level" data-level="actual" data-popup="原始大小">
                         <span class=cm-glyph>1:1</span>
                         <span class=cm-label>原始大小</span>
                     </div>
                 </div>
 
                 <div class="cm-group cm-window">
-                    <div class="cm-cell button button-fullscreen enabled" data-popup="Fullscreen">
+                    <div class="cm-cell button button-fullscreen enabled" data-popup="全屏">
                         ${ helpers.createIcon("mat:fullscreen") }
                         <span class=cm-label>全屏</span>
                     </div>
-                    <div class="cm-cell button button-more enabled" data-popup="More...">
+                    <div class="cm-cell button button-more enabled" data-popup="更多">
                         ${ helpers.createIcon("mat:more_horiz") }
                         <span class=cm-label>更多</span>
+                        ${ helpers.createIcon("mat:expand_more", { classes: ["cm-chevron"] }) }
                     </div>
                 </div>
+
+                <!-- 更多 expands here, inside the menu, instead of opening a dropdown on top of it. -->
+                <div class="cm-group cm-more" hidden></div>
 
                 <div class=tooltip-display>
                     <div class=tooltip-display-text></div>
@@ -164,6 +171,7 @@ export default class ContextMenu extends Widget
         });
 
         this._buttonViewManga = this.root.querySelector(".button-view-manga");
+        this._buttonViewSeries = this.root.querySelector(".button-view-series");
 
         this._buttonFullscreen = this.root.querySelector(".button-fullscreen");
         this._buttonFullscreen.addEventListener("click", this._clickedFullscreen);
@@ -187,30 +195,24 @@ export default class ContextMenu extends Widget
             mode: "overlay",
         });
 
-        // Set up the more options dropdown.
-        let moreOptionsButton = this.root.querySelector(".button-more");
-        this._moreOptionsDropdownOpener = new DropdownBoxOpener({
-            button: moreOptionsButton,
-
-            createDropdown: ({...options}) => {
-                let dropdown = new MoreOptionsDropdown({
-                    ...options,
-                    parent: this,
-                    showExtra: this.altPressed,
-                });
-
-                dropdown.root.classList.add("popup-more-options-dropdown");
-                dropdown.setMediaId(this._effectiveMediaId);
-                dropdown.setUserId(this._effectiveUserId);
-
-                return dropdown;
-            },
+        // 更多 expands its rows inline, in the .cm-more group under it.  See docs/design.md.
+        this._moreGroup = this.root.querySelector(".cm-more");
+        this._buttonMore = this.root.querySelector(".button-more");
+        this._moreOptions = new MoreOptionsDropdown({
+            container: this._moreGroup,
+            parent: this,
+            inline: true,
+            visible: false,
+            onrefreshed: () => this._layoutMore(),
         });
 
-        moreOptionsButton.addEventListener("click", (e) => {
-            // Show rarely-used options if alt was pressed.
-            this.altPressed = e.altKey;
-            this._moreOptionsDropdownOpener.visible = !this._moreOptionsDropdownOpener.visible;
+        this._buttonMore.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Alt-click shows the rarely-used options too.
+            this._moreOptions.showExtra = e.altKey;
+            this._setMoreOpen(!this._moreOpen || e.altKey);
         });
 
         // Load full media info when the context menu is open, so we can find out if the post
@@ -221,33 +223,18 @@ export default class ContextMenu extends Widget
             onrefresh: async({mediaInfo}) => {
                 let seriesId = mediaInfo?.seriesNavData?.seriesId;
 
-                this._buttonViewManga.dataset.popup = 
-                    mediaInfo == null? "":
-                    seriesId != null? "View series":"View manga pages";
-                
-                let enabled = seriesId != null || mediaInfo?.pageCount > 1;
-                helpers.html.setClass(this._buttonViewManga, "enabled", enabled);
-                this._buttonViewManga.style.pointerEvents = enabled?"":"none";
+                let manga = mediaInfo?.pageCount > 1;
+                helpers.html.setClass(this._buttonViewManga, "enabled", manga);
+                this._buttonViewManga.style.pointerEvents = manga? "":"none";
+                if(manga)
+                    this._buttonViewManga.href = getUrlForMediaId(mediaInfo.mediaId, { manga: true }).url.toString();
 
-                for(let node of this._buttonViewManga.querySelectorAll(".manga"))
-                    node.hidden = seriesId != null;
-                for(let node of this._buttonViewManga.querySelectorAll(".series"))
-                    node.hidden = seriesId == null;
-
-                // Set the manga page or series link.
-                if(enabled)
+                this._buttonViewSeries.hidden = seriesId == null;
+                if(seriesId != null)
                 {
-                    if(seriesId != null)
-                    {
-                        let args = new helpers.args("/", ppixiv.plocation);
-                        args.path  = `/user/${mediaInfo.userId}/series/${seriesId}`;
-                        this._buttonViewManga.href = args.url.toString();
-                    }
-                    else
-                    {
-                        let args = getUrlForMediaId(mediaInfo?.mediaId, { manga: true });
-                        this._buttonViewManga.href = args.url.toString();
-                    }
+                    let args = new helpers.args("/", ppixiv.plocation);
+                    args.path  = `/user/${mediaInfo.userId}/series/${seriesId}`;
+                    this._buttonViewSeries.href = args.url.toString();
                 }
             },
         });
@@ -257,6 +244,7 @@ export default class ContextMenu extends Widget
             new ImageInfoWidget({
                 container: this.root.querySelector(".context-menu-image-info-container"),
             }),
+            this._moreOptions,
         ];
 
         if(ppixiv.native)
@@ -496,6 +484,9 @@ export default class ContextMenu extends Widget
 
         this.pointerListener.checkMissedClicks();
 
+        // 更多 starts closed each time the menu opens.
+        this._setMoreOpen(false);
+
         this.displayedMenu = this.root;
         this.visible = true;
         this.applyVisibility();
@@ -558,6 +549,60 @@ export default class ContextMenu extends Widget
 
         this.displayedMenu.style.left = `${x}px`;
         this.displayedMenu.style.top = `${y}px`;
+    }
+
+    _setMoreOpen(open)
+    {
+        this._moreOpen = open;
+        this._moreGroup.hidden = !open;
+        helpers.html.setClass(this._buttonMore, "selected", open);
+        this._moreOptions.visible = open;
+        this._layoutMore();
+    }
+
+    // Fit the open 更多 rows in the window.  In the list and strip styles they grow the menu
+    // downward from the 更多 row, so nothing above it moves.  If they don't fit, the group scrolls
+    // inside, and only if even three rows don't fit does the whole menu move up.  The cross style
+    // can't grow, so the rows are a panel beside it, which moves up instead of the menu.
+    _layoutMore()
+    {
+        let group = this._moreGroup;
+        group.style.maxHeight = "";
+        group.style.top = "";
+        if(!this.visible)
+            return;
+
+        if(this._moreOpen)
+        {
+            let margin = 8;
+            let rows = [...group.querySelectorAll(".box-link")].filter((row) => !row.hidden);
+            let rowHeight = rows[0]?.offsetHeight ?? 0;
+            let padding = group.offsetHeight - group.clientHeight + parseFloat(getComputedStyle(group).paddingTop) * 2;
+            let minHeight = Math.min(group.offsetHeight, (this.menuStyle == "strip"? 1:3) * rowHeight + padding);
+            let menuTop = parseFloat(this.root.style.top);
+
+            if(this.menuStyle == "cross")
+            {
+                let menuRight = parseFloat(this.root.style.left) + this.root.offsetWidth;
+                this.root.dataset.moreSide = window.innerWidth - menuRight < 228? "left":"right";
+
+                let top = this._buttonMore.offsetTop;
+                let available = window.innerHeight - margin - menuTop - top;
+                if(group.offsetHeight > available)
+                {
+                    group.style.maxHeight = `${Math.max(available, minHeight)}px`;
+                    top -= Math.max(0, minHeight - available);
+                }
+                group.style.top = `${top}px`;
+                return;
+            }
+
+            let available = window.innerHeight - margin - menuTop - (this.root.offsetHeight - group.offsetHeight);
+            if(group.offsetHeight > available)
+                group.style.maxHeight = `${Math.max(available, minHeight)}px`;
+        }
+
+        this.setCurrentPosition();
     }
 
     // If element is within a button that has a tooltip set, show it.
@@ -1069,6 +1114,9 @@ export default class ContextMenu extends Widget
 
         // In a list, the wheel over a multi-page work shows its other pages in the thumbnail.
         // See docs/design.md.
+        if(this._wheelScrollsMore(e))
+            return;
+
         if(this.visible && !this._isZoomUiEnabled && this._clickedMediaId != null &&
            this.avatarWidget.userDropdownWidget == null && !e.target.closest(".popup-bookmark-tag-dropdown"))
         {
@@ -1126,6 +1174,13 @@ export default class ContextMenu extends Widget
         this._handleZoomEvent(e, down);
     }
     
+    // The open 更多 rows scroll when they're cut short near the window's bottom edge.
+    _wheelScrollsMore(e)
+    {
+        let group = this._moreGroup;
+        return this.visible && group.contains(e.target) && group.scrollHeight > group.clientHeight;
+    }
+
     // Handle both mousewheel and control-+/- zooming.
     _handleZoomEvent(e, down)
     {

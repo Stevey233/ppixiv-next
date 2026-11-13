@@ -1432,6 +1432,71 @@ html, html.mobile {
 //
 // See docs/design.md.
 
+// The rows that 更多 opens inside the menu (MoreOptionsDropdown with inline: true), in the list
+// style and in the cross style's side panel: the same 34px rows as the menu, a 水色 check after a
+// toggle that's on, and a 28px gear for the toggles that have settings.
+@mixin cm-more-rows {
+    .vertical-list > .box-link {
+        height: 34px;
+        min-height: 34px;
+        padding: 0 8px 0 14px;
+        border-radius: 0;
+        font-size: 14px;
+        color: var(--n-text);
+
+        .label-box { flex: 1; gap: 12px; }
+        .label-box > .icon.font-icon { font-size: 20px; width: 20px; color: var(--n-pencil); }
+        .label { flex: 1; }
+        .label-box > .widget-box { display: flex; align-items: center; gap: 8px; }
+
+        &.disabled {
+            cursor: default;
+            color: var(--n-rule);
+            .label-box > .icon.font-icon { color: var(--n-rule); }
+        }
+
+        @media(hover: hover) {
+            &:not(.disabled):hover {
+                background-color: var(--n-surface-2);
+                box-shadow: inset 2px 0 0 var(--n-blue);
+                .label-box > .icon.font-icon { color: var(--n-text); }
+            }
+        }
+    }
+
+    // Upstream's check box icon, replaced by a check when on and nothing when off.
+    .checkbox {
+        display: none;
+        &.checked {
+            display: block;
+            order: 0;
+            width: 10px;
+            height: 5px;
+            margin: -4px 6px 0 6px;
+            overflow: hidden;
+            color: transparent;
+            border-left: 2px solid var(--n-blue);
+            border-bottom: 2px solid var(--n-blue);
+            transform: rotate(-45deg);
+        }
+    }
+
+    // The settings gear for 翻译 and 联动标签页, after the check.
+    .widget-box > .box-link {
+        order: 1;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        justify-content: center;
+        border-radius: var(--n-radius);
+        .label-box { flex: none; }
+        .font-icon { font-size: 20px; color: var(--n-pencil); }
+        @media(hover: hover) {
+            &:hover { background-color: var(--n-rule); .font-icon { color: var(--n-text); } }
+        }
+    }
+}
+
 .popup-context-menu {
     padding: 0;
     border-radius: 0;
@@ -1494,6 +1559,19 @@ html, html.mobile {
         &.enabled.selected {
             .font-icon, .cm-glyph { color: var(--n-blue); }
         }
+    }
+
+    // 更多 opens its rows in the .cm-more group, inside the menu.  The chevron only shows in the
+    // list style.
+    .cm-chevron { display: none; }
+    .cm-more {
+        box-sizing: border-box;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        &[hidden] { display: none; }
+        .more-options-dropdown { padding: 0; }
+        .vertical-list { min-width: 0 !important; }
     }
 
     // Bookmarks: the heart and the lock fill with the heart color once the work is in that
@@ -1601,6 +1679,22 @@ html, html.mobile {
         }
         .button-bookmark .count { margin-left: auto; }
 
+        // The 更多 row is the header of the rows it opens: a chevron, and the guide line while open.
+        .button-more {
+            .cm-chevron {
+                display: inline-block;
+                margin-left: auto;
+                font-size: 16px;
+                width: 16px;
+                color: var(--n-pencil);
+            }
+            &.selected {
+                box-shadow: inset 2px 0 0 var(--n-blue);
+                .cm-chevron { transform: rotate(180deg); color: var(--n-pencil); }
+            }
+        }
+        @include cm-more-rows;
+
         .cm-user {
             flex-direction: row;
             align-items: center;
@@ -1642,7 +1736,18 @@ html, html.mobile {
         grid-template-areas:
             "user collect collect collect go   go   go"
             "zoom zoom    zoom    win     win  meta meta"
+            "more more    more    more    more more more"
             "tip  tip     tip     tip     tip  tip  tip";
+
+        // A work in a series has both 全部页面 and 系列, so the 去处 group gets a fourth square.
+        &:has(.button-view-series:not([hidden])) {
+            grid-template-columns: repeat(8, 44px);
+            grid-template-areas:
+                "user collect collect collect go   go   go   go"
+                "zoom zoom    zoom    win     win  meta meta meta"
+                "more more    more    more    more more more more"
+                "tip  tip     tip     tip     tip  tip  tip  tip";
+        }
         background-color: var(--n-surface);
         border: 1px solid var(--n-rule);
         border-radius: var(--n-radius);
@@ -1676,6 +1781,34 @@ html, html.mobile {
 
         .cm-cell { width: 44px; height: 44px; }
         .button { width: 44px; height: 44px; }
+
+        // 更多 opens one more row of squares (two when they don't fit), named in the caption line.
+        // A toggle that's on gets the guide line inside its square.  The gears are left out: both
+        // settings are on the settings pages.
+        .cm-more {
+            grid-area: more;
+            border-top: 1px solid var(--n-rule);
+            .vertical-list { display: flex; flex-wrap: wrap; }
+            .vertical-list > .box-link {
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                justify-content: center;
+                border-radius: 0;
+                color: var(--n-text);
+                .label, .explanation, .widget-box { display: none; }
+                .label-box { flex: none; }
+                .label-box > .icon.font-icon { font-size: 20px; width: 20px; margin: 0; color: var(--n-pencil); }
+                &:has(.checkbox.checked) { box-shadow: inset 0 -2px 0 var(--n-blue); }
+                &.disabled .label-box > .icon.font-icon { color: var(--n-rule); }
+                @media(hover: hover) {
+                    &:not(.disabled):hover {
+                        background-color: var(--n-surface-2);
+                        .label-box > .icon.font-icon { color: var(--n-text); }
+                    }
+                }
+            }
+        }
 
         // The bookmark count sits under the heart, in the page-number figures.
         .button-bookmark .count {
@@ -1726,6 +1859,7 @@ html, html.mobile {
         .button { border-radius: 50%; }
 
         .button-view-manga            { grid-area: 1 / 3; }
+        .button-view-series           { grid-area: 1 / 4; }
         .avatar-widget-container      { grid-area: 2 / 2; align-items: center; justify-content: center; }
         .button-fullscreen            { grid-area: 2 / 3; }
         .button-more                  { grid-area: 2 / 4; }
@@ -1768,6 +1902,22 @@ html, html.mobile {
         .tooltip-display:not([hidden]) ~ .cm-user .context-menu-image-info-container,
         &:has(.tooltip-display:not([hidden])) .context-menu-image-info-container { visibility: hidden; }
         .tooltip-display .tooltip-display-text { color: var(--n-text); }
+
+        // The ring can't grow, so 更多 opens a list panel beside the cross, top aligned with the
+        // 更多 button (context-menu.js sets top and the side).
+        .cm-more {
+            display: block;
+            position: absolute;
+            left: calc(100% + 8px);
+            width: 220px;
+            padding: 4px 0;
+            background-color: var(--n-surface);
+            border: 1px solid var(--n-rule);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+            &[hidden] { display: none; }
+        }
+        &[data-more-side="left"] .cm-more { left: auto; right: calc(100% + 8px); }
+        @include cm-more-rows;
     }
 }
 
