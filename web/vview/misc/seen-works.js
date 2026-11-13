@@ -158,7 +158,11 @@ export default class SeenWorks extends EventTarget
     async readByTime()
     {
         await this._writing;
-        return (await this._readByTime())?.map(String);
+
+        // If ppixiv-zh stored a work under a number and it was opened again here, it's also
+        // stored under a string.  Keep one entry per work, the newest.
+        let ids = await this._readByTime();
+        return ids == null? null:[...new Set(ids.map(String))];
     }
 
     // The keys as stored, the newest first.  ppixiv-zh may have stored numbers.
