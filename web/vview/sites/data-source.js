@@ -5,6 +5,7 @@ import IllustIdList from '/vview/sites/illust-id-list.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers, SafetyBackoffTimer } from '/vview/misc/helpers.js';
 import { dataSourceSupportsFilters, getFilters, makeFilter, filterListKey, filterAvailable, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
+import { listHidesMutedTags, hasMutedTag } from '/vview/misc/muted-works.js';
 
 export default class DataSource extends EventTarget
 {
@@ -391,13 +392,15 @@ export default class DataSource extends EventTarget
     }
 
     // Return a function that says whether to keep a media ID, or null if nothing is filtered.
+    // Lists that leave out works with a muted tag drop them here too, see misc/muted-works.js.
     async _getResultFilter()
     {
         let filters = this.resultFilters;
         if(filters.has("hide-seen"))
             await ppixiv.seenWorks.loaded;
         let filter = makeFilter(filters);
-        if(filter == null)
+        let hideMuted = listHidesMutedTags(this);
+        if(filter == null && !hideMuted)
             return null;
 
         // Always keep the work the URL is viewing.  Otherwise reloading while viewing a work that
@@ -410,7 +413,9 @@ export default class DataSource extends EventTarget
             if(viewingId != null && helpers.mediaId.parse(mediaId).type == "illust" &&
                helpers.mediaId.toIllustIdAndPage(mediaId)[0] == viewingId)
                 return true;
-            return filter(mediaId);
+            if(hideMuted && hasMutedTag(mediaId))
+                return false;
+            return filter == null || filter(mediaId);
         };
     }
 

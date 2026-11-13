@@ -3,6 +3,7 @@
 import { setThumbnail, forgetThumb, thumbnailLoaded, thumbnailFailed } from '/vview/misc/hd-thumbnails.js';
 import { thumbnailPointerOver, thumbnailPointerMove, cancelHoverPreload } from '/vview/misc/preload.js';
 import { setupQuickBookmark } from '/vview/next/quick-bookmark.js';
+import { mutedTagInList } from '/vview/misc/muted-works.js';
 import Widget from '/vview/widgets/widget.js';
 import { MenuOptionsThumbnailSizeSlider } from '/vview/widgets/menu-option.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js'
@@ -1178,8 +1179,9 @@ export default class SearchView extends Widget
         let thumb = element.querySelector(".thumb");
         let [illustId, illustPage] = helpers.mediaId.toIllustIdAndPage(mediaId);
 
-        // Check if this illustration is muted (blocked).
-        let mutedTag = ppixiv.muting.anyTagMuted(info.tagList);
+        // Check if this illustration is muted (blocked).  The user's own bookmarks show works with
+        // a muted tag, see misc/muted-works.js.
+        let mutedTag = mutedTagInList(info, this.dataSource);
         let mutedUser = ppixiv.muting.isUserIdMuted(info.userId);
         if(mutedTag || mutedUser)
         {
@@ -1498,7 +1500,7 @@ export default class SearchView extends Widget
         let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
         if(info != null)
         {
-            let mutedTag = ppixiv.muting.anyTagMuted(info.tagList);
+            let mutedTag = mutedTagInList(info, this.dataSource);
             let mutedUser = ppixiv.muting.isUserIdMuted(info.userId);
             if(mutedTag || mutedUser)
                 return false;

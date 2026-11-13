@@ -24,6 +24,7 @@ import LocalAPI from '/vview/misc/local-api.js';
 import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { mutedTagInList } from '/vview/misc/muted-works.js';
 
 // The main UI.  This handles creating the viewers and the global UI.
 export default class ScreenIllust extends Screen
@@ -543,7 +544,8 @@ export default class ScreenIllust extends Screen
 
     shouldHideMutedImage(earlyIllustData)
     {
-        let mutedTag = ppixiv.muting.anyTagMuted(earlyIllustData.tagList);
+        // The user's own bookmarks show works with a muted tag, see misc/muted-works.js.
+        let mutedTag = mutedTagInList(earlyIllustData, this.dataSource);
         let mutedUser = ppixiv.muting.isUserIdMuted(earlyIllustData.userId);
         if(this.viewMuted || (!mutedTag && !mutedUser))
             return { isMuted: false };

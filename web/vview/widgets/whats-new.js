@@ -9,6 +9,15 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-13.2",
+        title: "屏蔽的标签",
+        items: [
+            "标签搜索和推荐作品里，带屏蔽标签的作品直接不显示，不再留\"已屏蔽\"的占位格。一页全被屏蔽时自动接着加载下一页。",
+            "自己的收藏里，带屏蔽标签的作品照常显示，点开也能正常看。",
+            "其他列表和屏蔽的用户不变，仍是占位格。搜索的就是屏蔽标签时也仍显示占位格。",
+        ],
+    },
+    {
         id: "2026-11-13",
         title: "自动更新",
         items: [
