@@ -1106,7 +1106,7 @@ export default class SearchView extends Widget
             observer.observe(row);
 
         row.origWidth = this.sizingStyle.containerWidth;
-        row.origHeight = this.sizingStyle.userRowHeight;
+        row.origHeight = row.userRow.height;
         row.fixedSize = true;
         return row;
     }

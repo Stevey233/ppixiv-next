@@ -67,6 +67,10 @@ export function userRowHeight()
     return userRowStripHeight() + 33;
 }
 
+// A row without works (none, all hidden, a muted user) is only as tall as its left block: the
+// name line and two lines of comment (no date line, since there are no works).
+const EMPTY_STRIP_HEIGHT = 72;
+
 // "11/12" this year, "2024/3/5" before.
 function formatDate(date)
 {
@@ -78,7 +82,7 @@ function formatDate(date)
 }
 
 // Build the row for userId.  createWork(mediaId) returns a set up thumbnail box.  The result has
-// userRow: { works: Map of media ID to thumbnail box, shutdown() }.
+// userRow: { works: Map of media ID to thumbnail box, height: the row's height, shutdown() }.
 export function createUserRow({ userId, parent, createWork })
 {
     let data = rows.get(userId);
@@ -143,6 +147,10 @@ export function createUserRow({ userId, parent, createWork })
         strip.append(div);
     };
 
+    let empty = ppixiv.muting.isUserIdMuted(userId) || data.mediaIds.length == 0;
+    if(empty)
+        row.style.setProperty("--n-strip-height", `${EMPTY_STRIP_HEIGHT}px`);
+
     if(ppixiv.muting.isUserIdMuted(userId))
         note("已屏蔽的用户", { empty: true, icon: "mat:block" });
     else if(data.mediaIds.length == 0)
@@ -172,6 +180,7 @@ export function createUserRow({ userId, parent, createWork })
 
     row.userRow = {
         works,
+        height: empty? EMPTY_STRIP_HEIGHT + 33:userRowHeight(),
         shutdown: () => followButton.shutdown(),
     };
     return row;
