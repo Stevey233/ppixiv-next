@@ -14,7 +14,7 @@ import { helpers } from '/vview/misc/helpers.js';
 const SHOWN = 5;
 
 // userId -> promise of the artist's newest work IDs that can be shown (R-18 works the account
-// hides are left out, as in the user rows).
+// hides are left out, as in the user rows), or of null if the request failed.
 const loads = new Map();
 
 // userId -> those IDs, once the request has finished.  The next work of the artist shows them at
@@ -34,11 +34,11 @@ function loadArtistWorks(userId, illustIds)
             work_category: "illustManga",
             is_first_page: "0",
         });
-        if(result.error)
+        if(result.error || result.body?.works == null)
         {
             // Let the next work of this artist try again.
             loads.delete(userId);
-            return [];
+            return null;
         }
 
         let works = Object.values(result.body.works).filter((work) => !work.isMasked);
@@ -165,6 +165,14 @@ export default class ArtistWorks extends Widget
         let ids = await loadArtistWorks(mediaInfo.userId, mediaInfo.userIllustIds);
         if(signal.aborted)
             return;
+
+        // A failed request hides the strip.  An empty list is only for works that are all hidden.
+        if(ids == null)
+        {
+            this.root.hidden = true;
+            this._strip.replaceChildren();
+            return;
+        }
 
         this._render(mediaInfo, ids);
     }
