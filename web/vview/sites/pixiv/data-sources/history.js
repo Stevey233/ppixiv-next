@@ -19,13 +19,18 @@ export default class DataSources_History extends DataSource
         return this.illustIds == null? "最近看过":`最近看过 ${this.illustIds.length}`;
     }
 
+    // Leaving for another list discards this data source, so entering 最近看过 again, from the
+    // menu, a link or back and forward, reads the record as it is now.  Opening a work from this
+    // list keeps the same data source, so returning from the viewer keeps the order.
+    get transient() { return true; }
+
     // The sentence UI shows in place of "no results" says why the list is empty.
     get hasNoResults() { return super.hasNoResults && this.illustIds?.length != 0; }
 
     async loadPageInternal(page)
     {
-        // Read the record once.  Opening a work from this list moves it to the top only after a
-        // reload, so the list doesn't reorder under the user.
+        // Read the record once per data source, so opening a work from this list doesn't reorder
+        // it under the user.
         if(this.illustIds == null)
         {
             this.illustIds = await ppixiv.seenWorks.readByTime() ?? [];
