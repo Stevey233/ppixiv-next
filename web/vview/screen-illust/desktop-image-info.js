@@ -585,16 +585,17 @@ export default class DesktopImageInfo extends Widget
         }
     }
 
-    // Show on the download buttons when this script downloaded the work before: the icon turns
-    // into the check mark of the thumbnail marker, and the tooltip gives the date
-    // (misc/downloaded-works.js).  The labels stay, so the row doesn't rewrap when a download
-    // starts.  The buttons still download again.  The record only says a download was started, so
-    // the wording is "下载过", not "已保存".
+    // Show on the download buttons when this script downloaded the work before: the label says
+    // "下载过", the icon turns into the check mark of the thumbnail marker, and the tooltip gives
+    // the date (misc/downloaded-works.js).  The buttons still download again.  The record only
+    // says a download was started, so the wording is "下载过", not "已保存".
     _refreshDownloaded()
     {
+        let labels = { image: "下载过", ZIP: "全部下载过", MKV: "MKV 下载过" };
         for(let button of this.root.querySelectorAll(".download-button"))
         {
-            let icon = button.querySelector(".font-icon");
+            let label = button.querySelector(".n-label"), icon = button.querySelector(".font-icon");
+            button.dataset.label ??= label.textContent;
             button.dataset.icon ??= icon.textContent;
             button.dataset.defaultPopup ??= button.dataset.popup;
 
@@ -602,6 +603,7 @@ export default class DesktopImageInfo extends Widget
             let time = this._mediaId != null && ppixiv.downloadedWorks.marking?
                 ppixiv.downloadedWorks.downloadedTime(this._mediaId, downloadType):null;
             helpers.html.setClass(button, "n-downloaded", time != null);
+            label.textContent = time != null? labels[downloadType]:button.dataset.label;
             icon.textContent = time != null? "download_done":button.dataset.icon;
             button.dataset.popup = time != null? `${downloadDate(time)} 下载过，点击再下载一次`:button.dataset.defaultPopup;
         }
