@@ -1754,7 +1754,7 @@ html, html.mobile {
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
         overflow: hidden;
 
-        .cm-label { display: none; }
+        .cm-label, .button-bookmark.bookmarked .n-set { display: none; }
         .cm-user { display: contents; }
         .avatar-widget-container { grid-area: user; align-items: center; justify-content: center; }
         .button-parent-folder, .view-in-explorer { display: none; }
@@ -1842,7 +1842,7 @@ html, html.mobile {
         gap: 6px;
         background: none;
 
-        .cm-label { display: none; }
+        .cm-label, .button-bookmark.bookmarked .n-set { display: none; }
         .cm-group, .cm-user { display: contents; }
         .button-parent-folder, .view-in-explorer { display: none; }
 
