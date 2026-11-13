@@ -25,6 +25,7 @@ import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js'
 import { getUrlForMediaId } from '/vview/misc/media-ids.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { mutedTagInList } from '/vview/misc/muted-works.js';
+import { showPageRelative } from '/vview/misc/page-step.js';
 
 // The main UI.  This handles creating the viewers and the global UI.
 export default class ScreenIllust extends Screen
@@ -637,16 +638,8 @@ export default class ScreenIllust extends Screen
 
     _showPageRelative(step)
     {
-        let mediaId = this.currentMediaId;
-        let mediaInfo = mediaId? ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }):null;
-        if(mediaInfo == null)
-            return;
-
-        let page = (helpers.mediaId.parse(mediaId).page ?? 0) + step;
-        if(page < 0 || page >= mediaInfo.pageCount)
-            return;
-
-        ppixiv.app.showMediaId(helpers.mediaId.getMediaIdForPage(mediaId, page));
+        if(this.currentMediaId != null)
+            showPageRelative(this.currentMediaId, step);
     }
 
     onwheel = (e) =>

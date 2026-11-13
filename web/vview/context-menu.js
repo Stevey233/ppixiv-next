@@ -9,6 +9,7 @@
 // This also handles mousewheel zooming.
 
 import Widget from '/vview/widgets/widget.js';
+import { workPageCount, showPageRelative } from '/vview/misc/page-step.js';
 import { BookmarkButtonWidget } from '/vview/widgets/illust-widgets.js';
 import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js';
 import { AvatarWidget, GetUserIdFromMediaId } from '/vview/widgets/user-widgets.js';
@@ -657,6 +658,7 @@ export default class ContextMenu extends Widget
 
         this.visible = false;
         this._hiddenTemporarily = false;
+        this._wheelPageMediaId = null;
         this.applyVisibility();
         OpenWidgets.singleton.set(this, false);
 
@@ -1095,6 +1097,24 @@ export default class ContextMenu extends Widget
         e.stopImmediatePropagation();
         
         let down = e.deltaY > 0;
+
+        // In a multi-page work, the wheel turns pages inside the work instead of zooming.  Zoom
+        // is still on Ctrl+= and Ctrl+-, and on holding the left button.  See docs/design.md.
+        let mediaId = this._wheelPageMediaId ?? this._mediaId;
+        if(workPageCount(mediaId) > 1)
+        {
+            if(ppixiv.settings.get("debounce_wheel") && e.timeDelta != -1 && e.timeDelta < 50)
+                return;
+
+            // Hide the menu so the page shows, the same as zooming.
+            this.hideTemporarily = true;
+
+            // Step from the last page asked for, since showing it can take a moment and the next
+            // wheel event may come first.
+            this._wheelPageMediaId = showPageRelative(mediaId, down? 1:-1) ?? mediaId;
+            return;
+        }
+
         this._handleZoomEvent(e, down);
     }
     
