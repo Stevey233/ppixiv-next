@@ -51,16 +51,18 @@ function loadArtistWorks(userId, illustIds)
     return load;
 }
 
-// Resolve when the viewer's main image at url has loaded, or failed to.
-function mainImageLoaded(url, signal)
+// Resolve when a main image of the work has loaded in the viewer, or failed to.  Any page counts:
+// he may turn the page before the first one loads, and the viewer then replaces that image.
+// Image translation draws on a separate overlay image, so the main image keeps the original's URL.
+function mainImageLoaded(illustId, signal)
 {
-    let loaded = () => [...document.querySelectorAll("img.main-image")].some((img) => img.src == url && img.complete);
-    if(loaded())
+    let ofWork = (img) => img.matches?.("img.main-image") && img.src.includes(`/${illustId}_p`);
+    if([...document.querySelectorAll("img.main-image")].some((img) => ofWork(img) && img.complete))
         return Promise.resolve();
 
     return new Promise((resolve) => {
         let done = (e) => {
-            if(e.target.src != url)
+            if(!ofWork(e.target))
                 return;
             controller.abort();
             resolve();
@@ -94,10 +96,9 @@ export default class ArtistWorks extends Widget
         this._strip = this.root.querySelector(".n-artist-works-strip");
     }
 
-    // Show the strip for mediaInfo (the work in the viewer), or hide it if mediaInfo is null.  page
-    // is the page shown, whose image the request waits for.  Call again whenever the info changes:
-    // nothing reloads for the same work.
-    set({ mediaInfo, page=0 })
+    // Show the strip for mediaInfo (the work in the viewer), or hide it if mediaInfo is null.  Call
+    // again whenever the info changes: nothing reloads for the same work.
+    set({ mediaInfo })
     {
         // Moving to another work of the same artist gives partial info first.  Keep the strip
         // until the full info arrives, instead of hiding it for a moment.
@@ -142,7 +143,7 @@ export default class ArtistWorks extends Widget
         });
         this._strip.replaceChildren(...placeholders);
 
-        this._load(mediaInfo, page, this._abort.signal);
+        this._load(mediaInfo, this._abort.signal);
     }
 
     _stop()
@@ -153,11 +154,11 @@ export default class ArtistWorks extends Widget
         this._userId = null;
     }
 
-    async _load(mediaInfo, page, signal)
+    async _load(mediaInfo, signal)
     {
         // Ugoira don't show their main image, and the zip loads separately.
         if(mediaInfo.illustType != 2)
-            await mainImageLoaded(mediaInfo.getMainImageUrl(page).url, signal);
+            await mainImageLoaded(mediaInfo.illustId, signal);
         if(signal.aborted)
             return;
 

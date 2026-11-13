@@ -449,7 +449,7 @@ export default class DesktopImageInfo extends Widget
         elementTitle.href = getUrlForMediaId(this._mediaId).url;
 
         this._setSeries(mediaInfo);
-        this.artistWorks.set({ mediaInfo: this.visible? mediaInfo:null, page: this.displayedPage ?? 0 });
+        this.artistWorks.set({ mediaInfo: this.visible? mediaInfo:null });
 
         // Show the folder if we're viewing a local image.
         let folderTextElement = this.root.querySelector(".folder-text");
