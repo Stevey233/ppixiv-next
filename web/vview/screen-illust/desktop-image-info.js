@@ -13,6 +13,7 @@ import { helpers, ClassFlags } from '/vview/misc/helpers.js';
 import PointerListener from '/vview/actors/pointer-listener.js';
 import FollowButton from '/vview/next/follow-button.js';
 import ArtistWorks from '/vview/next/artist-works.js';
+import { downloadDate } from '/vview/misc/downloaded-works.js';
 
 export default class DesktopImageInfo extends Widget
 {
@@ -152,6 +153,8 @@ export default class DesktopImageInfo extends Widget
         });
 
         ppixiv.mediaCache.addEventListener("mediamodified", this.refresh, { signal: this.shutdownSignal });
+        ppixiv.downloadedWorks.addEventListener("changed", () => this._refreshDownloaded(), { signal: this.shutdownSignal });
+        ppixiv.settings.addEventListener("mark_downloaded", () => this._refreshDownloaded(), { signal: this.shutdownSignal });
         
         this.likeButton = new LikeButtonWidget({
             container: this.root.querySelector(".button-like-container"),
@@ -498,6 +501,7 @@ export default class DesktopImageInfo extends Widget
 
         let downloadVideoButton = this.root.querySelector(".download-video-button");
         downloadVideoButton.hidden = !Actions.isDownloadTypeAvailable("MKV", mediaInfo);
+        this._refreshDownloaded();
 
         let postInfoContainer = this.root.querySelector(".post-info");
 
@@ -578,6 +582,28 @@ export default class DesktopImageInfo extends Widget
             }
             link.href = getUrlForMediaId(helpers.mediaId.fromIllustId(episode.id)).url;
             link.dataset.popup = `#${episode.order} ${episode.title}`;
+        }
+    }
+
+    // Show on the download buttons when this script downloaded the work before: the icon turns
+    // into the check mark of the thumbnail marker, and the tooltip gives the date
+    // (misc/downloaded-works.js).  The labels stay, so the row doesn't rewrap when a download
+    // starts.  The buttons still download again.  The record only says a download was started, so
+    // the wording is "下载过", not "已保存".
+    _refreshDownloaded()
+    {
+        for(let button of this.root.querySelectorAll(".download-button"))
+        {
+            let icon = button.querySelector(".font-icon");
+            button.dataset.icon ??= icon.textContent;
+            button.dataset.defaultPopup ??= button.dataset.popup;
+
+            let downloadType = button.dataset.download;
+            let time = this._mediaId != null && ppixiv.downloadedWorks.marking?
+                ppixiv.downloadedWorks.downloadedTime(this._mediaId, downloadType):null;
+            helpers.html.setClass(button, "n-downloaded", time != null);
+            icon.textContent = time != null? "download_done":button.dataset.icon;
+            button.dataset.popup = time != null? `${downloadDate(time)} 下载过，点击再下载一次`:button.dataset.defaultPopup;
         }
     }
 

@@ -875,6 +875,28 @@ html.mobile .n-rank-stepper {
         }
     }
 
+    // A work this script downloaded before (web/vview/misc/downloaded-works.js): a check mark on
+    // the plate of "3P", in the top right corner, which nothing else uses.  It's a marker, not a
+    // control, so it has no hover state and clicks go through to the work.
+    .thumbnail-box .n-downloaded {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        background: var(--n-scrim);
+        color: var(--n-text);
+        pointer-events: none;
+
+        .font-icon { font-size: 16px; }
+        &[hidden] { display: none; }
+    }
+
     > .no-results {
         background: none;
         color: var(--n-pencil);
@@ -1112,6 +1134,9 @@ html, html.mobile {
                 &:hover { color: var(--n-text); background: var(--n-surface-2); }
             }
         }
+
+        // Downloaded before: the check mark is in the guide-line blue, the label stays pencil.
+        .download-button.n-downloaded .font-icon { color: var(--n-blue); }
 
         .n-bookmark {
             height: 40px;

@@ -27,6 +27,7 @@ import SitePixiv from '/vview/sites/pixiv/site-pixiv.js';
 import { getResources } from '/vview/app-resources.js';
 import { startTranslating } from '/vview/zh/i18n.js';
 import SeenWorks from '/vview/misc/seen-works.js';
+import DownloadedWorks from '/vview/misc/downloaded-works.js';
 import { startTheme } from '/vview/next/theme.js';
 import { applyFilterDefaults } from '/vview/misc/result-filters.js';
 
@@ -73,6 +74,7 @@ export default class App
         ppixiv.muting = new Muting();
         ppixiv.imageTranslations = new ImageTranslations();
         ppixiv.seenWorks = new SeenWorks();
+        ppixiv.downloadedWorks = new DownloadedWorks();
 
         // Set up the PointerListener singleton.
         PointerListener.installGlobalHandler();

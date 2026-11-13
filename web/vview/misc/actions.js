@@ -703,6 +703,7 @@ export default class Actions
                 singlePageOfMany: downloadType == "image" && mediaInfo.mangaPages.length > 1,
             });
             helpers.saveBlob(blob, filename);
+            ppixiv.downloadedWorks.record(helpers.mediaId.getMediaIdForPage(mediaId, pages[0]), downloadType);
             return;
         }
 
@@ -720,6 +721,7 @@ export default class Actions
         let zip = new CreateZIP(filenames, results);
         let filename = downloadFilename({ mediaInfo, userName: userInfo.name, ext: "zip" });
         helpers.saveBlob(zip, filename);
+        ppixiv.downloadedWorks.record(mediaId, downloadType);
     }
 
     static isDownloadTypeAvailable(downloadType, mediaInfo)

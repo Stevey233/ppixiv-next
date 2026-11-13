@@ -76,6 +76,7 @@ export default class Settings extends EventTarget
         this.configure("following_last_seen_marker", { defaultValue: true });
         this.configure("following_last_seen", { defaultValue: {} }); // see next/last-seen.js
         this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
+        this.configure("mark_downloaded", { defaultValue: true }); // see misc/downloaded-works.js
         this.configure("double_click_fullscreen", { defaultValue: false });
         this.configure("context_menu_style", { defaultValue: "list" });
         this.configure("info_panel_pinned", { defaultValue: true });

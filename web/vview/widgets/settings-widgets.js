@@ -612,6 +612,33 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        markDownloaded: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "标记下载过的作品",
+                setting: "mark_downloaded",
+                explanationEnabled: "这个脚本下载过的作品，缩略图右上角有对勾标记，看图界面的下载按钮图标也变成对勾，悬停显示哪天下载过。只记录开始过下载，不检查文件还在不在。",
+                explanationDisabled: "不显示标记。下载仍然记录，重新打开这个设置就能看到。",
+            });
+        },
+
+        clearDownloadedWorks: () => {
+            let button = new MenuOptionButton({
+                ...globalOptions,
+                label: "清除下载记录",
+                explanationEnabled: () => `已记录 ${ppixiv.downloadedWorks.count} 个作品。`,
+                onclick: async () => {
+                    let prompt = new ConfirmPrompt({ header: `清除 ${ppixiv.downloadedWorks.count} 个作品的下载记录？` });
+                    if(!await prompt.result)
+                        return;
+                    let cleared = await ppixiv.downloadedWorks.clear();
+                    ppixiv.message.show(cleared? "已清除下载记录":"清除失败，记录还在");
+                    button.refresh();
+                },
+            });
+            return button;
+        },
+
         downloadFilename: () => {
             let sample = {
                 author: "作者", author_id: "1234", id: "123456789", title: "作品标题",
@@ -864,7 +891,11 @@ export class SettingsDialog extends DialogWidget
             download: () => {
                 settingsWidgets.downloadFilename();
                 if(!ppixiv.mobile)
+                {
                     settingsWidgets.downloadOnBookmark();
+                    settingsWidgets.markDownloaded();
+                    settingsWidgets.clearDownloadedWorks();
+                }
             },
             thumbnail: () =>
             {

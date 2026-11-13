@@ -92,6 +92,7 @@ export default class PixivUgoiraDownloader
             let mkv = encoder.build();
             let filename = downloadFilename({ mediaInfo: this.illustData, userName: this.illustData.userName, ext: "mkv" });
             helpers.saveBlob(mkv, filename);
+            ppixiv.downloadedWorks.record(this.illustData.mediaId, "MKV");
         } catch(e) {
             console.error(e);
         };

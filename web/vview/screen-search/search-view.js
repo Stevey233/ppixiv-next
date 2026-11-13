@@ -354,6 +354,8 @@ export default class SearchView extends Widget
             this.dataSource?.callUpdateListeners();
         }, this._signal);
         ppixiv.seenWorks.addEventListener("changed", () => this.refreshAllSeen(), this._signal);
+        ppixiv.settings.addEventListener("mark_downloaded", () => this.refreshAllDownloaded(), this._signal);
+        ppixiv.downloadedWorks.addEventListener("changed", () => this.refreshAllDownloaded(), this._signal);
         ppixiv.muting.addEventListener("mutes-changed", () => this.refreshAfterMuteChange(), this._signal);
 
         this.updateFromSettings();
@@ -1344,6 +1346,7 @@ export default class SearchView extends Widget
 
         this.refreshBookmarkIcon(element);
         this.refreshSeen(element);
+        this.refreshDownloaded(element);
 
         // Set the label.  This is only actually shown in following views.
         let label = element.querySelector(".thumbnail-label");
@@ -1893,6 +1896,32 @@ export default class SearchView extends Widget
     {
         for(let thumb of this._workThumbs())
             this.refreshSeen(thumb);
+    }
+
+    // Mark the thumbnails of works downloaded before (misc/downloaded-works.js) in the top right
+    // corner.  The pages in the manga view are marked if that page or the whole work was saved.
+    refreshDownloaded(thumbnailElement)
+    {
+        let mediaId = thumbnailElement.dataset.id;
+        let downloadType = this.dataSource?.name == "manga"? "image":null;
+        let time = ppixiv.downloadedWorks.marking? ppixiv.downloadedWorks.downloadedTime(mediaId, downloadType):null;
+
+        let marker = thumbnailElement.querySelector(".n-downloaded");
+        if(time != null && marker == null)
+        {
+            marker = document.createElement("div");
+            marker.className = "n-downloaded";
+            marker.innerHTML = helpers.createIcon("mat:download_done");
+            thumbnailElement.append(marker);
+        }
+        if(marker != null)
+            marker.hidden = time == null;
+    }
+
+    refreshAllDownloaded()
+    {
+        for(let thumb of this._workThumbs())
+            this.refreshDownloaded(thumb);
     }
 
     refreshAllBookmarkIcons()
