@@ -758,8 +758,10 @@ export default class DataSource extends EventTarget
         console.log("Loading the next page of results:", page);
 
         // The page shouldn't already be loaded.  Double-check to help prevent bugs that might
-        // spam the server requesting the same page over and over.
-        if(this.idList.isPageLoaded(page))
+        // spam the server requesting the same page over and over.  A page the result filters
+        // emptied is loaded, and its load continues with the following pages until one has
+        // works, so wait for that load below.  loadPage returns it without loading again.
+        if(this.idList.isPageLoaded(page) && this.idList.mediaIdsByPage.get(page).length > 0)
         {
             console.error(`Page ${page} is already loaded`);
             return null;

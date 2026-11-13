@@ -92,6 +92,30 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     log('ok   Loading stops after 4 emptied pages until asked to continue');
 }
 
+// The viewer goes forwards while loading is still walking past an emptied page: it waits for
+// the running load instead of stopping at the emptied page.
+{
+    let releasePage3;
+    let page3 = new Promise((resolve) => releasePage3 = resolve);
+    let dataSource = await makeDataSource(["ii", "mm", "ii"], {
+        loadPageInternal: async (page, pages) => {
+            if(page == 3)
+                await page3;
+            return { mediaIds: pages[page] ?? [] };
+        },
+    });
+    await dataSource.loadPage(1);
+    let chain = dataSource.loadPage(2);
+    while(!dataSource.requested.includes(3))
+        await new Promise((resolve) => setImmediate(resolve));
+    let next = dataSource.getOrLoadNeighboringMediaId('illust:101-0', true);
+    releasePage3();
+    assert.equal(await next, 'illust:300-0');
+    await chain;
+    assert.deepEqual(dataSource.requested, [1, 2, 3]);
+    log('ok   The viewer waits for loading past an emptied page');
+}
+
 // The last page is emptied by the filters.
 {
     let dataSource = await makeDataSource(["ii", "mm"]);
