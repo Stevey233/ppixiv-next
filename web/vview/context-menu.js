@@ -398,6 +398,11 @@ export default class ContextMenu extends Widget
         if(e.target.closest("input, textarea, [contenteditable]"))
             return;
 
+        // With a dialog open, hotkeys would act on the work behind it.  The app skips its own
+        // hotkeys then too.
+        if(DialogWidget.activeDialogs.length > 0)
+            return;
+
         // Let the subclass handle events.
         if(this._handleKeyEvent(e))
         {
