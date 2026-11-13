@@ -541,6 +541,16 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        followingLastSeen: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "关注的新作标出上次看到的位置",
+                setting: "following_last_seen_marker",
+                explanationEnabled: "页头显示上次之后有几件新作，上次看到的那张作品标出“上次看到这里”。",
+                explanationDisabled: "不显示件数和标记。",
+            });
+        },
+
         clearSeenWorks: () => {
             return new MenuOptionButton({
                 ...globalOptions,
@@ -855,6 +865,7 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.hdThumbnails();
                     settingsWidgets.seenWorks();
                     settingsWidgets.clearSeenWorks();
+                    settingsWidgets.followingLastSeen();
                 }
                 if(!ppixiv.mobile && !ppixiv.native)
                     settingsWidgets.hoverPreload();

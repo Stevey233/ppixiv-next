@@ -73,6 +73,8 @@ export default class Settings extends EventTarget
         this.configure("hd_thumbnails", { defaultValue: "auto" }); // "auto" or "off"
         this.configure("hover_preload", { defaultValue: true });
         this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
+        this.configure("following_last_seen_marker", { defaultValue: true });
+        this.configure("following_last_seen", { defaultValue: {} }); // see next/last-seen.js
         this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
         this.configure("double_click_fullscreen", { defaultValue: false });
         this.configure("context_menu_style", { defaultValue: "list" });

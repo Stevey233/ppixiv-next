@@ -705,6 +705,34 @@ html.mobile .n-rank-stepper {
         &[hidden] { display: none; }
     }
 
+    // 关注的新作 "since last time" (next/last-seen.js): the plate reuses the rank number's box,
+    // since rankings never show it, and the count follows the header title.
+    .thumbnail-box .rank-number.n-last-seen {
+        font-family: var(--n-font);
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        color: var(--n-blue);
+    }
+
+    @at-root .search-title .n-last-seen-count {
+        margin-left: 12px;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--n-pencil);
+        font: inherit;
+        font-family: var(--n-font);
+        font-size: 15px;
+        font-weight: 400;
+        letter-spacing: 0;
+        vertical-align: 0.2em;
+    }
+
+    @at-root .search-title button.n-last-seen-count {
+        cursor: pointer;
+        &:hover { color: var(--n-blue); }
+    }
+
     // The upstream "last viewed" arrow is replaced by the crop marks.
     .thumbnail-box .last-viewed-image-marker { display: none !important; }
 

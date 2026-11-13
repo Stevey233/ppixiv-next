@@ -349,6 +349,10 @@ export default class SearchView extends Widget
         ppixiv.settings.addEventListener("pixiv_cdn", () => this.updateFromSettings(), this._signal);
         ppixiv.settings.addEventListener("show_ai_icon", () => this.refreshAllBookmarkIcons(), this._signal);
         ppixiv.settings.addEventListener("seen_works", () => this.refreshAllSeen(), this._signal);
+        ppixiv.settings.addEventListener("following_last_seen_marker", () => {
+            this.refreshImages({cause: "settings", purge: true});
+            this.dataSource?.callUpdateListeners();
+        }, this._signal);
         ppixiv.seenWorks.addEventListener("changed", () => this.refreshAllSeen(), this._signal);
         ppixiv.muting.addEventListener("mutes-changed", () => this.refreshAfterMuteChange(), this._signal);
 
@@ -1319,9 +1323,11 @@ export default class SearchView extends Widget
         element.querySelector(".ugoira-icon").hidden = info.illustType != 2 && info.illustType != "video";
 
         let rank = illustPage == 0? this.dataSource?.rankForMediaId?.(mediaId):null;
+        let lastSeen = illustPage == 0 && Boolean(this.dataSource?.lastSeenForMediaId?.(mediaId));
         let rankBox = element.querySelector(".rank-number");
-        rankBox.hidden = rank == null;
-        rankBox.textContent = rank ?? "";
+        rankBox.hidden = rank == null && !lastSeen;
+        rankBox.textContent = rank ?? (lastSeen? "上次看到这里":"");
+        helpers.html.setClass(rankBox, "n-last-seen", lastSeen);
 
         helpers.html.setClass(element, "dot", helpers.pixiv.tagsContainDot(info.tagList));
 

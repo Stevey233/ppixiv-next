@@ -2,20 +2,28 @@ import DataSource, { TagDropdownWidget } from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
+import FollowingLastSeen from '/vview/next/last-seen.js';
 
 // bookmark_new_illust.php, bookmark_new_illust_r18.php
 export default class DataSource_NewPostsByFollowing extends DataSource
 {
     get name() { return "new_works_by_following"; }
     get pageTitle() { return "关注的新作"; }
-    getDisplayingText() { return "关注的新作"; }
+    getDisplayingText() { return this.lastSeen?.title("关注的新作") ?? "关注的新作"; }
     get ui() { return UI; }
 
     constructor(args)
     {
         super(args);
         this.bookmarkTags = [];
+
+        // The "since last time" count and plate, not with a follow tag selected.
+        if(!this.url.searchParams.get("tag"))
+            this.lastSeen = new FollowingLastSeen(this, this.url.pathname == "/bookmark_new_illust_r18.php"? "r18":"all");
     }
+
+    // The search view puts the "上次看到这里" plate on this work.
+    lastSeenForMediaId(mediaId) { return this.lastSeen?.isBoundary(mediaId) ?? false; }
 
     get supportsStartPage() { return true; }
 
@@ -30,6 +38,7 @@ export default class DataSource_NewPostsByFollowing extends DataSource
         });
 
         let data = result.body;
+        this.lastSeen?.pageLoaded(data.thumbnails.illust.map((illust) => illust.id));
 
         // Add translations.
         ppixiv.tagTranslations.addTranslationsDict(data.tagTranslation);
