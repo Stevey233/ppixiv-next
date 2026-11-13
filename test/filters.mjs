@@ -139,6 +139,15 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.deepEqual(filters.artistWorkKinds(set('manga')), ['manga']);
     log('ok   The type and hide-ai filters map to the search, new works and artist APIs');
 
+    // The type filters on lists filtered locally: 插画 keeps illustrations and animations, 漫画
+    // keeps manga, 动图 keeps animations.
+    setupPpixiv({ media: { 1: { illustType: 0 }, 2: { illustType: 1 }, 3: { illustType: 2 } } });
+    let keptBy = (value) => ['illust:1-0', 'illust:2-0', 'illust:3-0'].filter(filters.makeFilter(set(value)));
+    assert.deepEqual(keptBy('illust'), ['illust:1-0', 'illust:3-0']);
+    assert.deepEqual(keptBy('manga'), ['illust:2-0']);
+    assert.deepEqual(keptBy('ugoira'), ['illust:3-0']);
+    log('ok   The type filters keep their types on lists filtered locally');
+
     let { default: Args } = await import('/vview/util/args.js');
     let apply = (url, name) => {
         let args = new Args(url);

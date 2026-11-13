@@ -297,6 +297,8 @@ export function makeFilter(filters)
             return false;
         if(filters.has("manga") && type != 1)
             return false;
+        if(filters.has("ugoira") && type != 2)
+            return false;
 
         let { width, height } = info;
         if(filters.has("portrait") && !(height > width))
