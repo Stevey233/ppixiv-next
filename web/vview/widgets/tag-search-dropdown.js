@@ -20,8 +20,8 @@ export class TagSearchBoxWidget extends widget
                         ${ helpers.createIcon("mat:edit") }
                     </span>
 
-                    <span class="related-tags-button right-side-button">
-                        ${ helpers.createIcon("bookmark") }
+                    <span class="related-tags-button right-side-button popup" data-popup="相关标签">
+                        ${ helpers.createIcon("sell") }
                     </span>
 
                     <span class="search-submit-button right-side-button">
@@ -45,6 +45,7 @@ export class TagSearchBoxWidget extends widget
             button: this._inputElement,
 
             createDropdown: ({...options}) => {
+                this.tagDropdown.visible = false;
                 let dropdown = new TagSearchDropdownWidget({
                     inputElement: this.root,
                     parent: this,
@@ -74,9 +75,13 @@ export class TagSearchBoxWidget extends widget
             },
         });
 
+        // The related tags open where the search history does, so each closes the other.
         this.tagDropdown = new DropdownMenuOpener({
             button: this.querySelector(".related-tags-button"),
-            createDropdown: ({...options}) => new RelatedTagDropdown({ dataSource, ...options }),
+            createDropdown: ({...options}) => {
+                this._dropdownOpener.visible = false;
+                return new RelatedTagDropdown({ dataSource, ...options });
+            },
         });
 
         // Show the dropdown when the input box is focused.

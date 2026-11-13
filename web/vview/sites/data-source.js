@@ -559,6 +559,13 @@ export default class DataSource extends EventTarget
         return button;
     }
 
+    // Create the option links of a search dropdown in container.  items is a list of
+    // { createOptions, setupOptions }: options to createBoxLink and to setItem.  Return the links.
+    createDropdownItems(container, items)
+    {
+        return items.map(({createOptions, setupOptions}) => this.createAndSetButton(container, createOptions, setupOptions));
+    }
+
     // Create a common search dropdown.  button is options to createBoxLink, and items
     // is options to setItem.
     setupDropdown(button, items)
@@ -574,9 +581,7 @@ export default class DataSource extends EventTarget
                     template: `<div class=vertical-list></div>`,
                 });
 
-                for(let {createOptions, setupOptions} of items)
-                    this.createAndSetButton(dropdown.root, createOptions, setupOptions);
-
+                this.createDropdownItems(dropdown.root, items);
                 return dropdown;
             },
         });

@@ -2585,8 +2585,114 @@ html:not(.mobile) .floating > .dialog > .header {
         border: 1px solid var(--n-rule);
         color: var(--n-pencil);
         font-family: var(--n-font-num);
+        .label-box { justify-content: center; }
+        .label { flex: none; }
         &:hover { color: var(--n-text); border-color: var(--n-pencil); }
         &.selected { color: var(--n-blue); border-color: var(--n-blue); box-shadow: none; }
+    }
+}
+
+// Tag search: the rarely changed conditions are in the 更多条件 panel.  The button shows how many
+// are set, and each set one is a chip after it; clicking a chip clears that condition.
+.more-conditions-button .n-more-count {
+    margin-left: 6px;
+    color: var(--n-blue);
+    font-family: var(--n-font-num);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.n-cond-chips {
+    display: contents;
+}
+
+.n-cond-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    align-self: center;
+    height: 26px;
+    padding: 0 6px 0 10px;
+    box-sizing: border-box;
+    border: 1px solid var(--n-rule);
+    border-radius: 13px;
+    color: var(--n-text);
+    font-size: 13px;
+    text-decoration: none;
+
+    > .font-icon { font-size: 16px; color: var(--n-pencil); }
+
+    &:hover, &:hover > .font-icon {
+        border-color: var(--n-blue);
+        color: var(--n-blue);
+    }
+}
+
+.popup-menu-box.n-more-conditions {
+    width: 380px;
+    max-width: calc(100vw - 8px);
+    box-sizing: border-box;
+    padding: 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .n-cond-section {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        align-items: baseline;
+    }
+
+    .n-cond-title {
+        color: var(--n-pencil);
+        font-size: 13px;
+    }
+
+    .n-cond-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin-left: -8px;
+
+        > .box-link {
+            height: 28px;
+            padding: 0 8px;
+            color: var(--n-pencil);
+            font-size: 14px;
+            &:hover { color: var(--n-text); }
+            &.selected { color: var(--n-text); }
+        }
+    }
+
+    // 1 to 7 years ago: number cells after 全部 本周 本月 今年.
+    .n-cond-years {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        margin: 4px 0 0 8px;
+        color: var(--n-pencil);
+        font-size: 13px;
+
+        > a.box-link {
+            height: 28px;
+            min-width: 28px;
+            padding: 0;
+            justify-content: center;
+            border: 1px solid var(--n-rule);
+            border-radius: 4px;
+            color: var(--n-pencil);
+            font-family: var(--n-font-num);
+            font-size: 14px;
+            .label-box { justify-content: center; }
+            .label { flex: none; }
+            &:hover { color: var(--n-text); border-color: var(--n-pencil); }
+            &.selected { color: var(--n-blue); border-color: var(--n-blue); box-shadow: none; border-radius: 4px; }
+        }
+
+        > span { margin-left: 4px; }
     }
 }
 

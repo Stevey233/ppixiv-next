@@ -32,7 +32,7 @@ import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import SavedSearchTags from '/vview/misc/saved-search-tags.js';
 import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
-import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
+import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { searchApiArgs } from '/vview/misc/result-filters.js';
 
@@ -233,6 +233,155 @@ export default class DataSource_Search extends DataSource
     }
 }
 
+// The search conditions, as items for DataSource.setupDropdown.
+const AGES = [{
+    createOptions: { label: "全部",  dataset: { default: true } },
+    setupOptions: { fields: {mode: null} },
+}, {
+    createOptions: { label: "全年龄" },
+    setupOptions: { fields: {mode: "safe"} },
+}, {
+    createOptions: { label: "R18", classes: ["r18"] },
+    setupOptions: { fields: {mode: "r18"} },
+}];
+
+const SORT = [{
+    createOptions: { label: "最新",              dataset: { default: true } },
+    setupOptions: { fields: {order: null}, defaults: {order: "date_d"} }
+}, {
+    createOptions: { label: "最早" },
+    setupOptions: { fields: {order: "date"} }
+}, {
+    createOptions: { label: "热门度",            classes: ["premium-only"] },
+    setupOptions: { fields: {order: "popular_d"} }
+}, {
+    createOptions: { label: "受男性欢迎",        classes: ["premium-only"] },
+    setupOptions: { fields: {order: "popular_male_d"} }
+}, {
+    createOptions: { label: "受女性欢迎",        classes: ["premium-only"] },
+    setupOptions:  { fields: {order: "popular_female_d"} }
+}];
+
+// The fields in the URL ("tc") and the fields in the API ("s_tc") don't match
+// up (they used to).  We'll adjust the API parameters in loadPageInternal.
+const SEARCH_MODE = [{
+    createOptions: { label: "标签",               dataset: { default: true } },
+    setupOptions: { fields: {s_mode: "tag"} },
+}, {
+    // On Pixiv's page, this mode goes to a legacy path-based URL scheme.  We
+    // don't do that.  This will cause this particular search mode to not match
+    // up with the underlying page's URLs, but this one's too obscure and annoying
+    // to bother with.
+    createOptions: { label: "标签完全一致" },
+    setupOptions:  { fields: {s_mode: "tag_full"} },
+}, {
+    createOptions: { label: "标题、说明" },
+    setupOptions:  { fields: {s_mode: "tc"} },
+}, {
+    createOptions: { label: "标签、标题、说明" },
+    setupOptions:  { fields: {s_mode: "tag_tc"} },
+}];
+
+const IMAGE_SIZE = [{
+    createOptions: { label: "全部",               dataset: { default: true } },
+    setupOptions: { fields: {wlt: null, hlt: null, wgt: null, hgt: null} },
+}, {
+    createOptions: { label: "高分辨率" },
+    setupOptions: { fields: {wlt: 3000, hlt: 3000, wgt: null, hgt: null} },
+}, {
+    createOptions: { label: "中分辨率" },
+    setupOptions: { fields: {wlt: 1000, hlt: 1000, wgt: 2999, hgt: 2999} },
+}, {
+    createOptions: { label: "低分辨率" },
+    setupOptions: { fields: {wlt: null, hlt: null, wgt: 999, hgt: 999} },
+}];
+
+const ASPECT = [{
+    createOptions: {label: "全部",               icon: "", dataset: { default: true } },
+    setupOptions: { fields: {ratio: null} },
+}, {
+    createOptions: {label: "长横图",             icon: "panorama" },
+    setupOptions: { fields: {ratio: "0.5"} },
+}, {
+    createOptions: {label: "长竖图",             icon: "portrait" },
+    setupOptions: { fields: {ratio: "-0.5"} },
+}, {
+    createOptions: {label: "正方形",             icon: "crop_square" },
+    setupOptions: { fields: {ratio: "0"} },
+}];
+
+// The Pixiv search form shows 300-499, 500-999 and 1000-.  That's not
+// really useful and the query parameters let us filter differently, so we
+// replace it with a more useful "minimum bookmarks" filter.
+const BOOKMARK_COUNT = [{
+    createOptions: { label: "全部",               dataset: { default: true } },
+    setupOptions: { fields: {blt: null, bgt: null} },
+}, ...[100, 250, 500, 1000, 2500, 5000].map((count) => ({
+    createOptions: { label: `${count}+` },
+    setupOptions: { fields: {blt: count, bgt: null} },
+}))];
+
+const BOOKMARKED = [{
+    createOptions: { label: "全部",               dataset: { default: true } },
+    setupOptions: { fields: {wib: null} },
+}, {
+    createOptions: { label: "全部收藏" },
+    setupOptions: { fields: {wib: 1} },
+}, {
+    createOptions: { label: "公开收藏" },
+    setupOptions: { fields: {wib: 2} },
+}, {
+    createOptions: { label: "非公开收藏" },
+    setupOptions: { fields: {wib: 3} },
+}];
+
+// The time ranges: 全部, 本周, 本月, 今年, then 1 to 7 years ago.
+//
+// The time filter is a range, but I'm not sure what time zone it filters in
+// (presumably either JST or UTC).  There's also only a date and not a time,
+// which means you can't actually filter "today", since there's no way to specify
+// which "today" you mean.  So, we offer filtering starting at "this week",
+// and you can just use the default date sort if you want to see new posts.
+// For "this week", we set the end date a day in the future to make sure we
+// don't filter out posts today.
+function timeItems()
+{
+    let formatDate = (date) =>
+    {
+        return (date.getYear() + 1900).toFixed().padStart(2, "0") + "-" +
+                (date.getMonth() + 1).toFixed().padStart(2, "0") + "-" +
+                date.getDate().toFixed().padStart(2, "0");
+    };
+
+    let range = (createOptions, start, end) => ({
+        createOptions,
+        setupOptions: { fields: {scd: formatDate(start), ecd: formatDate(end)} },
+    });
+
+    let tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    let lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7);
+    let lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
+    let lastYear = new Date(); lastYear.setFullYear(lastYear.getFullYear() - 1);
+    let items = [
+        { createOptions: { label: "全部", dataset: { default: true } }, setupOptions: { fields: {scd: null, ecd: null} } },
+        range({ label: "本周" }, lastWeek, tomorrow),
+        range({ label: "本月" }, lastMonth, tomorrow),
+        range({ label: "今年" }, lastYear, tomorrow),
+    ];
+    for(let yearsAgo = 1; yearsAgo <= 7; ++yearsAgo)
+    {
+        let startYear = new Date(); startYear.setFullYear(startYear.getFullYear() - yearsAgo - 1);
+        let endYear = new Date(); endYear.setFullYear(endYear.getFullYear() - yearsAgo);
+        items.push(range({ label: String(yearsAgo), dataset: { shortLabel: `${yearsAgo} 年前` } }, startYear, endYear));
+    }
+    return items;
+}
+
+// After an option in the 更多条件 panel is picked, the URL changes and a new UI is created for
+// the new data source.  This tells the new UI to open the panel again, so several conditions can
+// be set in a row.  { until, focusIndex }
+let reopenMoreConditions = null;
+
 class UI extends Widget
 {
     constructor({ dataSource, ...options })
@@ -244,15 +393,17 @@ class UI extends Widget
                 </div>
 
                 <div class=box-button-row>
-                    ${ helpers.createBoxLink({label: "Ages",    classes: ["ages-button"] }) }
-                    ${ helpers.createBoxLink({label: "Sort",    classes: ["sort-button"] }) }
-                    ${ helpers.createBoxLink({label: "Search mode",    classes: ["search-mode-button"] }) }
-                    ${ helpers.createBoxLink({label: "Image size",    classes: ["image-size-button"] }) }
-                    ${ helpers.createBoxLink({label: "Aspect",    classes: ["aspect-ratio-button"] }) }
-                    ${ helpers.createBoxLink({label: "# Bookmarks",    classes: ["bookmark-count-button", "premium-only"] }) }
-                    ${ helpers.createBoxLink({label: "Bookmarked",    classes: ["bookmarked-by-user", "premium-only"] }) }
-                    ${ helpers.createBoxLink({label: "Time",    classes: ["time-ago-button"] }) }
-                    ${ helpers.createBoxLink({label: "Reset", popup: "Clear all search options", classes: ["reset-search"] }) }
+                    ${ helpers.createBoxLink({label: "年龄分级",    classes: ["ages-button"] }) }
+                    ${ helpers.createBoxLink({label: "排序",    classes: ["sort-button"] }) }
+                    ${ helpers.createBoxLink({label: "搜索方式",    classes: ["search-mode-button"] }) }
+                    ${ helpers.createBoxLink({label: "图片尺寸",    classes: ["image-size-button"] }) }
+                    ${ helpers.createBoxLink({label: "比例",    classes: ["aspect-ratio-button"] }) }
+                    ${ helpers.createBoxLink({label: "收藏数",    classes: ["bookmark-count-button", "premium-only"] }) }
+                    ${ helpers.createBoxLink({label: "已收藏",    classes: ["bookmarked-by-user", "premium-only"] }) }
+                    ${ helpers.createBoxLink({label: "时间",    classes: ["time-ago-button"] }) }
+                    ${ helpers.createBoxLink({label: "更多条件",    classes: ["more-conditions-button", "n-dropdown"] }) }
+                    <vv-container class=n-cond-chips></vv-container>
+                    ${ helpers.createBoxLink({label: "重置", popup: "清除所有搜索条件", classes: ["reset-search"] }) }
                 </div>
             </div>
         `});
@@ -260,202 +411,99 @@ class UI extends Widget
         this.dataSource = dataSource;
         this.dataSource.addEventListener("updated", () => this.refresh(), this._signal);
 
-        dataSource.setupDropdown(this.querySelector(".ages-button"), [{
-            createOptions: { label: "All",  dataset: { default: true } },
-            setupOptions: { fields: {mode: null} },
-        }, {
-            createOptions: { label: "All ages" },
-            setupOptions: { fields: {mode: "safe"} },
-        }, {
-            createOptions: { label: "R18", classes: ["r18"] },
-            setupOptions: { fields: {mode: "r18"} },
-        }]);
+        let time = timeItems();
 
-        dataSource.setupDropdown(this.querySelector(".sort-button"), [{
-            createOptions: { label: "Newest",              dataset: { default: true } },
-            setupOptions: { fields: {order: null}, defaults: {order: "date_d"} }
-        }, {
-            createOptions: { label: "Oldest" },
-            setupOptions: { fields: {order: "date"} }
-        }, {
-            createOptions: { label: "Popularity",          classes: ["premium-only"] },
-            setupOptions: { fields: {order: "popular_d"} }
-        }, {
-            createOptions: { label: "Popular with men",    classes: ["premium-only"] },
-            setupOptions: { fields: {order: "popular_male_d"} }
-        }, {
-            createOptions: { label: "Popular with women",  classes: ["premium-only"] },
-            setupOptions:  { fields: {order: "popular_female_d"} }
-        }]);
+        // The options that stay in the row.  On desktop, the rarely changed ones are folded into
+        // the 更多条件 panel (see docs/design.md).  Mobile shows every option in its sheet.
+        let outside = [
+            { button: ".ages-button", items: AGES },
+            { button: ".sort-button", items: SORT },
+            { button: ".bookmark-count-button", items: BOOKMARK_COUNT },
+        ];
+        let folded = [
+            // 标签 and 标签完全一致 don't count as set: a tag click opens 标签完全一致.  A chip's ×
+            // goes back to 标签完全一致.
+            { button: ".search-mode-button", title: "搜索方式", items: SEARCH_MODE, unset: [0, 1], reset: 1 },
+            { button: ".image-size-button", title: "图片尺寸", items: IMAGE_SIZE },
+            { button: ".aspect-ratio-button", title: "比例", items: ASPECT },
+            { button: ".bookmarked-by-user", title: "已收藏", items: BOOKMARKED, premiumOnly: true },
+            { button: ".time-ago-button", title: "时间", items: time, time: true },
+        ];
 
-        // Type and "Hide AI" are in the filter bar, which asks the search API for them.
+        if(ppixiv.mobile)
+        {
+            outside.push(...folded);
+            folded = [];
+        }
+        else
+        {
+            // 收藏数 and 已收藏 are premium only.  Without 收藏数, 时间 takes its place in the row:
+            // with newest first, a time range is the closest a free account gets to "recent and popular".
+            if(!ppixiv.pixivInfo?.premium)
+            {
+                folded = folded.filter((section) => !section.premiumOnly);
+                outside.push(folded.pop());
+            }
 
-        // The fields in the URL ("tc") and the fields in the API ("s_tc") don't match
-        // up (they used to).  We'll adjust the API parameters in loadPageInternal.
-        dataSource.setupDropdown(this.querySelector(".search-mode-button"), [{
-            createOptions: { label: "Tag",               dataset: { default: true } },
-            setupOptions: { fields: {s_mode: "tag"} },
-        }, {
-            // On Pixiv's page, this mode goes to a legacy path-based URL scheme.  We
-            // don't do that.  This will cause this particular search mode to not match
-            // up with the underlying page's URLs, but this one's too obscure and annoying
-            // to bother with.
-            createOptions: { label: "Exact tag match" },
-            setupOptions:  { fields: {s_mode: "tag_full"} },
-        }, {
-            createOptions: { label: "Title, Caption" },
-            setupOptions:  { fields: {s_mode: "tc"} },
-        }, {
-            createOptions: { label: "Tags, Title, Caption" },
-            setupOptions:  { fields: {s_mode: "tag_tc"} },
-        }]);
+            // Remove the row's buttons of the conditions that aren't in it.
+            let inRow = new Set(outside.map(({button}) => button));
+            for(let button of [".search-mode-button", ".image-size-button", ".aspect-ratio-button", ".bookmarked-by-user", ".time-ago-button"])
+            {
+                if(!inRow.has(button))
+                    this.querySelector(button).remove();
+            }
+        }
 
-        dataSource.setupDropdown(this.querySelector(".image-size-button"), [{
-            createOptions: { label: "All",               dataset: { default: true } },
-            setupOptions: { fields: {wlt: null, hlt: null, wgt: null, hgt: null} },
-        }, {
-            createOptions: { label: "High-res" },
-            setupOptions: { fields: {wlt: 3000, hlt: 3000, wgt: null, hgt: null} },
-        }, {
-            createOptions: { label: "Medium-res" },
-            setupOptions: { fields: {wlt: 1000, hlt: 1000, wgt: 2999, hgt: 2999} },
-        }, {
-            createOptions: { label: "Low-res" },
-            setupOptions: { fields: {wlt: null, hlt: null, wgt: 999, hgt: 999} },
-        }]);
+        for(let { button, items } of outside)
+        {
+            if(button == ".time-ago-button")
+                this._setupTimeDropdown(this.querySelector(button), items);
+            else
+                dataSource.setupDropdown(this.querySelector(button), items);
+        }
 
-        dataSource.setupDropdown(this.querySelector(".aspect-ratio-button"), [{
-            createOptions: {label: "All",               icon: "", dataset: { default: true } },
-            setupOptions: { fields: {ratio: null} },
-        }, {
-            createOptions: {label: "Long landscape",    icon: "panorama" },
-            setupOptions: { fields: {ratio: "0.5"} },
-        }, {
-            createOptions: {label: "Long portrait",     icon: "portrait" },
-            setupOptions: { fields: {ratio: "-0.5"} },
-        }, {
-            createOptions: {label: "Square",            icon: "crop_square" },
-            setupOptions: { fields: {ratio: "0"} },
-        }]);
+        // The 更多条件 button and the chips of the conditions set in it.
+        let moreButton = this.querySelector(".more-conditions-button");
+        let setCount = 0;
+        if(folded.length == 0)
+            moreButton.remove();
+        else
+        {
+            let chips = this.querySelector(".n-cond-chips");
+            for(let section of folded)
+            {
+                let state = this._sectionState(section);
+                if(!state.set)
+                    continue;
 
-        // The Pixiv search form shows 300-499, 500-999 and 1000-.  That's not
-        // really useful and the query parameters let us filter differently, so we
-        // replace it with a more useful "minimum bookmarks" filter.
-        dataSource.setupDropdown(this.querySelector(".bookmark-count-button"), [{
-            createOptions: { label: "All",               dataType: "bookmarks-all",    dataset: { default: true } },
-            setupOptions: { fields: {blt: null, bgt: null} },
-        }, {
-            createOptions: { label: "100+",              dataType: "bookmarks-100" },
-            setupOptions: { fields: {blt: 100, bgt: null} },
-        }, {
-            createOptions: { label: "250+",              dataType: "bookmarks-250" },
-            setupOptions: { fields: {blt: 250, bgt: null} },
-        }, {
-            createOptions: { label: "500+",              dataType: "bookmarks-500" },
-            setupOptions: { fields: {blt: 500, bgt: null} },
-        }, {
-            createOptions: { label: "1000+",             dataType: "bookmarks-1000" },
-            setupOptions: { fields: {blt: 1000, bgt: null} },
-        }, {
-            createOptions: { label: "2500+",             dataType: "bookmarks-2500" },
-            setupOptions: { fields: {blt: 2500, bgt: null} },
-        }, {
-            createOptions: { label: "5000+",             dataType: "bookmarks-5000" },
-            setupOptions: { fields: {blt: 5000, bgt: null} },
-        }]);
-        
-        dataSource.setupDropdown(this.querySelector(".bookmarked-by-user"), [{
-            createOptions: { label: "All",               dataType: "bookmarks-all",    dataset: { default: true } },
-            setupOptions: { fields: {wib: null} },
-        }, {
-            createOptions: { label: "All bookmarks",     dataType: "bookmarks-all-user" },
-            setupOptions: { fields: {wib: 1} },
-        }, {
-            createOptions: { label: "Public bookmarks",  dataType: "bookmarks-public" },
-            setupOptions: { fields: {wib: 2} },
-        }, {
-            createOptions: { label: "Private bookmarks", dataType: "bookmarks-private" },
-            setupOptions: { fields: {wib: 3} },
-        }]);
+                setCount++;
+                let chip = document.createElement("a");
+                chip.className = "n-cond-chip";
+                chip.href = state.resetUrl;
+                chip.setAttribute("aria-label", `清除 ${state.label}`);
+                chip.innerHTML = `<span class=n-cond-chip-label></span>${ helpers.createIcon("mat:close") }`;
+                chip.querySelector(".n-cond-chip-label").innerText = state.label;
+                chips.appendChild(chip);
+            }
 
-        // The time-ago dropdown has a custom layout, so create it manually.
-        new DropdownMenuOpener({
-            button: this.querySelector(".time-ago-button"),
-            createDropdown: ({...options}) => {
-                let dropdown = new Widget({
-                    ...options,
-                    template: `
-                        <div class=vertical-list>
-                            ${ helpers.createBoxLink({label: "All",               dataType: "time-all",  dataset: { default: true } }) }
-                            ${ helpers.createBoxLink({label: "This week",         dataType: "time-week", dataset: { shortLabel: "Weekly" } }) }
-                            ${ helpers.createBoxLink({label: "This month",        dataType: "time-month" }) }
-                            ${ helpers.createBoxLink({label: "This year",         dataType: "time-year" }) }
+            if(setCount > 0)
+            {
+                let count = document.createElement("span");
+                count.className = "n-more-count";
+                count.innerText = setCount;
+                moreButton.querySelector(".label").after(count);
+            }
+            helpers.html.setClass(moreButton, "selected", setCount > 0);
 
-                            <div class=years-ago>
-                                ${ helpers.createBoxLink({label: "1",             dataType: "time-years-ago-1", dataset: { shortLabel: "1 year" } }) }
-                                ${ helpers.createBoxLink({label: "2",             dataType: "time-years-ago-2", dataset: { shortLabel: "2 years" } }) }
-                                ${ helpers.createBoxLink({label: "3",             dataType: "time-years-ago-3", dataset: { shortLabel: "3 years" } }) }
-                                ${ helpers.createBoxLink({label: "4",             dataType: "time-years-ago-4", dataset: { shortLabel: "4 years" } }) }
-                                ${ helpers.createBoxLink({label: "5",             dataType: "time-years-ago-5", dataset: { shortLabel: "5 years" } }) }
-                                ${ helpers.createBoxLink({label: "6",             dataType: "time-years-ago-6", dataset: { shortLabel: "6 years" } }) }
-                                ${ helpers.createBoxLink({label: "7",             dataType: "time-years-ago-7", dataset: { shortLabel: "7 years" } }) }
-                                <span>years ago</span>
-                            </div>
-                        </div>
-                    `,
-                });
+            this._setupMoreConditions(moreButton, folded);
+        }
 
-                // The time filter is a range, but I'm not sure what time zone it filters in
-                // (presumably either JST or UTC).  There's also only a date and not a time,
-                // which means you can't actually filter "today", since there's no way to specify
-                // which "today" you mean.  So, we offer filtering starting at "this week",
-                // and you can just use the default date sort if you want to see new posts.
-                // For "this week", we set the end date a day in the future to make sure we
-                // don't filter out posts today.
-                dataSource.setItem(dropdown, { type: "time-all", fields: {scd: null, ecd: null} });
-
-                let formatDate = (date) =>
-                {
-                    return (date.getYear() + 1900).toFixed().padStart(2, "0") + "-" +
-                            (date.getMonth() + 1).toFixed().padStart(2, "0") + "-" +
-                            date.getDate().toFixed().padStart(2, "0");
-                };
-
-                let setDateFilter = (name, start, end) =>
-                {
-                    let startDate = formatDate(start);
-                    let endDate = formatDate(end);
-                    dataSource.setItem(dropdown, { type: name, fields: {scd: startDate, ecd: endDate} });
-                };
-
-                let tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-                let lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7);
-                let lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
-                let lastYear = new Date(); lastYear.setFullYear(lastYear.getFullYear() - 1);
-                setDateFilter("time-week", lastWeek, tomorrow);
-                setDateFilter("time-month", lastMonth, tomorrow);
-                setDateFilter("time-year", lastYear, tomorrow);
-                for(let yearsAgo = 1; yearsAgo <= 7; ++yearsAgo)
-                {
-                    let startYear = new Date(); startYear.setFullYear(startYear.getFullYear() - yearsAgo - 1);
-                    let endYear = new Date(); endYear.setFullYear(endYear.getFullYear() - yearsAgo);
-                    setDateFilter("time-years-ago-" + yearsAgo, startYear, endYear);
-                }
-
-                // The "reset search" button removes everything in the query except search terms, and resets
-                // the search type.
-                let box = this.querySelector(".reset-search");
-                let url = new URL(this.dataSource.url);
-                let tag = helpers.pixiv.getSearchTagsFromUrl(url);
-                url.searchParams.set("s_mode", "tag");
-                url.searchParams.set("type", "artwork");
-                if(tag != null)
-                    url.searchParams.set("q", tag);
-                box.href = url;
-
-                return dropdown;
-            },
-        });
+        // 重置 shows only when a condition is set, in the row or in 更多条件.  It removes every
+        // condition and keeps the search mode, unless the search mode itself is the condition.
+        let resetButton = this.querySelector(".reset-search");
+        let outsideSet = outside.some((section) => this._sectionState(section).set);
+        resetButton.hidden = !outsideSet && setCount == 0;
+        resetButton.href = this._resetUrl();
 
         // Create the tag dropdown for the search page input.
         this.tagSearchBox = new TagSearchBoxWidget({
@@ -470,5 +518,138 @@ class UI extends Widget
         if(search)
             search += " ";
         this.querySelector(".tag-search-box .input-field-container > input").value = search;
+    }
+
+    // Return whether a condition is set, its chip label, and the URL its chip links to.
+    _sectionState({ items, unset=[0], reset=0 })
+    {
+        let links = this.dataSource.createDropdownItems(document.createElement("div"), items);
+        let selected = links.findIndex((link) => link.classList.contains("selected"));
+
+        // Nothing is selected when the URL has a value no option makes, such as a 本周 from an
+        // earlier week.  That still filters.
+        let label = selected == -1? "其他":links[selected].dataset.shortLabel ?? items[selected].createOptions.label;
+        return {
+            set: !unset.includes(selected),
+            label,
+            resetUrl: links[reset].href,
+        };
+    }
+
+    _resetUrl()
+    {
+        let url = new URL(this.dataSource.url);
+        let mode = url.searchParams.get("s_mode");
+        if(mode != "tag" && mode != "tag_full")
+            mode = "tag_full";
+
+        let tag = helpers.pixiv.getSearchTagsFromUrl(url);
+        url.search = "";
+        if(tag != null)
+            url.searchParams.set("q", tag);
+        url.searchParams.set("s_mode", mode);
+        url.searchParams.set("type", "artwork");
+        return url.toString();
+    }
+
+    // The 时间 dropdown: the ranges in a list, then the years in a row.
+    _setupTimeDropdown(button, items)
+    {
+        new DropdownMenuOpener({
+            button,
+            createDropdown: ({...options}) => {
+                let dropdown = new Widget({
+                    ...options,
+                    template: `<div class=vertical-list></div>`,
+                });
+
+                this._createTimeItems(dropdown.root, items, "years-ago");
+                return dropdown;
+            },
+        });
+    }
+
+    // Add the time ranges to container, and the years in a row with the class yearsClass.
+    _createTimeItems(container, items, yearsClass)
+    {
+        this.dataSource.createDropdownItems(container, items.slice(0, 4));
+
+        let years = document.createElement("div");
+        years.className = yearsClass;
+        container.appendChild(years);
+        this.dataSource.createDropdownItems(years, items.slice(4));
+
+        let suffix = document.createElement("span");
+        suffix.innerText = "年前";
+        years.appendChild(suffix);
+    }
+
+    // The 更多条件 panel: one section per condition.  Picking an option applies it and the panel
+    // stays open.
+    _setupMoreConditions(button, sections)
+    {
+        let opener = new DropdownBoxOpener({
+            button,
+            clickToOpen: true,
+            createDropdown: ({...options}) => {
+                let panel = new Widget({
+                    ...options,
+                    template: `<div class="n-more-conditions popup-menu-box"></div>`,
+                });
+
+                for(let { title, items, time } of sections)
+                {
+                    let section = document.createElement("div");
+                    section.className = "n-cond-section";
+                    section.innerHTML = `<div class=n-cond-title></div><div class=n-cond-options></div>`;
+                    section.querySelector(".n-cond-title").innerText = title;
+                    panel.root.appendChild(section);
+
+                    // The aspect ratio icons are for the mobile list.
+                    items = items.map((item) => ({ ...item, createOptions: { ...item.createOptions, icon: null } }));
+
+                    let options = section.querySelector(".n-cond-options");
+                    if(time)
+                        this._createTimeItems(options, items, "n-cond-years");
+                    else
+                        this.dataSource.createDropdownItems(options, items);
+                }
+
+                panel.root.addEventListener("click", (e) => {
+                    let link = e.target.closest("a.box-link[href]");
+                    if(link == null || link.classList.contains("selected"))
+                        return;
+
+                    // A keyboard click (detail 0) puts the focus back on the same option.
+                    let links = [...panel.root.querySelectorAll("a.box-link[href]")];
+                    reopenMoreConditions = {
+                        until: Date.now() + 2000,
+                        focusIndex: e.detail == 0? links.indexOf(link):-1,
+                    };
+                });
+
+                return panel;
+            },
+        });
+
+        // The button is a link without an href, so make it reachable by keyboard.
+        button.tabIndex = 0;
+        button.setAttribute("role", "button");
+        button.addEventListener("keydown", (e) => {
+            if(e.key != "Enter" && e.key != " ")
+                return;
+
+            e.preventDefault();
+            opener.visible = !opener.visible;
+        }, this._signal);
+
+        if(reopenMoreConditions != null && Date.now() < reopenMoreConditions.until)
+        {
+            let { focusIndex } = reopenMoreConditions;
+            opener.visible = true;
+            if(focusIndex != -1)
+                opener.dropdown.root.querySelectorAll("a.box-link[href]")[focusIndex]?.focus();
+        }
+        reopenMoreConditions = null;
     }
 }
