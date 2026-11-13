@@ -2099,6 +2099,14 @@ html:not(.mobile) .floating > .dialog > .header {
             line-height: 1.4;
             white-space: nowrap;
             pointer-events: none;
+
+            // The unread-changelog dot is the settings button's ::after too.  Its 7px size,
+            // right offset and ring squeezed "设置" into a dot-sized box, with the text spilling
+            // out over the artwork.  The tooltip replaces the dot while hovered.
+            right: auto;
+            width: auto;
+            height: auto;
+            box-shadow: none;
         }
     }
 }
