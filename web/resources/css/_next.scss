@@ -1842,6 +1842,17 @@ html[data-whats-new-updated] .nav-rail .rail-settings {
     &[hidden] { display: none; }
     &:disabled { opacity: 0.5; cursor: default; }
 
+    // "关注" had no hover or pressed state; the pointer over it changed nothing.
+    @media(hover: hover) {
+        &:not(.followed):not(:disabled):hover {
+            background: color-mix(in srgb, var(--n-blue) 82%, var(--n-text));
+            border-color: color-mix(in srgb, var(--n-blue) 82%, var(--n-text));
+        }
+    }
+    &:not(.followed):not(:disabled):active {
+        background: color-mix(in srgb, var(--n-blue) 80%, var(--n-bg));
+    }
+
     &.followed {
         background: none;
         border-color: var(--n-rule);
@@ -1849,6 +1860,14 @@ html[data-whats-new-updated] .nav-rail .rail-settings {
         font-weight: 500;
         &:hover { color: var(--n-text); border-color: var(--n-pencil); }
     }
+}
+
+// Upstream marks a followed user with a black eye drawn over the avatar.  The artist header and
+// the info panel have the follow button right next to the avatar, which already says "已关注",
+// so the eye there only repeats it in upstream's style.  Other avatars (the context menu) keep it.
+.search-desktop-ui .avatar-container .follow-icon,
+.image-ui .info-author-row .follow-icon {
+    display: none;
 }
 
 // ------------------------------------------------------------------ page number (nombre)
