@@ -187,6 +187,11 @@ export default class Actions
         let result = await helpers.pixivRequest.post("/ajax/illusts/bookmarks/remove", {
             bookmarkIds: [bookmarkId],
         });
+        if(result.error)
+        {
+            ppixiv.message.show(`Couldn't remove bookmark: ${result.message}`);
+            return;
+        }
 
         console.log("Removing bookmark finished");
         mediaInfo.bookmarkData = null;
