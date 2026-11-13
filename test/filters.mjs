@@ -116,6 +116,20 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     log('ok   The viewer waits for loading past an emptied page');
 }
 
+// An API that returns its last page again for every page past the end.  With a filter on, the
+// repeats aren't emptied pages: the list ends instead of pausing and continuing forever.
+{
+    let dataSource = await makeDataSource(["mi", "ii"], { filter: "manga",
+        loadPageInternal: (page, pages) => ({ mediaIds: pages[Math.min(page, 2)] }),
+    });
+    await dataSource.loadPage(1);
+    await dataSource.loadPage(2);
+    assert.deepEqual(dataSource.requested, [1, 2, 3]);
+    assert.equal(dataSource.filteredStopPage ?? null, null);
+    assert.equal(dataSource.loadedAllPages, true);
+    log('ok   A page that only repeats earlier pages ends the list');
+}
+
 // The last page is emptied by the filters.
 {
     let dataSource = await makeDataSource(["ii", "mm"]);
@@ -222,11 +236,11 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     log('ok   Rankings have no 隐藏 AI');
 }
 
-// A list that keeps returning the same works, with filters on: the duplicates count as emptied
-// pages, so loading stops.
+// A list that keeps returning the same works next to new ones the filters remove: the pages left
+// with only duplicates count as emptied pages, so loading stops.
 {
-    let dataSource = await makeDataSource(["ii", "ii", "ii", "ii", "ii", "ii", "ii", "ii"], {
-        loadPageInternal: (page, pages) => ({ mediaIds: page <= 8? pages[1]:[] }),
+    let dataSource = await makeDataSource(["ii", "mm", "mm", "mm", "mm", "mm", "mm", "mm"], {
+        loadPageInternal: (page, pages) => ({ mediaIds: page == 1? pages[1]:page <= 8? [...pages[1], ...pages[page]]:[] }),
     });
     await dataSource.loadPage(1);
     await dataSource.loadPage(2);

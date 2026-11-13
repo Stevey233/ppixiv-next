@@ -166,6 +166,21 @@ export default class DataSource extends EventTarget
         // Run the actual load.
         let { mediaIds, allowEmpty } = await this.loadPageInternal(page) ?? { };
 
+        // Some APIs return their last page again for every page past the end, like new works by
+        // followed users and tag search.  If every work on the page came on an earlier page, it's
+        // past the end.  Without filters, addPage drops them all and the list ends; with filters,
+        // the page would count as emptied and the list would pause and continue forever.  This
+        // checks the works as returned, since the list only holds what the filters kept.
+        this._returnedMediaIds ??= new Set();
+        if(mediaIds?.length && mediaIds.every((mediaId) => this._returnedMediaIds.has(mediaId)))
+        {
+            console.log(`Page ${page} only repeats earlier pages, treating it as the end`);
+            mediaIds = [];
+            allowEmpty = false;
+        }
+        for(let mediaId of mediaIds ?? [])
+            this._returnedMediaIds.add(mediaId);
+
         // Apply the result filters.  If the page had results, add it even if nothing is left, so
         // the next page loads, see below.  Nothing can be left after filtering, or after addPage
         // removes works already on an earlier page, which with few works left is often all of them.
