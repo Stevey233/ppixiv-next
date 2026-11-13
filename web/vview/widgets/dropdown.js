@@ -68,6 +68,19 @@ export class DropdownBoxOpener extends Actor
         this._alignToButton();
     };
 
+    // Openers whose dropdown is open (not as a dialog), oldest first.
+    static _open = [];
+
+    _onkeydown = (e) =>
+    {
+        if(e.key != "Escape" || DropdownBoxOpener._open.at(-1) != this)
+            return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.visible = false;
+    };
+
     // Hide if our tree becomes hidden.
     visibilityChanged()
     {
@@ -191,6 +204,12 @@ export class DropdownBoxOpener extends Actor
                 // the window size changes.
                 window.addEventListener("resize", this.onwindowresize, this._signal);
 
+                // Escape closes the newest open dropdown and nothing else.  This listens in the
+                // capture phase, ahead of the window listeners of dialogs and of the viewer,
+                // which would close the dialog under the dropdown or leave the viewer.
+                DropdownBoxOpener._open.push(this);
+                window.addEventListener("keydown", this._onkeydown, { capture: true });
+
                 this._alignToButton();
             }
 
@@ -238,6 +257,8 @@ export class DropdownBoxOpener extends Actor
         }
 
         window.removeEventListener("resize", this.onwindowresize);
+        window.removeEventListener("keydown", this._onkeydown, { capture: true });
+        DropdownBoxOpener._open = DropdownBoxOpener._open.filter((opener) => opener != this);
         OpenWidgets.singleton.set(this, false);
     }
 

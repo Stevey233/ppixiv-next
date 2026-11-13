@@ -20,6 +20,7 @@ import { IllustWidget } from '/vview/widgets/illust-widgets.js';
 import PointerListener from '/vview/actors/pointer-listener.js';
 import { DropdownBoxOpener } from '/vview/widgets/dropdown.js';
 import ClickOutsideListener from '/vview/widgets/click-outside-listener.js';
+import DialogWidget from '/vview/widgets/dialog.js';
 import Actions from '/vview/misc/actions.js';
 import { getUrlForMediaId } from '/vview/misc/media-ids.js'
 import LocalAPI from '/vview/misc/local-api.js';
@@ -829,8 +830,10 @@ export default class ContextMenu extends Widget
             mediaId = ppixiv.app.getMediaIdAtElement(node).mediaId;
         }
 
-        // Escape when on the illust view backs out to the search:
-        if(e.code == "Escape" && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && screenName == "illust")
+        // Escape when on the illust view backs out to the search.  With a dialog open, the dialog
+        // closes and the viewer stays.
+        if(e.code == "Escape" && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && screenName == "illust" &&
+           DialogWidget.activeDialogs.length == 0)
         {
             ppixiv.phistory.back();
             return true;
