@@ -639,7 +639,8 @@ export default class Actions
 
         if(downloadType == "MKV")
         {
-            new PixivUgoiraDownloader(mediaInfo);
+            // Wait for the video, so downloads queued by downloadWork run one at a time.
+            await new PixivUgoiraDownloader(mediaInfo).finished;
             return;
         }
 

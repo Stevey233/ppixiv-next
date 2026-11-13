@@ -2,7 +2,7 @@ import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
-import { registerUserRow } from '/vview/next/user-rows.js';
+import { registerUserRow, openWorkInArtistList } from '/vview/next/user-rows.js';
 
 export default class DataSource_Follows extends DataSource
 {
@@ -114,21 +114,8 @@ export default class DataSource_Follows extends DataSource
     // works and not through the followed users.
     setUrlMediaId(mediaId, args)
     {
-        let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
-        if(info == null)
-            return super.setUrlMediaId(mediaId, args);
-
-        let [illustId, page] = helpers.mediaId.toIllustIdAndPage(mediaId);
-        let view = args.hash.get("view");
-        args.path = `/users/${info.userId}/artworks`;
-        args.query = new URLSearchParams();
-        args.hash = new URLSearchParams();
-        args.state = {};
-        if(view != null)
-            args.hash.set("view", view);
-        args.hash.set("illust_id", illustId);
-        if(page != 0)
-            args.hash.set("page", page + 1);
+        if(!openWorkInArtistList(mediaId, args))
+            super.setUrlMediaId(mediaId, args);
     }
 
     get viewingSelf()

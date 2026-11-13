@@ -21,7 +21,8 @@ export default class PixivUgoiraDownloader
         this.mimeType = illustData.ugoiraMetadata.mimeType;
         this.frames = [];
 
-        this.loadAllFrames();
+        // Resolves once the video has been saved.
+        this.finished = this.loadAllFrames();
     }
 
     async loadAllFrames()

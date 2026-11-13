@@ -210,9 +210,13 @@ export default class ContextMenu extends Widget
             e.preventDefault();
             e.stopPropagation();
 
-            // Alt-click shows the rarely-used options too.
+            // Alt-click shows the rarely-used options too.  The rows are only rebuilt when the
+            // group opens, so an Alt-click on the open group has to rebuild them itself.
+            let wasOpen = this._moreOpen;
             this._moreOptions.showExtra = e.altKey;
             this._setMoreOpen(!this._moreOpen || e.altKey);
+            if(wasOpen && this._moreOpen)
+                this._moreOptions.refresh();
         });
 
         // Load full media info when the context menu is open, so we can find out if the post
