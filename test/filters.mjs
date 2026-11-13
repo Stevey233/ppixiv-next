@@ -211,6 +211,15 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.equal(apply('https://www.pixiv.net/users/77/bookmarks/artworks#ppixiv', 'bookmarks'), '/users/77/bookmarks/artworks#ppixiv?filter=hide-ai');
     assert.equal(apply('https://www.pixiv.net/users/5/bookmarks/artworks#ppixiv', 'bookmarks'), null);
     log('ok   The own bookmarks list has its own remembered filters, without 隐藏已收藏');
+
+    // Rankings don't offer 隐藏 AI, and a remembered one doesn't apply.
+    assert.equal(filters.filterAvailable('rankings', 'hide-ai'), false);
+    assert.equal(filters.filterAvailable('rankings', 'hide-seen'), true);
+    filters.rememberFilters('rankings', set('hide-ai'));
+    assert.equal(apply('https://www.pixiv.net/ranking.php#ppixiv', 'rankings'), null);
+    filters.rememberFilters('rankings', set('hide-ai', 'hide-seen'));
+    assert.equal(apply('https://www.pixiv.net/ranking.php#ppixiv', 'rankings'), '/ranking.php#ppixiv?filter=hide-seen');
+    log('ok   Rankings have no 隐藏 AI');
 }
 
 // A list that keeps returning the same works, with filters on: the duplicates count as emptied

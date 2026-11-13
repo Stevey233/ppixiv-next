@@ -92,6 +92,11 @@ export function filterAvailable(listKey, value)
     // works list would pause after four empty pages nearly every time.
     if(listKey == "new_illust" && value == "ugoira")
         return false;
+
+    // Pixiv keeps AI works out of the general rankings, and its ranking data has no AI field,
+    // so 隐藏 AI would hide nothing there and everything on the AI rankings.
+    if(listKey == "rankings" && value == "hide-ai")
+        return false;
     return !(listKey == "bookmarks-own" && value == "hide-bookmarked");
 }
 
