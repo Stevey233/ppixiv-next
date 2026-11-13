@@ -9,6 +9,14 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-13.4",
+        title: "右键滚轮翻缩略图",
+        items: [
+            "在列表里，鼠标停在多页作品上按住右键滚动滚轮，缩略图直接换成上一页、下一页，右下角显示\"2/5\"这样的页码，不用点开。这时左键点开的就是显示的那一页。",
+            "上一版把这个功能误做在了看图界面里，现已撤回：看图时按住右键滚轮仍是缩放。",
+        ],
+    },
+    {
         id: "2026-11-13.2",
         title: "屏蔽的标签",
         items: [

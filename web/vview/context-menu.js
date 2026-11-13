@@ -9,6 +9,7 @@
 // This also handles mousewheel zooming.
 
 import Widget from '/vview/widgets/widget.js';
+import { stepThumbnailPage } from '/vview/next/thumb-pages.js';
 import { BookmarkButtonWidget } from '/vview/widgets/illust-widgets.js';
 import { HideMouseCursorOnIdle } from '/vview/misc/hide-mouse-cursor-on-idle.js';
 import { AvatarWidget, GetUserIdFromMediaId } from '/vview/widgets/user-widgets.js';
@@ -1057,6 +1058,25 @@ export default class ContextMenu extends Widget
         // RMB-wheel zooming is confusing in toggle mode.
         if(this.toggleMode)
             return;
+
+        // In a list, the wheel over a multi-page work shows its other pages in the thumbnail.
+        // See docs/design.md.
+        if(this.visible && !this._isZoomUiEnabled && this._clickedMediaId != null &&
+           this.avatarWidget.userDropdownWidget == null && !e.target.closest(".popup-bookmark-tag-dropdown"))
+        {
+            if(ppixiv.settings.get("debounce_wheel") && e.timeDelta != -1 && e.timeDelta < 50)
+                return;
+
+            if(stepThumbnailPage(this._clickedMediaId, e.deltaY > 0? 1:-1))
+            {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                // Hide the menu so the thumbnail shows, the same as zooming in the viewer.
+                this.hideTemporarily = true;
+                return;
+            }
+        }
 
         // Stop if zooming isn't enabled.
         if(!this._isZoomUiEnabled)
