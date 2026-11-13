@@ -2041,6 +2041,12 @@ html:not(.mobile) .floating > .dialog > .header {
         }
     }
 
+    // While the filters have paused loading, the filter bar says so and offers "继续查找".  The
+    // list's "没有结果" under it contradicted that: there may be results on later pages.
+    .screen-search-container:has(.filter-bar .filter-stopped:not([hidden])) & > .no-results {
+        display: none;
+    }
+
     // "No results": plain secondary text where the first row would be, instead of a black box.
     > .no-results {
         justify-content: flex-start;
