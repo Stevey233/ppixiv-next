@@ -17,11 +17,10 @@ import { helpers } from '/vview/misc/helpers.js';
 // Each date is its own data source, so this isn't kept on one.
 let latestDates = new Map();
 
-// The first day of each ranking, from Pixiv's answers on 2026-11-13.  The modes not measured then
-// (male_r18, female_r18, r18g) use their all-ages mode's day.  The date picker's first day.
+// The first day of each ranking, from Pixiv's answers on 2026-11-13.  The date picker's first day.
 const firstDates = {
     daily: "20070913", daily_r18: "20070913",
-    weekly: "20080415", weekly_r18: "20080415", r18g: "20080415", monthly: "20080415",
+    weekly: "20080415", weekly_r18: "20080415", r18g: "20090516", monthly: "20080415",
     rookie: "20100331",
     male: "20111012", male_r18: "20111012", female: "20111012", female_r18: "20111012",
     original: "20120502",
