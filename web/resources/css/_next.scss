@@ -3045,7 +3045,8 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 
     // An action after the message, like 撤销 after 已取消收藏: a link-styled button.  The box
-    // ignores the mouse, so only the button takes it, and only while it's shown.
+    // ignores the mouse; a shown message with an action takes it, so hovering the message keeps
+    // it up (message-widget.js).
     .message-action {
         margin-left: 16px;
         padding: 0;
@@ -3060,6 +3061,7 @@ html:not(.mobile) .floating > .dialog > .header {
         &:focus-visible { outline: 2px solid var(--n-blue); outline-offset: 1px; }
     }
     &.show .message-action { pointer-events: auto; }
+    &.show.has-action > .message { pointer-events: auto; }
 }
 
 // ------------------------------------------------------------------ settings pages

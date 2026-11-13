@@ -1,4 +1,5 @@
 import Widget from '/vview/widgets/widget.js';
+import { helpers } from '/vview/misc/helpers.js';
 
 // Display messages in the popup widget.  This is a singleton.
 export default class MessageWidget extends Widget
@@ -21,6 +22,31 @@ export default class MessageWidget extends Widget
             if(!this._hasAction)
                 this.hide();
         }, this._signal);
+
+        // A message with an action stays while the mouse is over it or its button has focus, and
+        // goes 3 seconds after both leave.
+        for(let type of ["pointerenter", "pointerleave", "focusin", "focusout"])
+            this.root.addEventListener(type, () => this._refreshHold(), this._signal);
+    }
+
+    _refreshHold()
+    {
+        if(!this._hasAction)
+            return;
+
+        if(this.root.matches(":hover, :focus-within"))
+            this.clearTimer();
+        else if(this.timer == null)
+            this._startTimer(3000);
+    }
+
+    _startTimer(ms)
+    {
+        this.timer = realSetTimeout(() => {
+            this.timer = null;
+            this.root.classList.remove("show");
+            this._hasAction = false;
+        }, ms);
     }
 
     // action is { label, onclick }: a button after the message.  Clicking it hides the message.
@@ -51,10 +77,9 @@ export default class MessageWidget extends Widget
 
         this.root.classList.add("show");
         this.root.classList.remove("centered");
-        this.timer = realSetTimeout(() => {
-            this.root.classList.remove("show");
-            this._hasAction = false;
-        }, duration ?? (action? 6000:3000));
+        helpers.html.setClass(this.root, "has-action", this._hasAction);
+        this._startTimer(duration ?? (action? 6000:3000));
+        this._refreshHold();
     }
 
     clearTimer()
