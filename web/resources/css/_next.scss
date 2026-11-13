@@ -2060,6 +2060,130 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 }
 
+// ------------------------------------------------------------------ user rows
+//
+// 关注的用户, 推荐用户 and 搜索用户: one row per user (web/vview/next/user-rows.js).  Each row is
+// alone on a grid row, sized by search-view.js; the works in it are normal thumbnail boxes.
+
+.search-view .n-user-row {
+    display: flex;
+    align-items: flex-start;
+    width: var(--thumb-width);
+    height: var(--thumb-height);
+    padding: 16px 0;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--n-rule);
+    flex-shrink: 0;
+
+    .n-user-row-info {
+        display: flex;
+        gap: 12px;
+        flex: none;
+        width: 300px;
+        padding-right: 16px;
+        box-sizing: border-box;
+        @media (max-width: 1399px) { width: 220px; }
+    }
+
+    .n-user-row-avatar {
+        flex: none;
+        width: 56px;
+        height: 56px;
+        border-radius: var(--n-radius);
+        overflow: hidden;
+        background: var(--n-surface);
+        img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    }
+
+    .n-user-row-text {
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .n-user-row-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        min-height: 30px;
+    }
+
+    .n-user-row-name {
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--n-text);
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    &:hover .n-user-row-name { color: var(--n-blue); }
+
+    .n-follow {
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 13px;
+        font-size: 12px;
+    }
+
+    .n-user-row-comment {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        color: var(--n-pencil);
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        &:empty { display: none; }
+    }
+
+    .n-user-row-date {
+        color: var(--n-pencil);
+        font-family: var(--n-font-num);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        &:empty { display: none; }
+    }
+
+    .n-user-row-works {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+        height: var(--n-strip-height);
+
+        // Wide works shrink to share the width; a work never gets narrower than 1:3.
+        > .thumbnail-box {
+            flex-shrink: 1;
+            min-width: calc(var(--n-strip-height) / 3);
+        }
+    }
+
+    .n-user-row-note {
+        align-self: center;
+        padding-left: 8px;
+        color: var(--n-pencil);
+        font-size: 13px;
+
+        // No works at all: the note takes the strip's place.
+        &.empty {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            align-self: stretch;
+            padding: 0;
+        }
+        .font-icon { font-size: 18px; }
+    }
+}
+
 // ------------------------------------------------------------------ tooltips
 //
 // Upstream's tooltips (data-popup on .popup) sit 2em above the element, starting at its left

@@ -3,6 +3,7 @@
 import { setThumbnail, forgetThumb, thumbnailLoaded, thumbnailFailed } from '/vview/misc/hd-thumbnails.js';
 import { thumbnailPointerOver, thumbnailPointerMove, cancelHoverPreload } from '/vview/misc/preload.js';
 import { setupQuickBookmark } from '/vview/next/quick-bookmark.js';
+import { createUserRow, userRowHeight } from '/vview/next/user-rows.js';
 import { mutedTagInList } from '/vview/misc/muted-works.js';
 import Widget from '/vview/widgets/widget.js';
 import { MenuOptionsThumbnailSizeSlider } from '/vview/widgets/menu-option.js';
@@ -120,8 +121,9 @@ class ThumbnailGrid
             thumb.currentHeight = thumb.origHeight;
         }
     
-        // Only adjust the size when in aspect mode, not for square thumbs.
-        if(this.sizingStyle.thumbnailStyle != "aspect")
+        // Only adjust the size when in aspect mode, not for square thumbs.  A user row (see
+        // next/user-rows.js) fills its grid row alone at a fixed size.
+        if(this.sizingStyle.thumbnailStyle != "aspect" || row.firstElementChild?.fixedSize)
         {
             this.applySizes(row);
             return;
@@ -210,7 +212,7 @@ export default class SearchView extends Widget
         this.thumbnailBox.addEventListener("pointerleave", thumbnailPointerOver, this._signal);
         this.shutdownSignal.addEventListener("abort", () => {
             cancelHoverPreload();
-            for(let node of Object.values(this.thumbs))
+            for(let node of this._workThumbs())
                 forgetThumb(node.querySelector(".thumb"));
         });
         this._setDataSourceRunner = new GuardedRunner(this._signal);
@@ -802,7 +804,9 @@ export default class SearchView extends Widget
         // We'll expand in both directions if possible, so if we have a targetMediaId and it's in
         // the middle, it'll stay in the middle if possible.  Expand to twice the screen area, since
         // some of the thumbs we'll create will only be partially onscreen.
-        let { desiredPixels, containerWidth } = this.sizingStyle;
+        let { desiredPixels, containerWidth, userRowHeight } = this.sizingStyle;
+        if(userRowHeight != null)
+            desiredPixels = containerWidth * userRowHeight;
         let viewPixels = containerWidth * this.scrollContainer.offsetHeight;
         viewPixels *= 2;
         while(1)
@@ -898,6 +902,7 @@ export default class SearchView extends Widget
 
         // If targetMediaId isn't in the list, this might be a manga page beyond the first that
         // isn't displayed, so try the first page instead.
+        targetMediaId = this._rowMediaId(targetMediaId);
         if(targetMediaId != null && allMediaIds.indexOf(targetMediaId) == -1)
             targetMediaId = helpers.mediaId.getMediaIdFirstPage(targetMediaId);
 
@@ -974,9 +979,11 @@ export default class SearchView extends Widget
     _clearThumbs()
     {
         cancelHoverPreload();
+        for(let node of this._workThumbs())
+            forgetThumb(node.querySelector(".thumb"));
         for(let node of Object.values(this.thumbs))
         {
-            forgetThumb(node.querySelector(".thumb"));
+            node.userRow?.shutdown();
             node.remove();
             for(let observer of this.intersectionObservers)
                 observer.unobserve(node);
@@ -986,9 +993,13 @@ export default class SearchView extends Widget
         this.grid.clear();
     }
 
-    // Create a thumbnail.
-    createThumb(mediaId, searchPage)
+    // Create a thumbnail.  observe is false for the works inside a user row, which isn't a grid
+    // item itself.
+    createThumb(mediaId, searchPage, { observe=true }={})
     {
+        if(this.sizingStyle.userRowHeight != null && helpers.mediaId.parse(mediaId).type == "user")
+            return this._createUserRow(mediaId, searchPage);
+
         // makeSVGUnique is disabled here as a small optimization, since these SVGs don't need it.
         let entry = this.createTemplate({ name: "template-thumbnail", makeSVGUnique: false, html: `
             <div class=thumbnail-box>
@@ -1049,12 +1060,69 @@ export default class SearchView extends Widget
 
         if(searchPage != null)
             entry.dataset.searchPage = searchPage;
-        for(let observer of this.intersectionObservers)
-            observer.observe(entry);
+        if(observe)
+        {
+            for(let observer of this.intersectionObservers)
+                observer.observe(entry);
+        }
 
         this.setupThumb(entry);
 
         return entry;
+    }
+
+    // Create the row for a user:<id> in a list of user rows.  See next/user-rows.js.
+    _createUserRow(mediaId, searchPage)
+    {
+        let row = createUserRow({
+            userId: helpers.mediaId.parse(mediaId).id,
+            parent: this,
+            createWork: (workId) => this.createThumb(workId, null, { observe: false }),
+        });
+
+        row.dataset.id = mediaId;
+        if(searchPage != null)
+            row.dataset.searchPage = searchPage;
+        for(let observer of this.intersectionObservers)
+            observer.observe(row);
+
+        row.origWidth = this.sizingStyle.containerWidth;
+        row.origHeight = this.sizingStyle.userRowHeight;
+        row.fixedSize = true;
+        return row;
+    }
+
+    // The thumbnail boxes of works: the grid's own, and the works inside user rows.
+    *_workThumbs()
+    {
+        for(let node of Object.values(this.thumbs))
+        {
+            if(node.userRow)
+                yield* node.userRow.works.values();
+            else
+                yield node;
+        }
+    }
+
+    // Return the thumbnail box showing mediaId, including works inside user rows.
+    _getWorkThumb(mediaId)
+    {
+        let thumb = this.getThumbnailForMediaId(mediaId);
+        if(thumb != null || !this.dataSource?.userRows)
+            return thumb;
+
+        let row = this.thumbs[this._rowMediaId(mediaId)];
+        return row?.userRow?.works.get(mediaId) ?? null;
+    }
+
+    // In a list of user rows, a work is shown in its user's row.  Return the row's ID.
+    _rowMediaId(mediaId)
+    {
+        if(mediaId == null || !this.dataSource?.userRows || helpers.mediaId.parse(mediaId).type != "illust")
+            return mediaId;
+
+        let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
+        return info? `user:${info.userId}`:mediaId;
     }
 
     // Return { thumbWidth, thumbHeight} for mediaId.
@@ -1308,9 +1376,11 @@ export default class SearchView extends Widget
 
         // Limit the number of visible thumbs, so we don't load too much data at once.  Allow
         // unlimited columns for local images.
+        // User rows (next/user-rows.js) always use the full width.
         let maxThumbs = this.dataSource?.isVView? 500:40;
         let rows = window.innerHeight / thumbWidth;
-        if(columns * rows > maxThumbs)
+        let userRows = Boolean(this.dataSource?.userRows);
+        if(columns * rows > maxThumbs && !userRows)
         {
             columns = maxThumbs / rows;
             containerWidth = Math.floor(thumbWidth*columns + padding*(columns-1));
@@ -1322,6 +1392,7 @@ export default class SearchView extends Widget
             thumbnailStyle, padding, thumbWidth, thumbHeight,
             containerWidth, containerHeight,
             desiredPixels,
+            userRowHeight: userRows? userRowHeight():null,
 
             // This list just forces a refresh if any values inside it change.
             deps: [
@@ -1349,7 +1420,7 @@ export default class SearchView extends Widget
     {
         // See if this is a click on the manga page toggle.
         let pageCountBox = e.target.closest(".manga-info-box");
-        if(pageCountBox)
+        if(pageCountBox && !pageCountBox.closest(".n-user-row"))
         {
             e.preventDefault();
             e.stopPropagation();
@@ -1548,7 +1619,7 @@ export default class SearchView extends Widget
     // Refresh all expanded thumbs.  This is only needed if the default changes.
     refreshExpandedThumbAll()
     {
-        for(let thumb of this.getLoadedThumbs())
+        for(let thumb of this._workThumbs())
             this.refreshExpandedThumb(thumb);
     }
 
@@ -1744,7 +1815,7 @@ export default class SearchView extends Widget
         if(mediaInfo == null)
             return;
 
-        let thumbnailElement = this.getThumbnailForMediaId(mediaId);
+        let thumbnailElement = this._getWorkThumb(mediaId);
         if(thumbnailElement != null)
             this.refreshBookmarkIcon(thumbnailElement);
 
@@ -1800,13 +1871,13 @@ export default class SearchView extends Widget
 
     refreshAllSeen()
     {
-        for(let thumb of this.getLoadedThumbs())
+        for(let thumb of this._workThumbs())
             this.refreshSeen(thumb);
     }
 
     refreshAllBookmarkIcons()
     {
-        for(let thumb of this.getLoadedThumbs())
+        for(let thumb of this._workThumbs())
             this.refreshBookmarkIcon(thumb);
     }
 
@@ -1869,7 +1940,7 @@ export default class SearchView extends Widget
         // Make sure this image has a thumbnail created if possible.
         this.refreshImages({ targetMediaId: mediaId, cause: "scroll-to-id" });
 
-        let thumb = this.getThumbnailForMediaId(mediaId, { fallbackOnPage1: true });
+        let thumb = this.getThumbnailForMediaId(this._rowMediaId(mediaId), { fallbackOnPage1: true });
         if(thumb == null)
             return false;
 
@@ -1900,7 +1971,7 @@ export default class SearchView extends Widget
     // Return the bounding rectangle for the given mediaId.
     getRectForMediaId(mediaId)
     {
-        let thumb = this.getThumbnailForMediaId(mediaId, { fallbackOnPage1: true });
+        let thumb = this._getWorkThumb(mediaId) ?? this.getThumbnailForMediaId(mediaId, { fallbackOnPage1: true });
         if(thumb == null)
             return null;
 
@@ -1913,7 +1984,7 @@ export default class SearchView extends Widget
         if(ppixiv.settings.get("animations_enabled"))
             return;
 
-        let thumb = this.getThumbnailForMediaId(mediaId);
+        let thumb = this._getWorkThumb(mediaId);
         if(thumb == null)
             return;
 

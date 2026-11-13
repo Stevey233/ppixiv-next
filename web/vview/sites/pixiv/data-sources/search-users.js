@@ -1,11 +1,19 @@
 import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { registerUserRow, openWorkInArtistList } from '/vview/next/user-rows.js';
 
 export default class DataSource_SearchUsers extends DataSource
 {
     get name() { return "search-users"; }
     get allowExpandingMangaPages() { return false; }
+    get userRows() { return true; }
+
+    setUrlMediaId(mediaId, args)
+    {
+        if(!openWorkInArtistList(mediaId, args))
+            super.setUrlMediaId(mediaId, args);
+    }
   
     async loadPageInternal(page)
     {
@@ -33,16 +41,31 @@ export default class DataSource_SearchUsers extends DataSource
             return;
         }
 
-        // This returns images for each user, but that doesn't seem useful (this is a user search,
-        // not discovery), and the format is different from everything else, so it's a bit of a pain
-        // to use.  Just return users.
+        // Each user is one row with their latest works (see next/user-rows.js).  This API gives
+        // each user's 3 latest works in its own format, without bookmark data, so take only
+        // their IDs and load them all with one batch request in the usual format.  That request
+        // returns any work, whatever user ID is in its URL.
+        let users = result.body.users;
+        let workIds = (user) => (user.illusts ?? []).map((illust) => helpers.mediaId.fromIllustId(illust.id));
+        let allWorkIds = users.flatMap(workIds);
+        if(allWorkIds.length)
+            await ppixiv.mediaCache.batchGetMediaInfoPartial(allWorkIds, { userId: users[0].user_id });
+
         let mediaIds = [];
-        for(let user of result.body.users)
+        for(let user of users)
         {
             ppixiv.extraCache.addQuickUserData({
                 userId: user.user_id,
                 userName: user.user_name,
                 profileImageUrl: user.profile_img.main,
+            });
+            registerUserRow({
+                userId: user.user_id,
+                userName: user.user_name,
+                profileImageUrl: user.profile_img.main,
+                comment: user.user_comment,
+                mediaIds: workIds(user).filter((mediaId) => ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) != null),
+                isFollowed: user.is_following,
             });
 
             mediaIds.push(`user:${user.user_id}`);

@@ -434,7 +434,7 @@ class CreepyEyeWidget extends Widget
 }
 
 // Dropdown to follow and unfollow users
-class FollowWidget extends Widget
+export class FollowWidget extends Widget
 {
     constructor({
         userId=null,

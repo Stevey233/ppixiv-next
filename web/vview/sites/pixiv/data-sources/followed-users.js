@@ -2,12 +2,15 @@ import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { registerUserRow } from '/vview/next/user-rows.js';
 
 export default class DataSource_Follows extends DataSource
 {
     get name() { return "following"; }
     get supportsStartPage() { return true;}
     get ui() { return UI; }
+    get userRows() { return true; }
+    get allowExpandingMangaPages() { return false; }
   
     constructor(args)
     {
@@ -61,7 +64,9 @@ export default class DataSource_Follows extends DataSource
         this.followTags.sort((lhs, rhs) => lhs.toLowerCase().localeCompare(rhs.toLowerCase()));
         this.callUpdateListeners();
 
-        // Make a list of the first illustration for each user.
+        // Each user is one row with their latest works.  See next/user-rows.js.  Users with no
+        // works are listed too: they're the likely ones to unfollow.
+        let mediaIds = [];
         let illusts = [];
         for(let followedUser of result.body.users)
         {
@@ -71,23 +76,27 @@ export default class DataSource_Follows extends DataSource
             // Register this as quick user data, for use in thumbnails.
             ppixiv.extraCache.addQuickUserData(followedUser, "following");
 
-            if(!followedUser.illusts.length)
-            {
-                console.log("Can't show followed user that has no posts:", followedUser.userId);
-                continue;
-            }
+            // Pixiv masks R-18 works when the account hides them.
+            let works = followedUser.illusts.filter((illust) => !illust.isMasked);
+            works.sort((lhs, rhs) => rhs.id - lhs.id);
 
-            let illust = followedUser.illusts[0];
-            illusts.push(illust);
+            // These results don't have profileImageUrl and only put it in the enclosing user,
+            // so copy it over.
+            for(let illust of works)
+                illust.profileImageUrl = followedUser.profileImageUrl;
+            illusts.push(...works);
 
-            // We'll register this with MediaCache below.  These results don't have profileImageUrl
-            // and only put it in the enclosing user, so copy it over.
-            illust.profileImageUrl = followedUser.profileImageUrl;
+            registerUserRow({
+                userId: followedUser.userId,
+                userName: followedUser.userName,
+                profileImageUrl: followedUser.profileImageUrl,
+                comment: followedUser.userComment,
+                mediaIds: works.map((illust) => helpers.mediaId.fromIllustId(illust.id)),
+                hiddenR18: followedUser.illusts.length - works.length,
+                isFollowed: followedUser.following,
+            });
+            mediaIds.push("user:" + followedUser.userId);
         }
-
-        let mediaIds = [];
-        for(let illust of illusts)
-            mediaIds.push("user:" + illust.userId);
 
         await ppixiv.mediaCache.addMediaInfosPartial(illusts, "normal");
 
@@ -99,6 +108,27 @@ export default class DataSource_Follows extends DataSource
         return {
             userId: this.viewingSelf? null:this.viewingUserId,
         }
+    }
+
+    // A work in a row opens in its artist's list, so the viewer moves through that artist's
+    // works and not through the followed users.
+    setUrlMediaId(mediaId, args)
+    {
+        let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
+        if(info == null)
+            return super.setUrlMediaId(mediaId, args);
+
+        let [illustId, page] = helpers.mediaId.toIllustIdAndPage(mediaId);
+        let view = args.hash.get("view");
+        args.path = `/users/${info.userId}/artworks`;
+        args.query = new URLSearchParams();
+        args.hash = new URLSearchParams();
+        args.state = {};
+        if(view != null)
+            args.hash.set("view", view);
+        args.hash.set("illust_id", illustId);
+        if(page != 0)
+            args.hash.set("page", page + 1);
     }
 
     get viewingSelf()
@@ -148,7 +178,7 @@ class UI extends Widget
                             ${ helpers.createBoxLink({label: "Private",    popup: "Show privately followed users",   dataType: "private-follows" }) }
                         </vv-container>
 
-                        ${ helpers.createBoxLink({ popup: "Accepting requests", icon: "paid",   dataType: "accepting-requests" }) }
+                        ${ helpers.createBoxLink({ label: "接受约稿", dataType: "accepting-requests" }) }
                     </div>
 
                     ${ helpers.createBoxLink({label: "All tags",    popup: "Follow tags", icon: "bookmark", classes: ["follow-tags-button", "premium-only"] }) }

@@ -8,10 +8,19 @@
 
 import DataSource from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { registerUserRow, openWorkInArtistList } from '/vview/next/user-rows.js';
 
 export default class DataSource_DiscoverUsers extends DataSource
 {
     get name() { return "discovery_users"; }
+    get userRows() { return true; }
+
+    setUrlMediaId(mediaId, args)
+    {
+        if(!openWorkInArtistList(mediaId, args))
+            super.setUrlMediaId(mediaId, args);
+    }
+    get allowExpandingMangaPages() { return false; }
 
     constructor(options)
     {
@@ -74,8 +83,10 @@ export default class DataSource_DiscoverUsers extends DataSource
 
         await ppixiv.mediaCache.addMediaInfosPartial(result.body.thumbnails.illust, "normal");
 
+        let users = new Map();
         for(let user of result.body.users)
         {
+            users.set(user.userId, user);
             ppixiv.userCache.addUserData(user);
 
             // Register this as quick user data, for use in thumbnails.
@@ -97,11 +108,18 @@ export default class DataSource_DiscoverUsers extends DataSource
                 continue;
             this.seenUserIds[user.userId] = true;
 
-            mediaIds.push("user:" + user.userId);
-            
+            // Each user is one row with their latest works.  See next/user-rows.js.
             let illustIds = user.illustIds || user.recentIllustIds;
-            for(let illustId of illustIds)
-                mediaIds.push(helpers.mediaId.fromIllustId(illustId));
+            let userData = users.get(user.userId);
+            registerUserRow({
+                userId: user.userId,
+                userName: userData?.name,
+                profileImageUrl: userData?.imageBig ?? userData?.image,
+                comment: userData?.comment,
+                mediaIds: illustIds.map((illustId) => helpers.mediaId.fromIllustId(illustId))
+                    .filter((mediaId) => ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) != null),
+            });
+            mediaIds.push("user:" + user.userId);
         }
 
         return { mediaIds };
