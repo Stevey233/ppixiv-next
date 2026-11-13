@@ -2292,31 +2292,29 @@ html[data-whats-new-updated] .nav-rail .rail-settings {
 
 // ------------------------------------------------------------------ follow button
 
+// "关注" is outlined in blue like "继续查找": blue is for lines and text, never a fill.  It was a
+// solid blue pill, the only filled control, and a column of them down 推荐用户 was loud.
 .n-follow {
     flex-shrink: 0;
     height: 30px;
     padding: 0 14px;
     border: 1px solid var(--n-blue);
     border-radius: 15px;
-    background: var(--n-blue);
-    color: var(--n-bg);
+    background: none;
+    color: var(--n-blue);
     font: inherit;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
 
     &[hidden] { display: none; }
     &:disabled { opacity: 0.5; cursor: default; }
 
-    // "关注" had no hover or pressed state; the pointer over it changed nothing.
     @media(hover: hover) {
-        &:not(.followed):not(:disabled):hover {
-            background: color-mix(in srgb, var(--n-blue) 82%, var(--n-text));
-            border-color: color-mix(in srgb, var(--n-blue) 82%, var(--n-text));
-        }
+        &:not(.followed):not(:disabled):hover { background: var(--n-surface-2); }
     }
     &:not(.followed):not(:disabled):active {
-        background: color-mix(in srgb, var(--n-blue) 80%, var(--n-bg));
+        background: color-mix(in srgb, var(--n-blue) 18%, transparent);
     }
 
     &.followed {
@@ -2597,7 +2595,7 @@ html:not(.mobile) .floating > .dialog > .header {
         font-weight: 600;
         text-decoration: none;
     }
-    &:hover .n-user-row-name { color: var(--n-blue); }
+    .n-user-row-name:hover { color: var(--n-blue); }
 
     .n-follow {
         height: 26px;
