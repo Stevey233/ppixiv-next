@@ -631,15 +631,15 @@ html:not(.macos) {
         // "3P" is a count.  An expanded page ("1/3") and a thumbnail turned with the right button
         // and the wheel ("2/3") show a position, which the P turned into "2/3P".
         .manga-info-box.show-expanded .page-count::after { content: none; }
-    }
-
-    .thumbnail-box:has(> a.thumbnail-link:not([data-media-id$="-0"])) .bottom-row {
-        .manga-info-box .page-count::after { content: none; }
 
         .ugoira-icon svg { width: 12px; height: 12px; }
 
         .heart svg { width: 22px; height: 22px; }
         .heart svg .heart { fill: var(--n-heart); stroke: none; }
+    }
+
+    .thumbnail-box:has(> a.thumbnail-link:not([data-media-id$="-0"])) .bottom-row {
+        .manga-info-box .page-count::after { content: none; }
     }
 
     // One-click bookmarking (web/vview/next/quick-bookmark.js).  Hovering a work that isn't
