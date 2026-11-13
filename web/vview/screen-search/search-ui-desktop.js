@@ -76,6 +76,13 @@ export default class DesktopSearchUI extends Widget
 
         this.filterBar = new FilterBar({ container: this.querySelector(".filter-bar-container") });
 
+        // The options and the filter bar share a line (_next.scss).  Mark the options while they
+        // show nothing (every link hidden by the R-18 or premium settings), so they leave no gap.
+        let dataSourceUi = this.querySelector(".data-source-ui");
+        new ResizeObserver(() => {
+            dataSourceUi.classList.toggle("n-empty", dataSourceUi.offsetWidth == 0);
+        }).observe(dataSourceUi);
+
         // Create the search menu dropdown.
         new DropdownMenuOpener({
             button: this.root.querySelector(".main-search-menu-button"),

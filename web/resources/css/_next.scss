@@ -290,15 +290,45 @@ html:not(.macos) {
     border-radius: 0;
     box-shadow: none;
 
+    // The list's own options and the filter bar share one line when they fit, options first,
+    // with a 1px rule between them; otherwise the filter bar wraps to a line of its own.  The
+    // rule hangs left of the filter bar, so on a line of its own it falls outside the box and is
+    // clipped.
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 12px 33px;
+    overflow-x: clip;
 
     .header-row {
+        flex-basis: 100%;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 12px 20px;
+    }
+
+    > .data-source-ui {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    // Options with nothing shown (关注的新作 with R-18 and premium links hidden, 最近看过 without
+    // a note) would leave a gap in front of the filter bar.  search-ui-desktop.js sets n-empty.
+    > .data-source-ui.n-empty { margin-right: -33px; }
+
+    > .filter-bar-container > .filter-bar {
+        flex: 1 1 auto;
+        position: relative;
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: -17px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1px solid var(--n-rule);
+        }
     }
 
     // In a narrow window, the search box gets its own line under the title.
