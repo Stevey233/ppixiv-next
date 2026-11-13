@@ -1,5 +1,5 @@
-// The artist's other works in the viewer's info panel: a strip of the newest works under the
-// author row, and a link to all of them.  See docs/design.md "看图".
+// The artist's other works in the viewer's info panel: a strip of the newest works below the
+// action rows, and a link to all of them.  See docs/design.md "看图".
 //
 // The work's full info already lists the artist's work IDs (MediaCache keeps the newest ones), but
 // without thumbnails.  The thumbnails come from one batch request per artist, kept for the session,

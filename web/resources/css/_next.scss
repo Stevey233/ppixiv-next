@@ -1230,8 +1230,9 @@ html, html.mobile {
     }
 }
 
-// The series line under the title, and the artist's other works under the author row
-// (next/artist-works.js).  The strip's height is fixed (head row plus 60px thumbnails) and set as
+// The series line under the title, and the artist's other works below the action rows
+// (next/artist-works.js).  The strip sits below the buttons so they keep one position for
+// every work, whether the artist has other works or not.  The strip's height is fixed (head row plus 60px thumbnails) and set as
 // soon as the artist is known to have other works, so nothing moves when the thumbnails arrive.
 .image-ui .ui-box {
     // The name lines up with the title.  The episode links keep their places at the first and
@@ -1272,7 +1273,6 @@ html, html.mobile {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin-top: -4px;
 
         &[hidden] { display: none; }
     }

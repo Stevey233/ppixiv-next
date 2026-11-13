@@ -61,8 +61,6 @@ export default class DesktopImageInfo extends Widget
             <vv-container class=follow-button-container></vv-container>
         </div>
 
-        <vv-container class=artist-works-container></vv-container>
-
         <div class=ui-title-box>
             <h2 class="title-block"><a class="title"></a></h2>
         </div>
@@ -110,6 +108,8 @@ export default class DesktopImageInfo extends Widget
                 </div>
             </div>
         </div>
+
+        <vv-container class=artist-works-container></vv-container>
 
         <div class="info-links pixiv-only">
             <a class="similar-illusts-button" href=#>相似作品</a>
