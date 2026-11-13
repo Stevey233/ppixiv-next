@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.55.g3fb2b23c
+// @version     258.58.g719ac69f
 // ==/UserScript==
 (function() {
 
@@ -3176,6 +3176,15 @@ let bundle = `(() => {
 
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
+    {
+      id: "2026-11-13.2",
+      title: "屏蔽的标签",
+      items: [
+        '标签搜索和推荐作品里，带屏蔽标签的作品直接不显示，不再留"已屏蔽"的占位格。一页全被屏蔽时自动接着加载下一页。',
+        "自己的收藏里，带屏蔽标签的作品照常显示，点开也能正常看。",
+        "其他列表和屏蔽的用户不变，仍是占位格。搜索的就是屏蔽标签时也仍显示占位格。"
+      ]
+    },
     {
       id: "2026-11-13",
       title: "自动更新",
@@ -18153,6 +18162,242 @@ let bundle = `(() => {
     }
   };
 
+  /\x2f web/vview/misc/result-filters.js
+  var MAX_EMPTY_PAGES = 4;
+  var FILTER_GROUPS = [
+    { key: "type", label: "类型", options: [["illust", "插画"], ["manga", "漫画"], ["ugoira", "动图"]] },
+    { key: "shape", label: "形状", options: [["portrait", "竖图"], ["landscape", "横图"]] },
+    { key: "pages", label: "页数", options: [["single", "单页"], ["multi", "多页"]] }
+  ];
+  var HIDE_FILTERS = [
+    ["hide-ai", "隐藏 AI"],
+    ["hide-bookmarked", "隐藏已收藏"],
+    ["hide-seen", "隐藏看过的"]
+  ];
+  var HIDE_VALUES = HIDE_FILTERS.map(([value]) => value);
+  var TYPE_VALUES = FILTER_GROUPS[0].options.map(([value]) => value);
+  var ALL_FILTERS = /* @__PURE__ */ new Set([
+    ...FILTER_GROUPS.flatMap((group) => group.options.map(([value]) => value)),
+    ...HIDE_FILTERS.map(([value]) => value)
+  ]);
+  function filterLabel(value) {
+    for (let group of FILTER_GROUPS)
+      for (let [option, label] of group.options)
+        if (option == value)
+          return label;
+    return HIDE_FILTERS.find(([option]) => option == value)?.[1] ?? value;
+  }
+  var FILTERABLE_DATA_SOURCES = /* @__PURE__ */ new Set([
+    "discovery",
+    "search",
+    "rankings",
+    "bookmarks",
+    "artist",
+    "new_illust",
+    "new_works_by_following",
+    "series",
+    "related-illusts",
+    "edited",
+    "completed-requests"
+  ]);
+  function dataSourceSupportsFilters(dataSource) {
+    return dataSource != null && FILTERABLE_DATA_SOURCES.has(dataSource.name);
+  }
+  function filterListKey(name, url) {
+    if (name == "bookmarks" && isOwnBookmarks(url))
+      return "bookmarks-own";
+    return name;
+  }
+  function isOwnBookmarks(url) {
+    let userId = /\\/users\\/(\\d+)\\/bookmarks/.exec(new URL(url).pathname)?.[1];
+    return userId != null && userId == ppixiv.pixivInfo?.userId;
+  }
+  function filterAvailable(listKey, value) {
+    if (listKey == "new_illust" && value == "ugoira")
+      return false;
+    return !(listKey == "bookmarks-own" && value == "hide-bookmarked");
+  }
+  function defaultTypeFilter(name) {
+    return name == "new_illust" ? "illust" : null;
+  }
+  function typeFilter(filters) {
+    return TYPE_VALUES.find((value) => filters.has(value)) ?? null;
+  }
+  function searchApiArgs(filters) {
+    let ai_type = filters.has("hide-ai") ? "1" : null;
+    switch (typeFilter(filters)) {
+      case "illust":
+        return { searchType: "illustrations", type: "illust_and_ugoira", ai_type };
+      case "manga":
+        return { searchType: "manga", type: "manga", ai_type };
+      case "ugoira":
+        return { searchType: "illustrations", type: "ugoira", ai_type };
+      default:
+        return { searchType: "artworks", type: null, ai_type };
+    }
+  }
+  function newWorksApiType(filters) {
+    return typeFilter(filters) == "manga" ? "manga" : "illust";
+  }
+  function artistWorkKinds(filters) {
+    switch (typeFilter(filters)) {
+      case "illust":
+      case "ugoira":
+        return ["illusts"];
+      case "manga":
+        return ["manga"];
+      default:
+        return ["illusts", "manga"];
+    }
+  }
+  function convertUpstreamTypes(args, name) {
+    let filters = getFilters(args);
+    let changed = false;
+    let addType = (type) => {
+      changed = true;
+      if (type != null && typeFilter(filters) == null)
+        filters.add(type);
+    };
+    if (name == "search") {
+      let old = args.query.get("type");
+      if (old != null && old != "artwork") {
+        args.query.set("type", "artwork");
+        addType({ illust_ugoira: "illust", illust: "illust", manga: "manga", ugoira: "ugoira" }[old]);
+      }
+      if (args.query.has("ai_type")) {
+        if (args.query.get("ai_type") == "1")
+          filters.add("hide-ai");
+        args.query.delete("ai_type");
+        changed = true;
+      }
+    } else if (name == "new_illust") {
+      let old = args.query.get("type");
+      if (old != null) {
+        args.query.delete("type");
+        addType(old == "manga" ? "manga" : null);
+      }
+    } else if (name == "artist") {
+      let parts = args.path.split("/");
+      let index = parts.indexOf("users") + 2;
+      let type = { illustrations: "illust", manga: "manga" }[parts[index]];
+      if (type != null) {
+        parts[index] = "artworks";
+        args.path = parts.join("/");
+        addType(type);
+      }
+    }
+    if (changed)
+      setFilters(args, filters);
+    return changed;
+  }
+  function rememberedFilters(listKey) {
+    let saved = ppixiv.settings.get("result_filters_remembered") ?? {};
+    return new Set((saved[listKey] ?? []).filter((value) => HIDE_VALUES.includes(value) && filterAvailable(listKey, value)));
+  }
+  function rememberFilters(listKey, filters) {
+    let saved = { ...ppixiv.settings.get("result_filters_remembered") ?? {} };
+    let hide = HIDE_VALUES.filter((value) => filters.has(value));
+    if (hide.length)
+      saved[listKey] = hide;
+    else
+      delete saved[listKey];
+    ppixiv.settings.set("result_filters_remembered", saved);
+  }
+  function applyFilterDefaults(args, name) {
+    if (!FILTERABLE_DATA_SOURCES.has(name))
+      return false;
+    let changed = convertUpstreamTypes(args, name);
+    if (args.hash.has("filter"))
+      return changed;
+    let remembered = rememberedFilters(filterListKey(name, args.url));
+    if (remembered.size == 0)
+      return changed;
+    setFilters(args, remembered);
+    return true;
+  }
+  function getFilters(args) {
+    let value = args.hash.get("filter") ?? "";
+    return new Set(value.split(",").filter((item) => ALL_FILTERS.has(item)));
+  }
+  function setFilters(args, filters) {
+    let ordered = [...ALL_FILTERS].filter((item) => filters.has(item));
+    if (ordered.length)
+      args.hash.set("filter", ordered.join(","));
+    else
+      args.hash.delete("filter");
+  }
+  function toggleFilter(filters, value, enable) {
+    let result = new Set(filters);
+    if (enable) {
+      let group = FILTER_GROUPS.find((group2) => group2.options.some(([option]) => option == value));
+      for (let [option] of group?.options ?? [])
+        result.delete(option);
+      result.add(value);
+    } else
+      result.delete(value);
+    return result;
+  }
+  function makeFilter(filters) {
+    if (filters.size == 0)
+      return null;
+    return (mediaId) => {
+      if (helpers.mediaId.parse(mediaId).type != "illust")
+        return true;
+      let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
+      if (info == null)
+        return true;
+      let type = info.illustType;
+      if (filters.has("illust") && type == 1)
+        return false;
+      if (filters.has("manga") && type != 1)
+        return false;
+      let { width, height } = info;
+      if (filters.has("portrait") && !(height > width))
+        return false;
+      if (filters.has("landscape") && !(width > height))
+        return false;
+      let pages = info.pageCount ?? 1;
+      if (filters.has("single") && pages != 1)
+        return false;
+      if (filters.has("multi") && pages <= 1)
+        return false;
+      if (filters.has("hide-ai") && info.aiType == 2)
+        return false;
+      if (filters.has("hide-bookmarked") && info.bookmarkData != null)
+        return false;
+      if (filters.has("hide-seen") && ppixiv.seenWorks.hasSeen(mediaId))
+        return false;
+      return true;
+    };
+  }
+
+  /\x2f web/vview/misc/muted-works.js
+  var LISTS_HIDING_MUTED_TAGS = /* @__PURE__ */ new Set(["search", "discovery"]);
+  function listHidesMutedTags(dataSource) {
+    if (dataSource == null || !LISTS_HIDING_MUTED_TAGS.has(dataSource.name))
+      return false;
+    if (dataSource.name == "search") {
+      let query = helpers.pixiv.getSearchTagsFromUrl(dataSource.url) ?? "";
+      if (ppixiv.muting.anyTagMuted(query.split(" ").filter((tag) => tag)))
+        return false;
+    }
+    return true;
+  }
+  function listShowsMutedTags(dataSource) {
+    return dataSource != null && filterListKey(dataSource.name, dataSource.url) == "bookmarks-own";
+  }
+  function mutedTagInList(info, dataSource) {
+    if (listShowsMutedTags(dataSource))
+      return null;
+    return ppixiv.muting.anyTagMuted(info.tagList);
+  }
+  function hasMutedTag(mediaId) {
+    if (helpers.mediaId.parse(mediaId).type != "illust")
+      return false;
+    let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
+    return info != null && ppixiv.muting.anyTagMuted(info.tagList) != null;
+  }
+
   /\x2f web/vview/screen-illust/screen-illust.js
   var ScreenIllust = class extends Screen {
     get screenType() {
@@ -18451,7 +18696,7 @@ let bundle = `(() => {
       return helpers.args.location.hash.get("view-muted") == "1";
     }
     shouldHideMutedImage(earlyIllustData) {
-      let mutedTag = ppixiv.muting.anyTagMuted(earlyIllustData.tagList);
+      let mutedTag = mutedTagInList(earlyIllustData, this.dataSource);
       let mutedUser = ppixiv.muting.isUserIdMuted(earlyIllustData.userId);
       if (this.viewMuted || !mutedTag && !mutedUser)
         return { isMuted: false };
@@ -18722,215 +18967,6 @@ let bundle = `(() => {
       } else
         createOption({ ...option, container });
     }
-  }
-
-  /\x2f web/vview/misc/result-filters.js
-  var MAX_EMPTY_PAGES = 4;
-  var FILTER_GROUPS = [
-    { key: "type", label: "类型", options: [["illust", "插画"], ["manga", "漫画"], ["ugoira", "动图"]] },
-    { key: "shape", label: "形状", options: [["portrait", "竖图"], ["landscape", "横图"]] },
-    { key: "pages", label: "页数", options: [["single", "单页"], ["multi", "多页"]] }
-  ];
-  var HIDE_FILTERS = [
-    ["hide-ai", "隐藏 AI"],
-    ["hide-bookmarked", "隐藏已收藏"],
-    ["hide-seen", "隐藏看过的"]
-  ];
-  var HIDE_VALUES = HIDE_FILTERS.map(([value]) => value);
-  var TYPE_VALUES = FILTER_GROUPS[0].options.map(([value]) => value);
-  var ALL_FILTERS = /* @__PURE__ */ new Set([
-    ...FILTER_GROUPS.flatMap((group) => group.options.map(([value]) => value)),
-    ...HIDE_FILTERS.map(([value]) => value)
-  ]);
-  function filterLabel(value) {
-    for (let group of FILTER_GROUPS)
-      for (let [option, label] of group.options)
-        if (option == value)
-          return label;
-    return HIDE_FILTERS.find(([option]) => option == value)?.[1] ?? value;
-  }
-  var FILTERABLE_DATA_SOURCES = /* @__PURE__ */ new Set([
-    "discovery",
-    "search",
-    "rankings",
-    "bookmarks",
-    "artist",
-    "new_illust",
-    "new_works_by_following",
-    "series",
-    "related-illusts",
-    "edited",
-    "completed-requests"
-  ]);
-  function dataSourceSupportsFilters(dataSource) {
-    return dataSource != null && FILTERABLE_DATA_SOURCES.has(dataSource.name);
-  }
-  function filterListKey(name, url) {
-    if (name == "bookmarks" && isOwnBookmarks(url))
-      return "bookmarks-own";
-    return name;
-  }
-  function isOwnBookmarks(url) {
-    let userId = /\\/users\\/(\\d+)\\/bookmarks/.exec(new URL(url).pathname)?.[1];
-    return userId != null && userId == ppixiv.pixivInfo?.userId;
-  }
-  function filterAvailable(listKey, value) {
-    if (listKey == "new_illust" && value == "ugoira")
-      return false;
-    return !(listKey == "bookmarks-own" && value == "hide-bookmarked");
-  }
-  function defaultTypeFilter(name) {
-    return name == "new_illust" ? "illust" : null;
-  }
-  function typeFilter(filters) {
-    return TYPE_VALUES.find((value) => filters.has(value)) ?? null;
-  }
-  function searchApiArgs(filters) {
-    let ai_type = filters.has("hide-ai") ? "1" : null;
-    switch (typeFilter(filters)) {
-      case "illust":
-        return { searchType: "illustrations", type: "illust_and_ugoira", ai_type };
-      case "manga":
-        return { searchType: "manga", type: "manga", ai_type };
-      case "ugoira":
-        return { searchType: "illustrations", type: "ugoira", ai_type };
-      default:
-        return { searchType: "artworks", type: null, ai_type };
-    }
-  }
-  function newWorksApiType(filters) {
-    return typeFilter(filters) == "manga" ? "manga" : "illust";
-  }
-  function artistWorkKinds(filters) {
-    switch (typeFilter(filters)) {
-      case "illust":
-      case "ugoira":
-        return ["illusts"];
-      case "manga":
-        return ["manga"];
-      default:
-        return ["illusts", "manga"];
-    }
-  }
-  function convertUpstreamTypes(args, name) {
-    let filters = getFilters(args);
-    let changed = false;
-    let addType = (type) => {
-      changed = true;
-      if (type != null && typeFilter(filters) == null)
-        filters.add(type);
-    };
-    if (name == "search") {
-      let old = args.query.get("type");
-      if (old != null && old != "artwork") {
-        args.query.set("type", "artwork");
-        addType({ illust_ugoira: "illust", illust: "illust", manga: "manga", ugoira: "ugoira" }[old]);
-      }
-      if (args.query.has("ai_type")) {
-        if (args.query.get("ai_type") == "1")
-          filters.add("hide-ai");
-        args.query.delete("ai_type");
-        changed = true;
-      }
-    } else if (name == "new_illust") {
-      let old = args.query.get("type");
-      if (old != null) {
-        args.query.delete("type");
-        addType(old == "manga" ? "manga" : null);
-      }
-    } else if (name == "artist") {
-      let parts = args.path.split("/");
-      let index = parts.indexOf("users") + 2;
-      let type = { illustrations: "illust", manga: "manga" }[parts[index]];
-      if (type != null) {
-        parts[index] = "artworks";
-        args.path = parts.join("/");
-        addType(type);
-      }
-    }
-    if (changed)
-      setFilters(args, filters);
-    return changed;
-  }
-  function rememberedFilters(listKey) {
-    let saved = ppixiv.settings.get("result_filters_remembered") ?? {};
-    return new Set((saved[listKey] ?? []).filter((value) => HIDE_VALUES.includes(value) && filterAvailable(listKey, value)));
-  }
-  function rememberFilters(listKey, filters) {
-    let saved = { ...ppixiv.settings.get("result_filters_remembered") ?? {} };
-    let hide = HIDE_VALUES.filter((value) => filters.has(value));
-    if (hide.length)
-      saved[listKey] = hide;
-    else
-      delete saved[listKey];
-    ppixiv.settings.set("result_filters_remembered", saved);
-  }
-  function applyFilterDefaults(args, name) {
-    if (!FILTERABLE_DATA_SOURCES.has(name))
-      return false;
-    let changed = convertUpstreamTypes(args, name);
-    if (args.hash.has("filter"))
-      return changed;
-    let remembered = rememberedFilters(filterListKey(name, args.url));
-    if (remembered.size == 0)
-      return changed;
-    setFilters(args, remembered);
-    return true;
-  }
-  function getFilters(args) {
-    let value = args.hash.get("filter") ?? "";
-    return new Set(value.split(",").filter((item) => ALL_FILTERS.has(item)));
-  }
-  function setFilters(args, filters) {
-    let ordered = [...ALL_FILTERS].filter((item) => filters.has(item));
-    if (ordered.length)
-      args.hash.set("filter", ordered.join(","));
-    else
-      args.hash.delete("filter");
-  }
-  function toggleFilter(filters, value, enable) {
-    let result = new Set(filters);
-    if (enable) {
-      let group = FILTER_GROUPS.find((group2) => group2.options.some(([option]) => option == value));
-      for (let [option] of group?.options ?? [])
-        result.delete(option);
-      result.add(value);
-    } else
-      result.delete(value);
-    return result;
-  }
-  function makeFilter(filters) {
-    if (filters.size == 0)
-      return null;
-    return (mediaId) => {
-      if (helpers.mediaId.parse(mediaId).type != "illust")
-        return true;
-      let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
-      if (info == null)
-        return true;
-      let type = info.illustType;
-      if (filters.has("illust") && type == 1)
-        return false;
-      if (filters.has("manga") && type != 1)
-        return false;
-      let { width, height } = info;
-      if (filters.has("portrait") && !(height > width))
-        return false;
-      if (filters.has("landscape") && !(width > height))
-        return false;
-      let pages = info.pageCount ?? 1;
-      if (filters.has("single") && pages != 1)
-        return false;
-      if (filters.has("multi") && pages <= 1)
-        return false;
-      if (filters.has("hide-ai") && info.aiType == 2)
-        return false;
-      if (filters.has("hide-bookmarked") && info.bookmarkData != null)
-        return false;
-      if (filters.has("hide-seen") && ppixiv.seenWorks.hasSeen(mediaId))
-        return false;
-      return true;
-    };
   }
 
   /\x2f web/vview/next/filter-bar.js
@@ -19394,14 +19430,17 @@ let bundle = `(() => {
       if (filters.has("hide-seen"))
         await ppixiv.seenWorks.loaded;
       let filter = makeFilter(filters);
-      if (filter == null)
+      let hideMuted = listHidesMutedTags(this);
+      if (filter == null && !hideMuted)
         return null;
       let viewing = this.getUrlMediaId(helpers.args.location);
       let viewingId = viewing && helpers.mediaId.parse(viewing).type == "illust" ? helpers.mediaId.toIllustIdAndPage(viewing)[0] : null;
       return (mediaId) => {
         if (viewingId != null && helpers.mediaId.parse(mediaId).type == "illust" && helpers.mediaId.toIllustIdAndPage(mediaId)[0] == viewingId)
           return true;
-        return filter(mediaId);
+        if (hideMuted && hasMutedTag(mediaId))
+          return false;
+        return filter == null || filter(mediaId);
       };
     }
     _nextFilteredPage(page) {
@@ -23107,7 +23146,7 @@ let bundle = `(() => {
       let url = info.previewUrls[page];
       let thumb = element.querySelector(".thumb");
       let [illustId, illustPage] = helpers.mediaId.toIllustIdAndPage(mediaId);
-      let mutedTag = ppixiv.muting.anyTagMuted(info.tagList);
+      let mutedTag = mutedTagInList(info, this.dataSource);
       let mutedUser = ppixiv.muting.isUserIdMuted(info.userId);
       if (mutedTag || mutedUser) {
         forgetThumb(thumb);
@@ -23289,7 +23328,7 @@ let bundle = `(() => {
         return false;
       let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
       if (info != null) {
-        let mutedTag = ppixiv.muting.anyTagMuted(info.tagList);
+        let mutedTag = mutedTagInList(info, this.dataSource);
         let mutedUser = ppixiv.muting.isUserIdMuted(info.userId);
         if (mutedTag || mutedUser)
           return false;
@@ -37239,7 +37278,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.55.g3fb2b23c"}\`);
+      console.log(\`vview setup: \${"r258.58.g719ac69f"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -37288,7 +37327,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.55.g3fb2b23c"}\`);
+      console.log(\`ppixiv setup: \${"r258.58.g719ac69f"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
