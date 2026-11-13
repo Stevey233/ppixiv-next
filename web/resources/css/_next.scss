@@ -6,7 +6,8 @@
 
 // ------------------------------------------------------------------ tokens
 
-html, html.mobile {
+// The dark theme's colors.  The viewer's overlays use them in both themes (see "page number").
+@mixin dark-colors {
     --n-bg: #1C1D20;
     --n-surface: #25272B;
     --n-surface-2: #2E3136;
@@ -15,8 +16,12 @@ html, html.mobile {
     --n-pencil: #9B9EA5;
     --n-blue: #7DBDEB;
     --n-heart: #FF6482;
-    --n-view-bg: #111214;
     --n-scrim: rgba(17, 18, 20, 0.72);
+}
+
+html, html.mobile {
+    @include dark-colors;
+    --n-view-bg: #111214;
 
     --n-font: "Sofia Sans", "MiSans", "HarmonyOS Sans SC", "PingFang SC", "Noto Sans CJK SC",
         "Source Han Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
@@ -2336,6 +2341,13 @@ html[data-whats-new-updated] .nav-rail .rail-settings {
 // Manga manuscript paper has the page number printed small in the margin, outside the frame.
 // Multi-page works get the same thing in the viewer's bottom-left corner: always there while the
 // work has more than one page, quieter while the mouse is idle.
+
+// The viewer's margin is dark in both themes, so the plates drawn over it (the page number, the
+// translation status, the animation bar) keep the dark theme's colors.  In the light theme they
+// were pale boxes in the dark margin.
+.screen-illust-container :is(.nombre, .translation-status, .video-ui) {
+    @include dark-colors;
+}
 
 .screen-illust-container .nombre {
     position: absolute;
