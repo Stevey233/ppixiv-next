@@ -17,6 +17,11 @@ const SHOWN = 5;
 // hides are left out, as in the user rows).
 const loads = new Map();
 
+// userId -> those IDs, once the request has finished.  The next work of the artist shows them at
+// once, without waiting for its original: the wait only keeps the first request from competing
+// with the original, and there is no request left.
+const resolved = new Map();
+
 function loadArtistWorks(userId, illustIds)
 {
     let load = loads.get(userId);
@@ -38,7 +43,9 @@ function loadArtistWorks(userId, illustIds)
 
         let works = Object.values(result.body.works).filter((work) => !work.isMasked);
         await ppixiv.mediaCache.addMediaInfosPartial(works, "normal");
-        return works.map((work) => work.id).sort((lhs, rhs) => rhs - lhs);
+        let ids = works.map((work) => work.id).sort((lhs, rhs) => rhs - lhs);
+        resolved.set(userId, ids);
+        return ids;
     })();
     loads.set(userId, load);
     return load;
@@ -115,11 +122,19 @@ export default class ArtistWorks extends Widget
         this._userId = mediaInfo.userId;
         this._abort = new AbortController();
 
-        // Reserve the strip's height now, so the panel doesn't move when the thumbnails arrive.
         this.root.hidden = false;
         let all = this.root.querySelector(".n-artist-works-all");
         all.href = `/users/${mediaInfo.userId}/artworks#ppixiv`;
         all.innerHTML = `全部作品 <span class=n-num>${count}</span>`;
+
+        let ids = resolved.get(mediaInfo.userId);
+        if(ids)
+        {
+            this._render(mediaInfo, ids);
+            return;
+        }
+
+        // Reserve the strip's height now, so the panel doesn't move when the thumbnails arrive.
         let placeholders = Array.from({ length: Math.min(count - 1, SHOWN) }, () => {
             let placeholder = document.createElement("span");
             placeholder.className = "n-artist-work";
@@ -150,6 +165,11 @@ export default class ArtistWorks extends Widget
         if(signal.aborted)
             return;
 
+        this._render(mediaInfo, ids);
+    }
+
+    _render(mediaInfo, ids)
+    {
         let shown = ids.filter((id) => id != mediaInfo.illustId).slice(0, SHOWN);
         if(shown.length == 0)
         {
