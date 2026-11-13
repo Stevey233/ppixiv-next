@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.58.g719ac69f
+// @version     258.60.gbdbae0b6
 // ==/UserScript==
 (function() {
 
@@ -3176,6 +3176,14 @@ let bundle = `(() => {
 
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
+    {
+      id: "2026-11-13.3",
+      title: "右键滚轮翻页",
+      items: [
+        "看多页作品时按住右键滚动滚轮，在这件作品里翻上一页、下一页，翻到第一页或最后一页就停，不会滚到别的作品。",
+        "多页作品上按住右键滚轮不再缩放，缩放用 Ctrl+= / Ctrl+-，或按住左键放大。单页作品和动图上按住右键滚轮仍是缩放。"
+      ]
+    },
     {
       id: "2026-11-13.2",
       title: "屏蔽的标签",
@@ -10535,6 +10543,7 @@ let bundle = `(() => {
         ["← / ↑ / PageUp / 滚轮向上", "上一张，多页作品先往前翻页"],
         ["→ / ↓ / PageDown / 滚轮向下", "下一张，多页作品先往后翻页"],
         ["Shift+方向键 / Shift+滚轮", "跳过多页作品剩下的页，直接到上一件或下一件作品"],
+        ["按住右键+滚轮", "多页作品：在这件作品里翻页，到头就停。单页作品：缩放"],
         ["Home / End", "多页作品的第一页 / 最后一页"],
         ["I", "收起或展开信息栏"],
         ["Esc", "返回列表"],
@@ -18398,6 +18407,21 @@ let bundle = `(() => {
     return info != null && ppixiv.muting.anyTagMuted(info.tagList) != null;
   }
 
+  /\x2f web/vview/misc/page-step.js
+  function workPageCount(mediaId) {
+    if (mediaId == null || helpers.mediaId.parse(mediaId).type != "illust")
+      return 1;
+    return ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false })?.pageCount ?? 1;
+  }
+  function showPageRelative(mediaId, step) {
+    let page = (helpers.mediaId.parse(mediaId).page ?? 0) + step;
+    if (page < 0 || page >= workPageCount(mediaId))
+      return null;
+    let target = helpers.mediaId.getMediaIdForPage(mediaId, page);
+    ppixiv.app.showMediaId(target);
+    return target;
+  }
+
   /\x2f web/vview/screen-illust/screen-illust.js
   var ScreenIllust = class extends Screen {
     get screenType() {
@@ -18753,14 +18777,8 @@ let bundle = `(() => {
       this.nombre.querySelector(".nombre-pages").href = getUrlForMediaId(mediaId, { manga: true }).url;
     }
     _showPageRelative(step) {
-      let mediaId = this.currentMediaId;
-      let mediaInfo = mediaId ? ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) : null;
-      if (mediaInfo == null)
-        return;
-      let page = (helpers.mediaId.parse(mediaId).page ?? 0) + step;
-      if (page < 0 || page >= mediaInfo.pageCount)
-        return;
-      ppixiv.app.showMediaId(helpers.mediaId.getMediaIdForPage(mediaId, page));
+      if (this.currentMediaId != null)
+        showPageRelative(this.currentMediaId, step);
     }
     onwheel = (e) => {
       if (!this._active)
@@ -24653,6 +24671,7 @@ let bundle = `(() => {
         return;
       this.visible = false;
       this._hiddenTemporarily = false;
+      this._wheelPageMediaId = null;
       this.applyVisibility();
       OpenWidgets.singleton.set(this, false);
       this.displayedMenu = null;
@@ -24898,6 +24917,14 @@ let bundle = `(() => {
       e.preventDefault();
       e.stopImmediatePropagation();
       let down = e.deltaY > 0;
+      let mediaId = this._wheelPageMediaId ?? this._mediaId;
+      if (workPageCount(mediaId) > 1) {
+        if (ppixiv.settings.get("debounce_wheel") && e.timeDelta != -1 && e.timeDelta < 50)
+          return;
+        this.hideTemporarily = true;
+        this._wheelPageMediaId = showPageRelative(mediaId, down ? 1 : -1) ?? mediaId;
+        return;
+      }
       this._handleZoomEvent(e, down);
     };
     _handleZoomEvent(e, down) {
@@ -37278,7 +37305,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.58.g719ac69f"}\`);
+      console.log(\`vview setup: \${"r258.60.gbdbae0b6"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -37327,7 +37354,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.58.g719ac69f"}\`);
+      console.log(\`ppixiv setup: \${"r258.60.gbdbae0b6"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
