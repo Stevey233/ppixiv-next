@@ -111,7 +111,13 @@ export default class Actions
             if(options.tags != null)
                 RecentBookmarkTags.updateRecentBookmarkTags(options.tags);
         
-            return await Actions._bookmarkAddInternal(mediaId, options);
+            await Actions._bookmarkAddInternal(mediaId, options);
+
+            // 收藏时同时下载原图: a new bookmark also downloads the work, unless the caller
+            // downloads it itself.
+            if(!options.noDownload && ppixiv.settings.get("download_on_bookmark", false))
+                Actions.downloadWork(mediaId);
+            return;
         }
         
         // Special case: If we're not setting anything, then we just want this image to
@@ -180,16 +186,29 @@ export default class Actions
             return;
         }
 
-        let bookmarkId = mediaInfo.bookmarkData.id;
-        
+        let { id: bookmarkId, private: wasPrivate } = mediaInfo.bookmarkData;
+
+        // Read the bookmark's tags first, so 撤销 can put them back.  They're usually cached
+        // (the own bookmarks list carries them, and every edit stores them); otherwise this is one
+        // GET of Pixiv's bookmark page.  If that page can't be read, remove anyway: 撤销 then
+        // restores the bookmark without tags.
+        let tags = null;
+        try {
+            tags = await ppixiv.extraCache.loadBookmarkDetails(mediaId);
+        } catch(e) {
+            console.error(`Couldn't read the bookmark tags of ${mediaId}:`, e);
+        }
+
         console.log("Remove bookmark", bookmarkId);
         
+        // post() returns null when the request fails and { error: true } when Pixiv refuses.
         let result = await helpers.pixivRequest.post("/ajax/illusts/bookmarks/remove", {
             bookmarkIds: [bookmarkId],
         });
-        if(result.error)
+        if(result == null || result.error)
         {
-            ppixiv.message.show(`Couldn't remove bookmark: ${result.message}`);
+            console.error(`Couldn't remove bookmark ${bookmarkId}:`, result?.message);
+            ppixiv.message.show("取消收藏失败，请重试");
             return;
         }
 
@@ -203,7 +222,70 @@ export default class Actions
         
         ppixiv.extraCache.updateCachedBookmarkTags(mediaId, null);
 
-        ppixiv.message.show("Bookmark removed");
+        ppixiv.message.show("已取消收藏", {
+            action: {
+                label: "撤销",
+                onclick: () => Actions._restoreBookmark(mediaId, { tags, private: wasPrivate }),
+            },
+        });
+    }
+
+    // Put back a bookmark that bookmarkRemove removed, with its tags and privacy.  It gets a new
+    // bookmark ID, so it moves to the top of 收藏.  This doesn't like the work, bump the recent
+    // tags or download: it restores, it isn't a new bookmark.
+    static async _restoreBookmark(mediaId, { tags, private: isPrivate })
+    {
+        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+        if(mediaInfo.bookmarkData != null)
+            return;
+
+        try {
+            await Actions._bookmarkAddInternal(mediaId, {
+                tags: tags ?? [],
+                private: isPrivate,
+                disableAutoLike: true,
+            });
+        } catch(e) {
+            console.error(`Couldn't restore the bookmark of ${mediaId}:`, e);
+            ppixiv.message.show("撤销失败，请重试");
+        }
+    }
+
+    // Bookmark a work if it isn't bookmarked yet, and download it (see downloadWork).  This is
+    // 收藏并下载 in the context menu and Shift+click on the thumbnail heart.  Resolves when the
+    // bookmark is done; the download runs on.
+    static async bookmarkAndDownload(mediaId, { private: isPrivate=null }={})
+    {
+        if(mediaId == null || helpers.mediaId.parse(mediaId).type != "illust")
+            return;
+
+        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+        if(mediaInfo == null)
+            return;
+
+        let bookmark = mediaInfo.bookmarkData == null?
+            Actions.bookmarkAdd(mediaId, { private: isPrivate, noDownload: true }):null;
+        Actions.downloadWork(mediaId);
+        await bookmark;
+    }
+
+    // Download a work as a whole: the original image, a ZIP of every page for multi-page works,
+    // or an MKV for animations.  Downloads started here run one work at a time, so bookmarking
+    // many works in a row doesn't load all their originals at once.
+    static _downloadQueue = Promise.resolve();
+
+    static downloadWork(mediaId)
+    {
+        let download = async() => {
+            let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+            let downloadType = ["ZIP", "image", "MKV"].find((type) => Actions.isDownloadTypeAvailable(type, mediaInfo));
+            if(downloadType != null)
+                await Actions.downloadIllust(mediaId, downloadType);
+        };
+
+        Actions._downloadQueue = Actions._downloadQueue.then(download).catch((e) => {
+            console.error(`Download of ${mediaId} failed:`, e);
+        });
     }
 
     static async _localBookmarkAdd(mediaId, options)

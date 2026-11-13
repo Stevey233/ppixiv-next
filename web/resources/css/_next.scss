@@ -787,19 +787,57 @@ html.mobile .n-rank-stepper {
             svg .heart { fill: var(--n-heart); stroke: none; }
         }
 
-        // The filled heart takes clicks, so clicking it never opens the work by accident.  It's
-        // centered like the button, so the heart fills in place, on the line of the 3P chip.
+        // The filled heart is a button that removes the bookmark.  At rest it's the quiet
+        // bookmarked marker, with no chip.  On hover the chip of the add button appears behind it
+        // and the heart stays filled, so bookmarked works stay readable while the mouse crosses
+        // the grid.  It's centered like the add button, so the heart fills and empties in place,
+        // on the line of the 3P chip.
         .bottom-row .heart {
             pointer-events: auto;
-            cursor: default;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex: none;
+            width: 28px;
+            height: 28px;
+            margin: 2px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            background: none;
+            color: inherit;
             &[hidden] { display: none; }
+
+            &:hover { background: var(--n-scrim); box-shadow: inset 0 0 0 1px var(--n-rule); }
+            &:active {
+                background: var(--n-surface-2);
+                svg { transform: scale(0.88); }
+            }
+            &:focus-visible { outline: 2px solid var(--n-blue); outline-offset: 1px; }
+        }
+
+        // Outlined at once while the removal runs.  The add button replaces it when it succeeds.
+        &.n-unbookmarking .bottom-row .heart {
+            background: var(--n-scrim);
+            box-shadow: none;
+            cursor: default;
+            svg { width: 20px; height: 20px; transform: none; }
+            svg .heart { fill: none; stroke: var(--n-text); stroke-width: 2.5; }
+            svg .lock { display: none; }
         }
 
         // Upstream fades the heart on hover.  Keep it solid now that it's where the button was.
         &:hover .bottom-row .heart > svg { opacity: 1; }
+
+        // Your own 收藏: every work is bookmarked, so the heart shows only on hover.  A removed
+        // work stays in place, dimmed, with the add button on hover, until the list reloads.  The
+        // dimming replaces the seen filter, so the two don't stack.
+        &.n-heart-on-hover:not(:hover, :focus-within, .n-unbookmarking) .bottom-row .heart { display: none; }
+        &.n-heart-on-hover.n-unbookmarked {
+            a.thumbnail-link { opacity: 0.4; }
+            .thumb { filter: none; }
+        }
     }
 
     > .no-results {
@@ -2573,6 +2611,23 @@ html:not(.mobile) .floating > .dialog > .header {
         background-color: var(--n-surface);
         color: var(--n-text);
     }
+
+    // An action after the message, like 撤销 after 已取消收藏: a link-styled button.  The box
+    // ignores the mouse, so only the button takes it, and only while it's shown.
+    .message-action {
+        margin-left: 16px;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--n-blue);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover { text-decoration: underline; }
+        &:focus-visible { outline: 2px solid var(--n-blue); outline-offset: 1px; }
+    }
+    &.show .message-action { pointer-events: auto; }
 }
 
 // ------------------------------------------------------------------ settings pages

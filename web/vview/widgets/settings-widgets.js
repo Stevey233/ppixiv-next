@@ -582,6 +582,16 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        downloadOnBookmark: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "收藏时同时下载原图",
+                setting: "download_on_bookmark",
+                explanationEnabled: "新收藏的作品同时下载：单页下载原图，多页下载 ZIP，动图下载 MKV。修改已有的收藏和撤销取消收藏不会下载。",
+                explanationDisabled: "只收藏。在缩略图的心上按住 Shift 点击，可以收藏并下载这一个作品。",
+            });
+        },
+
         downloadFilename: () => {
             let sample = {
                 author: "作者", author_id: "1234", id: "123456789", title: "作品标题",
@@ -833,6 +843,8 @@ export class SettingsDialog extends DialogWidget
             },
             download: () => {
                 settingsWidgets.downloadFilename();
+                if(!ppixiv.mobile)
+                    settingsWidgets.downloadOnBookmark();
             },
             thumbnail: () =>
             {

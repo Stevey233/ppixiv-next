@@ -1028,15 +1028,15 @@ export default class SearchView extends Widget
 
                 <div class=bottom-row>
                     <div class=bottom-left-icon>
-                        <button type=button class=n-quick-bookmark aria-label=收藏 title="收藏（Alt+点击：私密收藏）">
+                        <button type=button class=n-quick-bookmark aria-label=收藏 title="收藏（Alt+点击：私密收藏，Shift+点击：收藏并下载）">
                             <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
                         </button>
-                        <div class="heart button-bookmark public bookmarked" hidden>
+                        <button type=button class="heart button-bookmark public bookmarked" aria-label=取消收藏 title="取消收藏（Shift+点击：只下载）" hidden>
                             <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
-                        </div>
-                        <div class="heart button-bookmark private bookmarked" hidden>
+                        </button>
+                        <button type=button class="heart button-bookmark private bookmarked" aria-label=取消收藏 title="取消收藏（Shift+点击：只下载）" hidden>
                             <ppixiv-inline src="resources/heart-icon.svg"></ppixiv-inline>
-                        </div>
+                        </button>
                         <img class=ai-image src="ppixiv:resources/ai.png" hidden>
                     </div>
 
@@ -1913,9 +1913,11 @@ export default class SearchView extends Widget
         // aiType is 0 or 1 for false and 2 for true.
         let showAI = mediaInfo.aiType == 2;
 
-        let showBookmarkHeart = mediaInfo.bookmarkData != null;
-        if(this.dataSource != null && !this.dataSource.showBookmarkIcons)
-            showBookmarkHeart = false;
+        // Lists where every work is bookmarked (your own 收藏) show the heart only on hover, to
+        // remove the bookmark.  Phones have no hover, so no heart there.
+        let heartOnHover = this.dataSource != null && !this.dataSource.showBookmarkIcons;
+        let showBookmarkHeart = mediaInfo.bookmarkData != null && !(heartOnHover && ppixiv.mobile);
+        helpers.html.setClass(thumbnailElement, "n-heart-on-hover", heartOnHover);
 
         // On mobile, don't show ai-image if we're showing a bookmark to reduce clutter.
         if(ppixiv.mobile && showAI && showBookmarkHeart)

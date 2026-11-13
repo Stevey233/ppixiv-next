@@ -1163,27 +1163,7 @@ export default class ContextMenu extends Widget
     // original image, a ZIP of every page for multi-page works, or an MKV for animations.
     async _bookmarkAndDownload(mediaId)
     {
-        if(mediaId == null || helpers.mediaId.parse(mediaId).type != "illust")
-            return;
-
-        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
-        if(mediaInfo == null)
-            return;
-
-        if(mediaInfo.bookmarkData == null)
-            Actions.bookmarkAdd(mediaId, { private: null });
-
-        let downloadType = null;
-        for(let type of ["ZIP", "image", "MKV"])
-        {
-            if(Actions.isDownloadTypeAvailable(type, mediaInfo))
-            {
-                downloadType = type;
-                break;
-            }
-        }
-        if(downloadType != null)
-            Actions.downloadIllust(mediaId, downloadType);
+        await Actions.bookmarkAndDownload(mediaId);
     }
 
     refresh()
