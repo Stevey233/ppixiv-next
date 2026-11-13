@@ -2494,10 +2494,12 @@ html:not(.mobile) .floating > .dialog > .header {
         }
 
         // The pages of an expanded manga post share a line along their bottom edge.  Upstream drew
-        // a 5px bar with 30px rounded ends.  search-view.js colors each post's line by its ID, so
-        // two expanded posts side by side stay apart; keep that color and only thin the line.
+        // a 5px bar with 30px rounded ends in a hue taken from the work's ID, the only saturated
+        // color in the grid besides the art and the heart.  A thin line in the rule color; two
+        // expanded posts side by side are told apart by their "1/3" page plates.
         &.expanded-thumb a.thumbnail-link {
             border-bottom-width: 2px;
+            border-bottom-color: var(--n-rule);
             html:not(.mobile) & { &.first-page, &.last-page { border-radius: 2px; } }
         }
     }

@@ -1334,15 +1334,10 @@ export default class SearchView extends Widget
         helpers.html.setClass(element, "dot", helpers.pixiv.tagsContainDot(info.tagList));
 
         // Set expanded-thumb if this is an expanded manga post.  This is also updated in
-        // setMediaIdExpanded.  Set the border to a random-ish value to try to make it
-        // easier to see the boundaries between manga posts.  It's hard to guarantee that it
-        // won't be the same color as a neighboring post, but that's rare.  Using the illust
-        // ID means the color will always be the same.  The saturation is a bit low so these
-        // colors aren't blinding.
+        // setMediaIdExpanded.  The line under the pages has the rule color (_next.scss).
         this.refreshExpandedThumb(element);
         helpers.html.setClass(link, "first-page", illustPage == 0);
         helpers.html.setClass(link, "last-page", illustPage == info.pageCount-1);
-        link.style.borderBottomColor = `hsl(${illustId}deg 50% 50%)`;
 
         this.refreshBookmarkIcon(element);
         this.refreshSeen(element);
