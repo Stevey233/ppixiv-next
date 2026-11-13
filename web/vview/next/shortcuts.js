@@ -26,7 +26,6 @@ const SHORTCUTS = [
             ["← / ↑ / PageUp / 滚轮向上", "上一张，多页作品先往前翻页"],   // screen-illust.js handleKeydown, onwheel
             ["→ / ↓ / PageDown / 滚轮向下", "下一张，多页作品先往后翻页"],
             ["Shift+方向键 / Shift+滚轮", "跳过多页作品剩下的页，直接到上一件或下一件作品"],
-            ["按住右键+滚轮", "多页作品：在这件作品里翻页，到头就停。单页作品：缩放"],   // context-menu.js onwheel
             ["Home / End", "多页作品的第一页 / 最后一页"],            // viewer-images.js onkeydown
             ["I", "收起或展开信息栏"],                               // desktop-image-info.js handleKeydown
             ["Esc", "返回列表"],                                     // context-menu.js _handleKeyEventForImage

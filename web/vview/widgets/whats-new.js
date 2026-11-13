@@ -9,14 +9,6 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
-        id: "2026-11-13.3",
-        title: "右键滚轮翻页",
-        items: [
-            "看多页作品时按住右键滚动滚轮，在这件作品里翻上一页、下一页，翻到第一页或最后一页就停，不会滚到别的作品。",
-            "多页作品上按住右键滚轮不再缩放，缩放用 Ctrl+= / Ctrl+-，或按住左键放大。单页作品和动图上按住右键滚轮仍是缩放。",
-        ],
-    },
-    {
         id: "2026-11-13.2",
         title: "屏蔽的标签",
         items: [
