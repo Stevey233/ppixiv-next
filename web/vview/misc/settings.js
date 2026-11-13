@@ -79,6 +79,7 @@ export default class Settings extends EventTarget
         this.configure("double_click_fullscreen", { defaultValue: false });
         this.configure("context_menu_style", { defaultValue: "list" });
         this.configure("info_panel_pinned", { defaultValue: true });
+        this.configure("info_panel_artist_works", { defaultValue: true });
         this.configure("result_filters_remembered", { defaultValue: {} }); // see misc/result-filters.js
         this.configure("changelog_last_viewed", { defaultValue: "" }); // see widgets/whats-new.js
 

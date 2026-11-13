@@ -12,6 +12,7 @@ import { getUrlForMediaId } from '/vview/misc/media-ids.js'
 import { helpers, ClassFlags } from '/vview/misc/helpers.js';
 import PointerListener from '/vview/actors/pointer-listener.js';
 import FollowButton from '/vview/next/follow-button.js';
+import ArtistWorks from '/vview/next/artist-works.js';
 
 export default class DesktopImageInfo extends Widget
 {
@@ -59,8 +60,16 @@ export default class DesktopImageInfo extends Widget
             <vv-container class=follow-button-container></vv-container>
         </div>
 
+        <vv-container class=artist-works-container></vv-container>
+
         <div class=ui-title-box>
             <h2 class="title-block"><a class="title"></a></h2>
+        </div>
+
+        <div class=n-series hidden>
+            <a class=n-series-name><span class=n-series-title></span> <span class="n-series-order n-num"></span></a>
+            <a class="n-series-prev popup">‹ 上一话</a>
+            <a class="n-series-next popup">下一话 ›</a>
         </div>
 
         <div class=post-info>
@@ -132,6 +141,11 @@ export default class DesktopImageInfo extends Widget
             // public/private switch, so one stray click doesn't unfollow.
             onFollowedClick: () => this.avatarWidget.followDropdownOpener.visible = true,
         });
+
+        this.artistWorks = new ArtistWorks({
+            container: this.root.querySelector(".artist-works-container"),
+        });
+        ppixiv.settings.addEventListener("info_panel_artist_works", () => this._setPostInfo(), this._signal);
 
         this.tagListWidget = new TagListWidget({
             container: this.root.querySelector(".tag-list-container")
@@ -367,9 +381,13 @@ export default class DesktopImageInfo extends Widget
     {
         helpers.html.setClass(this.root, "disabled", !this.visible);
 
-        // Don't do anything if we're not visible.
+        // Don't do anything if we're not visible.  The artist's other works load only while
+        // the panel is visible.
         if(!this.visible)
+        {
+            this.artistWorks.set({ mediaInfo: null });
             return;
+        }
 
         // Update widget illust IDs.
         this.likeButton.setMediaId(this._mediaId);
@@ -426,6 +444,9 @@ export default class DesktopImageInfo extends Widget
         let elementTitle = this.root.querySelector(".title");
         elementTitle.textContent = mediaInfo.illustTitle;
         elementTitle.href = getUrlForMediaId(this._mediaId).url;
+
+        this._setSeries(mediaInfo);
+        this.artistWorks.set({ mediaInfo: this.visible? mediaInfo:null, page: this.displayedPage ?? 0 });
 
         // Show the folder if we're viewing a local image.
         let folderTextElement = this.root.querySelector(".folder-text");
@@ -529,6 +550,35 @@ export default class DesktopImageInfo extends Widget
         if(mediaInfo.pageCount > 1 && this.displayedPage != null)
             pageText = `第 ${this.displayedPage+1} / ${mediaInfo.pageCount} 页`;
         setInfo(".page-count", pageText);
+    }
+
+    // The series line under the title: the series name and the work's number in it, linking to the
+    // series list, and the previous and next episodes.  An end of the series has no link there.
+    _setSeries(mediaInfo)
+    {
+        let series = mediaInfo.full? mediaInfo.seriesNavData:null;
+        let line = this.root.querySelector(".n-series");
+        line.hidden = series == null;
+        if(series == null)
+            return;
+
+        let name = line.querySelector(".n-series-name");
+        name.href = `/user/${mediaInfo.userId}/series/${series.seriesId}#ppixiv`;
+        name.querySelector(".n-series-title").textContent = series.title;
+        name.querySelector(".n-series-order").textContent = `#${series.order}`;
+
+        for(let [selector, episode] of [[".n-series-prev", series.prev], [".n-series-next", series.next]])
+        {
+            let link = line.querySelector(selector);
+            link.hidden = episode == null;
+            if(episode == null)
+            {
+                link.removeAttribute("href");
+                continue;
+            }
+            link.href = getUrlForMediaId(helpers.mediaId.fromIllustId(episode.id)).url;
+            link.dataset.popup = `#${episode.order} ${episode.title}`;
+        }
     }
 
     clickedDownload = (e) =>

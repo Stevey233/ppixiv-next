@@ -300,6 +300,12 @@ export default class MediaCache extends EventTarget
         // ID you're getting.
         mediaInfo.mediaId = mediaId;
         delete mediaInfo.id;
+
+        // userIllusts has every work ID of the artist, which can be hundreds.  Keep the count and
+        // the newest IDs for the info panel's strip of the artist's other works (next/artist-works.js).
+        let userIllustIds = Object.keys(mediaInfo.userIllusts ?? {}).sort((lhs, rhs) => rhs - lhs);
+        mediaInfo.userIllustCount = userIllustIds.length;
+        mediaInfo.userIllustIds = userIllustIds.slice(0, 12);
         delete mediaInfo.userIllusts;
 
         ppixiv.guessImageUrl.addInfo(mediaInfo);

@@ -103,6 +103,11 @@ export default class MediaInfo
 
     get ugoiraMetadata() { return this._getInfo("ugoiraMetadata"); }
     get seriesNavData() { return this._getInfo("seriesNavData"); }
+
+    // The artist's work count and newest work IDs, from userIllusts (see MediaCache).  Null when
+    // the info came from somewhere else.
+    get userIllustCount() { return this._getInfo("userIllustCount", null); }
+    get userIllustIds() { return this._getInfo("userIllustIds", null); }
     
     // Local images:
     get localPath() { return this._getInfo("localPath"); }

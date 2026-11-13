@@ -575,6 +575,16 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        infoPanelArtistWorks: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "信息栏显示作者的其他作品",
+                setting: "info_panel_artist_works",
+                explanationEnabled: "作者名下面显示这位作者最新的几件作品，点开在看图界面里看，Esc 回来。每位作者多一个请求。",
+                explanationDisabled: "不显示，也不发请求。",
+            });
+        },
+
         contextMenuStyle: () => {
             return new MenuOptionOptionsSetting({
                 ...globalOptions,
@@ -896,6 +906,7 @@ export class SettingsDialog extends DialogWidget
                 {
                     settingsWidgets.doubleClickFullscreen();
                     settingsWidgets.contextMenuStyle();
+                    settingsWidgets.infoPanelArtistWorks();
                     settingsWidgets.invertScrolling();
                     settingsWidgets.noHideCursor();
                     settingsWidgets.showMangaPageIndicator();

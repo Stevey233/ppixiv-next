@@ -1205,6 +1205,120 @@ html, html.mobile {
     }
 }
 
+// The series line under the title, and the artist's other works under the author row
+// (next/artist-works.js).  The strip's height is fixed (head row plus 60px thumbnails) and set as
+// soon as the artist is known to have other works, so nothing moves when the thumbnails arrive.
+.image-ui .ui-box {
+    // The name lines up with the title.  The episode links keep their places at the first and
+    // last episode: the missing one is hidden but still takes its space.
+    .n-series {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: baseline;
+        gap: 14px;
+        margin-top: -6px;
+        font-size: 13px;
+
+        &[hidden] { display: none; }
+
+        a {
+            color: var(--n-pencil);
+            white-space: nowrap;
+            &:hover { color: var(--n-blue); }
+            &[hidden] { display: inline; visibility: hidden; }
+        }
+
+        .n-series-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--n-text);
+        }
+        .n-series-order { font-size: 15px; }
+    }
+
+    .n-num {
+        font-family: var(--n-font-num);
+        font-weight: 600;
+    }
+
+    > vv-container.artist-works-container { display: contents; }
+
+    .n-artist-works {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: -4px;
+
+        &[hidden] { display: none; }
+    }
+
+    .n-artist-works-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 13px;
+        line-height: 18px;
+
+        .n-artist-works-label { color: var(--n-pencil); }
+        .n-artist-works-all {
+            color: var(--n-blue);
+            &:hover { text-decoration: underline; text-underline-offset: 3px; }
+        }
+    }
+
+    .n-artist-works-strip {
+        display: flex;
+        gap: 5px;
+        height: 60px;
+    }
+
+    .n-artist-work {
+        position: relative;
+        flex: 0 0 60px;
+        height: 60px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: var(--n-surface-2);
+
+        img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        &.muted {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--n-pencil);
+            .font-icon { font-size: 20px; }
+        }
+
+        // The crop marks' blue, as a line: hovered and focused thumbnails get a 2px blue outline.
+        &:hover { outline: 2px solid var(--n-blue); outline-offset: 1px; }
+    }
+
+    .n-artist-work-pages {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        padding: 0 3px;
+        border-radius: 2px;
+        background: rgb(0 0 0 / 0.6);
+        color: #fff;
+        font-family: var(--n-font-num);
+        font-size: 12px;
+        line-height: 16px;
+    }
+
+    .n-artist-works-note {
+        align-self: center;
+        color: var(--n-pencil);
+        font-size: 13px;
+    }
+}
+
 // ------------------------------------------------------------------ mobile lists
 //
 // A title bar at the top with the filter button, and a tab bar at the bottom.  Both slide away
