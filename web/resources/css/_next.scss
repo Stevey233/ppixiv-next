@@ -1265,19 +1265,18 @@ html, html.mobile {
     }
 }
 
-// The series line under the title, and the artist's other works below the action rows
-// (next/artist-works.js).  The strip sits below the buttons so they keep one position for
-// every work, whether the artist has other works or not.  The strip's height is fixed (head row plus 60px thumbnails) and set as
+// The series line and the artist's other works (next/artist-works.js), below the action rows.
+// Both sit below the buttons so the buttons keep one position for every work, in a series or not,
+// whether the artist has other works or not.  The strip's height is fixed (head row plus 60px thumbnails) and set as
 // soon as the artist is known to have other works, so nothing moves when the thumbnails arrive.
 .image-ui .ui-box {
-    // The name lines up with the title.  The episode links keep their places at the first and
-    // last episode: the missing one is hidden but still takes its space.
+    // The episode links keep their places at the first and last episode: the missing one is
+    // hidden but still takes its space.
     .n-series {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
         align-items: baseline;
         gap: 14px;
-        margin-top: -6px;
         font-size: 13px;
 
         &[hidden] { display: none; }

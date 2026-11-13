@@ -65,12 +65,6 @@ export default class DesktopImageInfo extends Widget
             <h2 class="title-block"><a class="title"></a></h2>
         </div>
 
-        <div class=n-series hidden>
-            <a class=n-series-name><span class=n-series-title></span> <span class="n-series-order n-num"></span></a>
-            <a class="n-series-prev popup">‹ 上一话</a>
-            <a class="n-series-next popup">下一话 ›</a>
-        </div>
-
         <div class=post-info>
             <div class="post-age popup" hidden></div>
             <div class=image-info hidden></div>
@@ -107,6 +101,12 @@ export default class DesktopImageInfo extends Widget
                     ${ helpers.createIcon("ppixiv:thumbnails") }<span class=n-label>全部页面</span>
                 </div>
             </div>
+        </div>
+
+        <div class=n-series hidden>
+            <a class=n-series-name><span class=n-series-title></span> <span class="n-series-order n-num"></span></a>
+            <a class="n-series-prev popup">‹ 上一话</a>
+            <a class="n-series-next popup">下一话 ›</a>
         </div>
 
         <vv-container class=artist-works-container></vv-container>
@@ -556,11 +556,16 @@ export default class DesktopImageInfo extends Widget
         setInfo(".page-count", pageText);
     }
 
-    // The series line under the title: the series name and the work's number in it, linking to the
-    // series list, and the previous and next episodes.  An end of the series has no link there.
+    // The series line below the action rows: the series name and the work's number in it, linking
+    // to the series list, and the previous and next episodes.  An end of the series has no link
+    // there.  Partial info has no seriesNavData, so the line keeps its state until the full info
+    // arrives, instead of hiding and coming back.
     _setSeries(mediaInfo)
     {
-        let series = mediaInfo.full? mediaInfo.seriesNavData:null;
+        if(!mediaInfo.full)
+            return;
+
+        let series = mediaInfo.seriesNavData;
         let line = this.root.querySelector(".n-series");
         line.hidden = series == null;
         if(series == null)
