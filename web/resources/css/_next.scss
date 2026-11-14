@@ -671,6 +671,7 @@ html.mobile .n-rank-stepper {
         gap: 12px;
         color: var(--n-pencil);
         font-size: 14px;
+        .filter-continue { flex-shrink: 0; }
     }
 
     // "已隐藏 48：看过 30 · 已收藏 12": quiet secondary text.  The reasons that turn a filter off are
@@ -678,7 +679,6 @@ html.mobile .n-rank-stepper {
     .filter-hidden {
         color: var(--n-pencil);
         font-size: 13px;
-        white-space: nowrap;
         &[hidden] { display: none; }
 
         .filter-hidden-link, .filter-hidden-muted {
