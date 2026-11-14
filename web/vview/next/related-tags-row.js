@@ -37,21 +37,35 @@ export default class RelatedTagsRow extends Widget
 
     async refresh()
     {
-        let search = (helpers.pixiv.getSearchTagsFromUrl(this.dataSource.url) ?? "").split(/\s+/);
-        let tags = (this.dataSource.relatedTags ?? [])
-            .filter((tag) => !search.includes(tag) && !search.includes(`-${tag}`))
-            .slice(0, MAX_CHIPS);
+        let search = (helpers.pixiv.getSearchTagsFromUrl(this.dataSource.url) ?? "").split(/\s+/)
+            .map((tag) => tag.replace(/^-/, "")).filter((tag) => tag != "");
+        let candidates = (this.dataSource.relatedTags ?? []).filter((tag) => !search.includes(tag));
         if(!ppixiv.settings.get("search_related_tags"))
-            tags = [];
+            candidates = [];
 
-        let key = JSON.stringify(tags);
+        let key = JSON.stringify(candidates);
         if(key == this._shownKey)
             return;
         this._shownKey = key;
 
-        let translations = await ppixiv.tagTranslations.getTranslations(tags, "en");
+        let translations = await ppixiv.tagTranslations.getTranslations([...candidates, ...search], "en");
         if(key != this._shownKey)
             return;
+
+        // Different tags can share a translated name, and Pixiv lists other spellings of the
+        // searched tag first.  Show each name once, and none that the search already has.
+        let nameOf = (tag) => (translations[tag] ?? tag).toLowerCase();
+        let names = new Set(search.flatMap((tag) => [tag.toLowerCase(), nameOf(tag)]));
+        let tags = [];
+        for(let tag of candidates)
+        {
+            if(names.has(nameOf(tag)))
+                continue;
+            names.add(nameOf(tag));
+            tags.push(tag);
+            if(tags.length == MAX_CHIPS)
+                break;
+        }
 
         this.root.replaceChildren();
         for(let tag of tags)
