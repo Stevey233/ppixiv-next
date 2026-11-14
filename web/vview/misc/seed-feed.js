@@ -18,7 +18,8 @@ import { helpers } from '/vview/misc/helpers.js';
 export const SEED_COUNT = 10;
 const SEED_PAGE_SIZE = 48;
 const RELATED_LIMIT = 180;
-const REQUEST_SPACING = 1200;
+// A little over the 1.2 seconds the budget states: a timer can fire a millisecond early.
+const REQUEST_SPACING = 1250;
 const SEEDS_FRESH = 10*60*1000;
 const RELATED_FRESH = 24*60*60*1000;
 const FAILED_FRESH = 10*60*1000; // retry a seed that failed after this
