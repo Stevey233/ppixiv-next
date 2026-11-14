@@ -3075,6 +3075,68 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 }
 
+// Tag search: Pixiv's related tags as one line after the filter bar (next/related-tags-row.js).
+// It takes what's left of the filter bar's line (the large grow factor gives it all the free
+// space), or a line of its own when less than 260px is left.  Tags that don't fit on the line
+// are hidden by the widget.  They're plain text with a "#", like the header's other options,
+// not outlined chips.  A rule hangs left of the line like the filter bar's, clipped when it
+// starts a line.
+.thumbnail-ui-box > .n-related-tags {
+    flex: 1000 1 0;
+    min-width: 260px;
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 4px;
+    height: 30px;
+
+    &[hidden] { display: none; }
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: -17px;
+        top: 7px;
+        bottom: 7px;
+        border-left: 1px solid var(--n-rule);
+    }
+}
+
+.n-related-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+
+    &[hidden] { display: none; }
+
+    > .n-related-tag {
+        padding: 0 2px 0 6px;
+        color: var(--n-pencil);
+        font-size: 14px;
+        line-height: 30px;
+        white-space: nowrap;
+        text-decoration: none;
+
+        &::before { content: "#"; margin-right: 1px; opacity: 0.6; }
+        &:hover { color: var(--n-blue); }
+    }
+
+    // The − keeps its space while hidden, so nothing moves on hover.
+    .n-tag-refine-button {
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        .font-icon { font-size: 16px; }
+    }
+    > .n-tag-refine { opacity: 0; }
+
+    &:hover, &:focus-within {
+        > .n-related-tag { color: var(--n-text); &:hover { color: var(--n-blue); } }
+        > .n-tag-refine { opacity: 1; }
+    }
+}
+
 // Text inputs outside the header (user search, dialogs): upstream draws an outline around a box
 // that has its own darker input background inside it.
 .input-field-container {

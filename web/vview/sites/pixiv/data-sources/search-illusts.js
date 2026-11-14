@@ -35,6 +35,7 @@ import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
 import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { searchApiArgs, rememberAgeMode } from '/vview/misc/result-filters.js';
+import RelatedTagsRow from '/vview/next/related-tags-row.js';
 
 export default class DataSource_Search extends DataSource
 {
@@ -165,15 +166,7 @@ export default class DataSource_Search extends DataSource
         let result = await helpers.pixivRequest.get(url, args);
         let body = result.body;
 
-        // Store related tags.  Only do this the first time and don't change it when we read
-        // future pages, so the tags don't keep changing as you scroll around.
-        if(this.relatedTags == null)
-        {
-            this.relatedTags = body.relatedTags;
-            this.callUpdateListeners();
-        }
-
-        // Add translations.
+        // Add translations.  This comes first, so the related tags row reads them.
         let translations = [];
         for(let tag of Object.keys(body.tagTranslation))
         {
@@ -183,6 +176,14 @@ export default class DataSource_Search extends DataSource
             });
         }
         ppixiv.tagTranslations.addTranslations(translations);
+
+        // Store related tags.  Only do this the first time and don't change it when we read
+        // future pages, so the tags don't keep changing as you scroll around.
+        if(this.relatedTags == null)
+        {
+            this.relatedTags = body.relatedTags;
+            this.callUpdateListeners();
+        }
 
         // /ajax/search/illustrations returns results in body.illust.
         // /ajax/search/artworks returns results in body.illustManga.
@@ -514,6 +515,11 @@ class UI extends Widget
         resetButton.hidden = !ageSet && !outsideSet && setCount == 0;
         resetButton.href = this._resetUrl();
         resetButton.addEventListener("click", () => rememberAgeMode("all"), this._signal);
+
+        // The related tags as a line of chips in the desktop header, after the filter bar.
+        let header = this.root.closest(".thumbnail-ui-box");
+        if(!ppixiv.mobile && header)
+            new RelatedTagsRow({ container: header, dataSource, signal: this.shutdownSignal });
 
         // Create the tag dropdown for the search page input.
         this.tagSearchBox = new TagSearchBoxWidget({

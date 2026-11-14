@@ -82,6 +82,7 @@ export default class Settings extends EventTarget
         this.configure("info_panel_pinned", { defaultValue: true });
         this.configure("info_panel_artist_works", { defaultValue: true });
         this.configure("result_filters_remembered", { defaultValue: {} }); // see misc/result-filters.js
+        this.configure("search_related_tags", { defaultValue: true }); // see next/related-tags-row.js
         this.configure("changelog_last_viewed", { defaultValue: "" }); // see widgets/whats-new.js
 
         // Upstream's default thumbnail size fits one column on a phone.  Two to three columns

@@ -551,6 +551,16 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        searchRelatedTags: () => {
+            return new MenuOptionToggleSetting({
+                ...globalOptions,
+                label: "搜索结果上方显示相关标签",
+                setting: "search_related_tags",
+                explanationEnabled: "标签搜索的页头显示一行 Pixiv 给的相关标签，点一下加到当前搜索。",
+                explanationDisabled: "只在搜索框的“相关标签”按钮里显示。",
+            });
+        },
+
         clearSeenWorks: () => {
             return new MenuOptionButton({
                 ...globalOptions,
@@ -909,7 +919,10 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.followingLastSeen();
                 }
                 if(!ppixiv.mobile && !ppixiv.native)
+                {
                     settingsWidgets.hoverPreload();
+                    settingsWidgets.searchRelatedTags();
+                }
                 if(!ppixiv.mobile)
                 {
                     settingsWidgets.disableThumbnailPanning();
