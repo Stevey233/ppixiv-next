@@ -204,7 +204,8 @@ export default class DataSource extends EventTarget
                 allowEmpty = true;
             mediaIds = mediaIds.filter((mediaId) => {
                 let reason = getReason(mediaId);
-                if(reason != null && newMediaIds.has(mediaId))
+                // delete, so a work one response lists twice counts once.
+                if(reason != null && newMediaIds.delete(mediaId))
                     this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + 1;
                 return reason == null;
             });
