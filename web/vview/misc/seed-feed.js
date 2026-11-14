@@ -241,9 +241,9 @@ export class SeedFeed extends EventTarget
     async _get(key)
     {
         let request = await this._dbOp("readonly", (store) => store.get(key));
-        if(request == null)
-            return this._memory.get(key) ?? null;
-        return request.result ?? null;
+        // A write that failed, like one past the storage quota, leaves the key missing from
+        // IndexedDB, so fall back to what this page stored.
+        return request?.result ?? this._memory.get(key) ?? null;
     }
 
     _put(key, value)
