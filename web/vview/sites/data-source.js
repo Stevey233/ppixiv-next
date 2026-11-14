@@ -117,7 +117,9 @@ export default class DataSource extends EventTarget
     // an HTML error page instead of JSON), try again a few times with a growing delay.  After the
     // last try, resolve to false and leave the page unloaded, and wait FAILED_COOLDOWN
     // before trying that page again, so a reader scrolling at the end of a list that keeps
-    // failing doesn't send a request on every scroll.
+    // failing doesn't send a request on every scroll.  The search view doesn't load on by
+    // itself after a failed page (see SearchView._loadDataSourcePageInner), so the next try
+    // waits for the reader to scroll or open the list again.
     async _loadPageRetrying(page, { cause })
     {
         let loadedPages = this.loadedPages;
@@ -156,6 +158,18 @@ export default class DataSource extends EventTarget
         if(this.loadedPages[page] || this.loadingPages[page])
             return true;
         return false;
+    }
+
+    // Return true if the last try to load page failed, see _loadPageRetrying.
+    pageFailed(page)
+    {
+        return this._pageFailedAt?.[page] != null;
+    }
+
+    // Return true if a page failed to load and hasn't loaded since.
+    get anyPageFailed()
+    {
+        return Object.keys(this._pageFailedAt ?? {}).length > 0;
     }
 
     // Return true if any page is currently loading.
@@ -230,14 +244,14 @@ export default class DataSource extends EventTarget
             mediaIds = [];
             allowEmpty = false;
         }
-        for(let mediaId of mediaIds ?? [])
-            this._returnedMediaIds.add(mediaId);
+        let returnedMediaIds = mediaIds ?? [];
 
         // Apply the result filters.  If the page had results, add it even if nothing is left, so
         // the next page loads, see below.  Nothing can be left after filtering, or after addPage
         // removes works already on an earlier page, which with few works left is often all of them.
         let returnedCount = mediaIds?.length ?? 0;
         let filteredAway = false;
+        let hidden = {};
         let getReason = await this._getHideReason();
         if(mediaIds && getReason)
         {
@@ -248,7 +262,7 @@ export default class DataSource extends EventTarget
                 let reason = getReason(mediaId);
                 // delete, so a work one response lists twice counts once.
                 if(reason != null && newMediaIds.delete(mediaId))
-                    this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + 1;
+                    hidden[reason] = (hidden[reason] ?? 0) + 1;
                 return reason == null;
             });
         }
@@ -256,6 +270,13 @@ export default class DataSource extends EventTarget
         // Register the page if media IDs were returned.
         if(mediaIds)
             await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
+
+        // Record what the page returned and hid only once it's added: if addPage throws, the page
+        // is loaded again (see _loadPageRetrying), and that answer mustn't count as repeats.
+        for(let mediaId of returnedMediaIds)
+            this._returnedMediaIds.add(mediaId);
+        for(let [reason, count] of Object.entries(hidden))
+            this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + count;
 
         // Count emptied pages only after addPage, which drops works already on an earlier page.
         // Otherwise a list that keeps returning the same works never stops loading.

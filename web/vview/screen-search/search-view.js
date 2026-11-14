@@ -290,6 +290,17 @@ export default class SearchView extends Widget
         this.root.addEventListener("error", (e) => thumbnailFailed(e.target), { capture: true });
 
         this.scrollContainer.addEventListener("scroll", (e) => this.scheduleStoreScrollPosition(), { passive: true });
+
+        // After a page failed to load, a wheel turn or a swipe tries it again.  At the end of the
+        // list the view doesn't move, so the nearby observer that normally starts loads doesn't run.
+        let retryFailedPage = () => {
+            if(!this.dataSource?.anyPageFailed || Date.now() - (this._lastFailedRetry ?? 0) < 1000)
+                return;
+            this._lastFailedRetry = Date.now();
+            this.loadDataSourcePage({ cause: "retry failed page" });
+        };
+        this.scrollContainer.addEventListener("wheel", retryFailedPage, { passive: true, signal: this.shutdownSignal });
+        this.scrollContainer.addEventListener("touchend", retryFailedPage, { passive: true, signal: this.shutdownSignal });
         this.thumbnailBox.addEventListener("click", (e) => this.thumbnailClick(e));
         setupQuickBookmark({
             container: this.thumbnailBox,
@@ -551,6 +562,12 @@ export default class SearchView extends Widget
         // If we have no IDs and nothing is loading, the data source is empty (no results).
         if(this.dataSource?.hasNoResults)
             this._refreshNoResults();
+
+        // A page that failed to load isn't loaded, so the check below would pick it again and,
+        // once its cool-down ends, send requests with nobody scrolling.  Wait for the nearby
+        // observer instead, which runs when the reader scrolls.
+        if(this.dataSource?.pageFailed(loadPage))
+            return;
 
         // See if there's another page we want to load.  This is async, since the current
         // loadDataSourcePage call should complete as soon as we've loaded a single page.
