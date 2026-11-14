@@ -343,6 +343,18 @@ export default class ScreenSearch extends Screen
             return;
         }
 
+        // Esc on 相似作品 goes back to the work or list it was opened from, like Esc in the viewer.
+        // It does nothing when the previous history entry isn't in this page, so it never leaves
+        // the script.  Dialogs and dropdowns handle their own Esc first.
+        if(e.key == "Escape" && this.dataSource?.name == "related-illusts" &&
+           !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && OpenWidgets.singleton.empty &&
+           !e.target.closest?.("input, textarea, select, [contenteditable]") && canGoBackInPage())
+        {
+            e.preventDefault();
+            ppixiv.phistory.back();
+            return;
+        }
+
         if(this.dataSource.name == "vview" || this.dataSource.name == "vview-search")
         {
             // Pressing ^F while on the local search focuses the search box.
@@ -365,4 +377,18 @@ export default class ScreenSearch extends Screen
             }
         }
     }
+}
+
+// Return true if going back in history stays in this page.  On desktop the previous entry must
+// belong to this document, which is true when the script navigated here and false when the page
+// was opened directly or reloaded.  Mobile keeps its own history (util/virtual-history.js).
+function canGoBackInPage()
+{
+    if(ppixiv.phistory.permanent)
+        return ppixiv.phistory.previousStateUrl != null;
+
+    let current = window.navigation?.currentEntry;
+    if(current == null)
+        return false;
+    return navigation.entries()[current.index-1]?.sameDocument ?? false;
 }

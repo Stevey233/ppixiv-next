@@ -18,6 +18,7 @@ const SHORTCUTS = [
         rows: [
             ["/", "聚焦搜索框"],                                    // screen-search.js handleKeydown
             ["Ctrl+滚轮", "调整缩略图大小"],                        // screen-search.js wheel
+            ["Esc", "在相似作品列表上返回打开它的作品或列表"],      // screen-search.js handleKeydown
             ["按住右键+滚轮", "在多页作品的缩略图上翻页，这时点开的就是显示的那一页"],  // context-menu.js onwheel, next/thumb-pages.js
         ],
     },
