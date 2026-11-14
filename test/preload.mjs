@@ -2,7 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-let source = fs.readFileSync(new URL('../web/vview/misc/preload.js', import.meta.url), 'utf8');
+// The data: URL can't resolve the module's imports, so the environment supplies them.
+let source = fs.readFileSync(new URL('../web/vview/misc/preload.js', import.meta.url), 'utf8')
+    .replace(/^import \{ loadedPreviewUrl \} from .*$/m, 'let { loadedPreviewUrl } = globalThis.preloadEnvironment;');
+assert(!/^import /m.test(source), 'every import of preload.js is replaced');
 let instance = 0;
 let tick = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -11,6 +14,7 @@ async function runtime({ enabled=true, saveData=false, mode='all', muted=false }
     let now = 0, nextTimer = 0;
     let timers = new Map(), images = [], requests = [];
     let settings = { hover_preload: enabled, preload_manga: mode };
+    let loadedPreviews = new Map(); // 540 URL -> the larger thumbnail the list loaded
     let navigator = { connection: { saveData } };
     let info = (id) => ({
         illustType: 0, mangaPages: Array(10), previewUrls: [`preview:${id}`],
@@ -38,7 +42,8 @@ async function runtime({ enabled=true, saveData=false, mode='all', muted=false }
             return image;
         },
     };
-    globalThis.preloadEnvironment = { window, document, navigator, performance: { now: () => now } };
+    let loadedPreviewUrl = (url) => loadedPreviews.get(url) ?? url;
+    globalThis.preloadEnvironment = { window, document, navigator, performance: { now: () => now }, loadedPreviewUrl };
     let module = await import('data:text/javascript,' + encodeURIComponent(`
         let { window, document, navigator, performance } = globalThis.preloadEnvironment;
         ${source}
@@ -50,7 +55,7 @@ async function runtime({ enabled=true, saveData=false, mode='all', muted=false }
         return { target: thumb, pointerType };
     };
     return {
-        ...module, images, requests, settings, navigator, cache,
+        ...module, images, requests, settings, navigator, cache, loadedPreviews,
         over: (id) => module.thumbnailPointerOver(event(id)),
         async move(id, pointerType)
         {
@@ -159,3 +164,33 @@ hoverOffManga.images[0].onload();
 await tick();
 assert.equal(hoverOffManga.images.length, 3);
 console.log('ok   Manga respects save-data independently of the hover setting');
+
+let larger = await runtime();
+larger.loadedPreviews.set('preview:illust:1-0', 'hd:illust:1-0');
+await larger.move('illust:1-0');
+assert(!larger.images.some((image) => image.src.startsWith('preview:') || image.src.startsWith('hd:')));
+assert(larger.images.some((image) => image.src == 'original:illust:1-0:0'));
+console.log('ok   Hover skips the 540 preview when the list already loaded a larger thumbnail');
+
+// Real URLs, since the work is recognized by the file name.
+let opened = await runtime();
+let realInfo = (id) => {
+    let n = /^illust:(\d+)/.exec(id)[1];
+    return {
+        illustType: 0, mangaPages: Array(10), previewUrls: [`https://i.pximg.net/c/540x540_70/img-master/img/${n}_p0_master1200.jpg`],
+        getMainImageUrl: (page) => ({ url: `https://i.pximg.net/img-original/img/${n}_p${page}.png` }),
+    };
+};
+opened.cache.getMediaInfoSync = realInfo;
+opened.cache.getMediaInfo = async (id) => realInfo(id);
+await opened.move('illust:11-0');
+await opened.move('illust:22-0');
+let srcs = () => opened.images.map((image) => image.src).filter((src) => src != '');
+assert(srcs().some((src) => src.includes('/11_p0.png')) && srcs().some((src) => src.includes('/22_p0.png')));
+opened.preloadMangaPages('illust:22-0');
+await tick();
+assert(!srcs().some((src) => src.includes('/11_p')), 'the other work is cancelled');
+assert(srcs().some((src) => src.includes('/22_p0.png')), "the opened work's own prefetch continues");
+opened.preloadMangaPages(null);
+assert.equal(srcs().length, 0, 'leaving the viewer cancels the rest');
+console.log('ok   Opening a work cancels prefetches of other works, and leaving it cancels all');

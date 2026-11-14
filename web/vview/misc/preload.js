@@ -1,5 +1,7 @@
 // Prefetch originals through the HTTP cache used by the viewer.
 
+import { loadedPreviewUrl } from '/vview/misc/hd-thumbnails.js';
+
 let HOVER_DELAY_MS = 300;
 let HOVER_PREFETCH_LIMIT = 30;
 let MAX_PREFETCHES = 3;
@@ -68,6 +70,21 @@ function prefetchUrl(url)
     img.src = url;
 }
 
+// Stop prefetches of works other than mediaId's, or all of them if mediaId is null.  Hovering
+// on the way to a work starts prefetches of up to three originals, and once a work is open they
+// would share the connection with the image the viewer is waiting for.
+function cancelOtherPrefetches(mediaId)
+{
+    let illustId = /^illust:(\d+)/.exec(mediaId ?? "")?.[1];
+    for(let [url, img] of prefetching)
+    {
+        if(illustId != null && new RegExp(`/${illustId}_p\\d+[._]`).test(url))
+            continue;
+        img.src = "";
+        prefetching.delete(url);
+    }
+}
+
 function parseMediaId(mediaId)
 {
     let match = /^illust:(\d+)(?:-(\d+))?$/.exec(mediaId ?? "");
@@ -115,7 +132,7 @@ async function prefetchPages(mediaId, pages, shownPage = null)
         return;
     // Full info can arrive after a hover that had no cached preview URL.
     if(shownPage == null)
-        prefetchUrl(info.previewUrls?.[pages[0]]);
+        prefetchUrl(viewerPreviewUrl(info.previewUrls?.[pages[0]]));
     if(info.illustType == 2)
         return;
     if(shownPage != null && !await waitForShownPage(info.getMainImageUrl(shownPage).url))
@@ -150,6 +167,13 @@ function waitForShownPage(url)
     });
 }
 
+// The 540 preview the viewer would request, or null if the viewer will show a larger thumbnail
+// the list already loaded instead (see loadedPreviewUrl).
+function viewerPreviewUrl(url)
+{
+    return loadedPreviewUrl(url) == url ? url : null;
+}
+
 // Return true if hovering a work would request anything: its full info isn't loaded yet, or
 // its original or 540 preview isn't downloaded or downloading.
 function hoverWouldFetch(mediaId, page)
@@ -162,7 +186,7 @@ function hoverWouldFetch(mediaId, page)
         // Animations' originals aren't prefetched, see below.
         let have = (url) => url == null || prefetched.has(url) || prefetching.has(url);
         return (info.illustType != 2 && !have(info.getMainImageUrl(page).url)) ||
-            !have(mediaCache.getMediaInfoSync(mediaId, { full: false })?.previewUrls?.[page]);
+            !have(viewerPreviewUrl(mediaCache.getMediaInfoSync(mediaId, { full: false })?.previewUrls?.[page]));
     } catch(e) {
         return true;
     }
@@ -251,7 +275,7 @@ export function thumbnailPointerMove(e)
 
         // The viewer shows ppixiv's 540 thumbnail while the original loads.  Search results
         // now load larger thumbnails instead (see "sharper thumbnails"), so fetch it too.
-        prefetchUrl(partialInfo?.previewUrls?.[parsed.page]);
+        prefetchUrl(viewerPreviewUrl(partialInfo?.previewUrls?.[parsed.page]));
     }, HOVER_DELAY_MS);
 }
 
@@ -269,6 +293,8 @@ export function preloadMangaPages(mediaId)
         shownPageLoader.src = "";
         shownPageLoader = null;
     }
+
+    cancelOtherPrefetches(mediaId);
 
     let parsed = parseMediaId(mediaId);
     if(parsed == null || saveData())

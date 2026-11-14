@@ -4,6 +4,7 @@ import ImageEditor from '/vview/viewer/images/editing.js';
 import ImageEditingOverlayContainer from '/vview/viewer/images/editing-overlay-container.js';
 import Slideshow from '/vview/misc/slideshow.js';
 import LocalAPI from '/vview/misc/local-api.js';
+import { loadedPreviewUrl } from '/vview/misc/hd-thumbnails.js';
 import DirectAnimation from '/vview/actors/direct-animation.js';
 import { helpers, FixedDOMRect, OpenWidgets, GuardedRunner } from '/vview/misc/helpers.js';
 
@@ -329,7 +330,9 @@ export default class ViewerImages extends Viewer
         // Don't show low-res previews during slideshows.
         if(this._slideshowMode)
             previewUrl = url;
-        
+        else
+            previewUrl = loadedPreviewUrl(previewUrl);
+
         // If this is a local image, ask LocalAPI whether we should use the preview image for quick
         // loading.  See shouldPreloadThumbs for details.
         if(!LocalAPI.shouldPreloadThumbs(this.mediaId, previewUrl))

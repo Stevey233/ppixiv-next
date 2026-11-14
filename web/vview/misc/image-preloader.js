@@ -13,6 +13,7 @@
 
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { loadedPreviewUrl } from '/vview/misc/hd-thumbnails.js';
 
 // The image ResourceLoader singleton.
 export default class ImagePreloader
@@ -250,7 +251,8 @@ export default class ImagePreloader
         {
             if(!LocalAPI.shouldPreloadThumbs(mediaId, url))
                 continue;
-            previewUrls.push(url);
+            // The viewer shows the larger thumbnail the list loaded instead, if there is one.
+            previewUrls.push(loadedPreviewUrl(url));
         }
 
         if(previewUrls.length > 0)

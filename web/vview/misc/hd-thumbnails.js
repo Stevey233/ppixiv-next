@@ -120,6 +120,19 @@ function markThumbTierLoaded(state, tier)
     tiers.add(tier);
 }
 
+// The viewer shows ppixiv's 540 thumbnail while the original loads, but the list loaded one of
+// the sizes above for the same image.  Return the largest of those that finished loading, which
+// the browser has cached, so the viewer shows it at once instead of waiting for a new download.
+// Return url unchanged if none has.
+export function loadedPreviewUrl(url)
+{
+    let tiers = url == null ? null : loadedThumbTiers.get(url);
+    let match = tiers?.size ? THUMB_URL_RE.exec(url) : null;
+    if(match == null)
+        return url;
+    return thumbUrl({ base: url, prefix: match[1], path: match[2] }, Math.max(...tiers));
+}
+
 // The tier to show at once for a thumbnail that wants `wanted`.  ppixiv rebuilds thumbnails
 // when their size changes, and the new elements would stay blank while a new size downloads.
 // If another tier of the work has already loaded, show that instead: a larger one as it is, or a
