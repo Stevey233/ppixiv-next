@@ -9,6 +9,14 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-14.3",
+        title: "请求失败后能接着加载",
+        items: [
+            "列表往下翻时某一页请求失败（Pixiv 限流、网络断一下），会隔几秒自动重试，之后接着加载。以前失败一次列表就停在那里，只能刷新页面。",
+            "点开作品时请求失败，过几秒再点开就能正常打开。以前这件作品会一直显示出错，直到刷新页面。",
+        ],
+    },
+    {
         id: "2026-11-14.2",
         title: "常看标签：按标签分组的推荐",
         items: [

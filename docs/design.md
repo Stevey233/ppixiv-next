@@ -360,6 +360,11 @@ ppixiv 是给 Pixiv 插画用的看图工具。用的人每天刷几个固定的
 
 - 主题有自动、深色、浅色，自动跟随系统。浅色按原稿纸配色。`<meta name=theme-color>` 跟着主题变，iOS 和 Android 浏览器的地址栏颜色一致。
 
+### 请求失败
+
+- 列表翻页的请求失败（429、403、Pixiv 返回 HTML 错误页、断网）时，隔 2、6、15 秒各重试一次，还不行就先放着，30 秒后再滚动会重新请求。以前失败一次列表就停在那一页，要刷新页面才能继续，控制台还会报未处理的异常。连续失败 70 秒内同一页最多请求 8 次。
+- 打开作品时作品信息的请求失败，只记 3 秒。以前会把这件作品当成"不存在"记到刷新页面为止，之后每次点开都报错。
+
 ### 发布和自动更新
 
 - 脚本从公开仓库 `github.com/Stevey233/ppixiv-next` 的 `stevey` 分支发布。`@updateURL` 和 `@downloadURL` 都指向 `raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js`，Tampermonkey 比较 `@version` 后自动更新，不再手动粘贴。
