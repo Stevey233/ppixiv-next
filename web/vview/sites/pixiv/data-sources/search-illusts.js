@@ -233,17 +233,15 @@ export default class DataSource_Search extends DataSource
     }
 }
 
+// The age rating: three links always shown at the start of the row, like 推荐作品.  Pixiv filters
+// with mode.
+const AGES = [
+    { label: "全部", mode: "all" },
+    { label: "全年龄", mode: "safe" },
+    { label: "R18", mode: "r18", classes: ["r18"] },
+];
+
 // The search conditions, as items for DataSource.setupDropdown.
-const AGES = [{
-    createOptions: { label: "全部",  dataset: { default: true } },
-    setupOptions: { fields: {mode: null} },
-}, {
-    createOptions: { label: "全年龄" },
-    setupOptions: { fields: {mode: "safe"} },
-}, {
-    createOptions: { label: "R18", classes: ["r18"] },
-    setupOptions: { fields: {mode: "r18"} },
-}];
 
 const SORT = [{
     createOptions: { label: "最新",              dataset: { default: true } },
@@ -393,7 +391,8 @@ class UI extends Widget
                 </div>
 
                 <div class=box-button-row>
-                    ${ helpers.createBoxLink({label: "年龄分级",    classes: ["ages-button"] }) }
+                    ${ AGES.map(({label, mode, classes=[]}) => helpers.createBoxLink({label, dataType: `age-${mode}`, classes: ["n-age", ...classes] })).join("") }
+                    <span class=n-age-end></span>
                     ${ helpers.createBoxLink({label: "排序",    classes: ["sort-button"] }) }
                     ${ helpers.createBoxLink({label: "搜索方式",    classes: ["search-mode-button"] }) }
                     ${ helpers.createBoxLink({label: "图片尺寸",    classes: ["image-size-button"] }) }
@@ -416,7 +415,6 @@ class UI extends Widget
         // The options that stay in the row.  On desktop, the rarely changed ones are folded into
         // the 更多条件 panel (see docs/design.md).  Mobile shows every option in its sheet.
         let outside = [
-            { button: ".ages-button", items: AGES },
             { button: ".sort-button", items: SORT },
             { button: ".bookmark-count-button", items: BOOKMARK_COUNT },
         ];
@@ -453,6 +451,14 @@ class UI extends Widget
                     this.querySelector(button).remove();
             }
         }
+
+        for(let { mode } of AGES)
+        {
+            // Write mode=all for 全部 too, so every search URL says which rating it shows.
+            dataSource.setItem(this.root, { type: `age-${mode}`, fields: {mode}, defaults: {mode: "all"},
+                adjustUrl: (args) => args.set("mode", mode) });
+        }
+        let ageSet = (dataSource.url.searchParams.get("mode") ?? "all") != "all";
 
         for(let { button, items } of outside)
         {
@@ -502,7 +508,7 @@ class UI extends Widget
         // condition and keeps the search mode, unless the search mode itself is the condition.
         let resetButton = this.querySelector(".reset-search");
         let outsideSet = outside.some((section) => this._sectionState(section).set);
-        resetButton.hidden = !outsideSet && setCount == 0;
+        resetButton.hidden = !ageSet && !outsideSet && setCount == 0;
         resetButton.href = this._resetUrl();
 
         // Create the tag dropdown for the search page input.

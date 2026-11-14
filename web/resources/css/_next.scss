@@ -2905,6 +2905,31 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 }
 
+// Tag search: 全部 / 全年龄 / R18 at the start of the row, always shown, then a 1px rule before
+// the dropdowns.  On a phone they're a row of their own above the other options.
+.data-source-ui .n-age-end {
+    align-self: center;
+    width: 0;
+    height: 16px;
+    margin: 0 8px;
+    border-left: 1px solid var(--n-rule);
+}
+
+.search-ui-mobile .data-source-ui {
+    .n-age-end {
+        flex-basis: 100%;
+        height: 0;
+        margin: 0;
+        border: none;
+    }
+
+    .box-button-row > .box-link.n-age {
+        height: 44px;
+        min-width: 44px;
+        justify-content: center;
+    }
+}
+
 // Tag search: the rarely changed conditions are in the 更多条件 panel.  The button shows how many
 // are set, and each set one is a chip after it; clicking a chip clears that condition.
 .more-conditions-button .n-more-count {
