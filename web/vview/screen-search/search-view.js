@@ -460,8 +460,12 @@ export default class SearchView extends Widget
 
         this.loadExpandedMediaIds();
 
-        // Load the initial page if we haven't yet.
-        await this.loadDataSourcePage({ cause: "initialization" });
+        // Load the initial page if we haven't yet.  Wait only for the first page: a later page
+        // that is already loading, like 推荐作品's paced request, would hold up returning to the
+        // list for as long as it takes.
+        let loading = this.loadDataSourcePage({ cause: "initialization" });
+        if(!this.dataSource.idList.anyPagesLoaded)
+            await loading;
         signal.throwIfAborted();
 
         // If we weren't given a media ID to scroll to, see if we have a scroll position to restore.
@@ -489,10 +493,13 @@ export default class SearchView extends Widget
 
     loadDataSourcePage({cause="thumbnails"}={})
     {
-        // Guard this against multiple concurrent calls.
-        if(this._loadPageRunner.isRunning)
+        // Guard this against multiple concurrent calls for the same data source.  A call for an
+        // earlier data source doesn't hold up the current one: this aborts it, and its page load
+        // finishes in the background without touching the view.
+        if(this._loadPageRunner.isRunning && this._loadPageDataSource == this.dataSource)
             return this._loadPageRunner.promise;
 
+        this._loadPageDataSource = this.dataSource;
         return this._loadPageRunner.call(this._loadDataSourcePageInner.bind(this), { cause });
     }
 
@@ -509,6 +516,8 @@ export default class SearchView extends Widget
         noResults.hidden = true;
 
         await this.dataSource.loadPage(loadPage, { cause });
+        if(signal.aborted)
+            return;
 
         // Refresh the view with any new data.  Skip this if we're in the middle of setDataSource,
         // since it wants to make the first refreshImages call.
@@ -589,14 +598,24 @@ export default class SearchView extends Widget
         if(focus == null)
             this.scrollContainer.focus();
 
-        // Wait until the load started by the most recent call to setDataSource finishes.
-        await this._setDataSourceRunner.promise;
-
-        // Store the position now.  Coming back from the viewer, the list already scrolled to the
-        // last work while the viewer was in front, so no scroll event follows and this entry would
-        // keep the position it had when the viewer opened until the user scrolls.
-        if(this._active)
-            this.storeScrollPosition();
+        // Store the position once the load started by the most recent call to setDataSource
+        // finishes.  Coming back from the viewer, the list already scrolled to the last work while
+        // the viewer was in front, so no scroll event follows and this entry would keep the
+        // position it had when the viewer opened until the user scrolls.
+        //
+        // Don't wait for it here.  The app finishes a navigation only when the screen has
+        // activated, and holds the next navigation until then, so waiting would keep the user on
+        // this list until its first page arrives, which can take seconds.
+        let dataSource = this.dataSource;
+        let store = () => {
+            if(this._active && this.dataSource == dataSource)
+                this.storeScrollPosition();
+        };
+        let loading = this._setDataSourceRunner.promise;
+        if(loading)
+            loading.then(store);
+        else
+            store();
     }
 
     deactivate()
