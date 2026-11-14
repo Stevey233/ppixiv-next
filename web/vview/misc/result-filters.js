@@ -232,15 +232,38 @@ export function rememberFilters(listKey, filters)
     ppixiv.settings.set("result_filters_remembered", saved);
 }
 
+// The age rating of tag search (全部, 全年龄, R18) is remembered too, across all searches.  The
+// search options call this when one is clicked.
+const AGE_MODES = ["all", "safe", "r18"];
+export function rememberAgeMode(mode)
+{
+    ppixiv.settings.set("search_age_mode_remembered", mode);
+}
+
+// Give a tag search URL without mode the remembered age rating.  It's written even when it's
+// all, so every search history entry says its rating, and going back to one never picks up a
+// rating chosen later.
+function applyRememberedAgeMode(args)
+{
+    if(args.query.has("mode"))
+        return false;
+
+    let mode = ppixiv.settings.get("search_age_mode_remembered", "all");
+    args.query.set("mode", AGE_MODES.includes(mode)? mode:"all");
+    return true;
+}
+
 // Before a list opens, convert upstream's type options in args to filters, and if args has no
-// filters, add the hide filters remembered for the list.  name is the data source name for the
-// URL.  Return true if args changed.
+// filters, add the hide filters remembered for the list.  A tag search also gets its remembered
+// age rating.  name is the data source name for the URL.  Return true if args changed.
 export function applyFilterDefaults(args, name)
 {
     if(!FILTERABLE_DATA_SOURCES.has(name))
         return false;
 
     let changed = convertUpstreamTypes(args, name);
+    if(name == "search" && applyRememberedAgeMode(args))
+        changed = true;
     if(args.hash.has("filter"))
         return changed;
 

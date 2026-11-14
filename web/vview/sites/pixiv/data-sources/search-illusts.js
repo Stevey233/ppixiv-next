@@ -34,7 +34,7 @@ import SavedSearchTags from '/vview/misc/saved-search-tags.js';
 import { TagSearchBoxWidget } from '/vview/widgets/tag-search-dropdown.js';
 import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import { helpers } from '/vview/misc/helpers.js';
-import { searchApiArgs } from '/vview/misc/result-filters.js';
+import { searchApiArgs, rememberAgeMode } from '/vview/misc/result-filters.js';
 
 export default class DataSource_Search extends DataSource
 {
@@ -457,6 +457,9 @@ class UI extends Widget
             // Write mode=all for 全部 too, so every search URL says which rating it shows.
             dataSource.setItem(this.root, { type: `age-${mode}`, fields: {mode}, defaults: {mode: "all"},
                 adjustUrl: (args) => args.set("mode", mode) });
+
+            // The rating is a preference: searches opened later without mode get it.
+            this.querySelector(`[data-type='age-${mode}']`).addEventListener("click", () => rememberAgeMode(mode), this._signal);
         }
         let ageSet = (dataSource.url.searchParams.get("mode") ?? "all") != "all";
 
@@ -510,6 +513,7 @@ class UI extends Widget
         let outsideSet = outside.some((section) => this._sectionState(section).set);
         resetButton.hidden = !ageSet && !outsideSet && setCount == 0;
         resetButton.href = this._resetUrl();
+        resetButton.addEventListener("click", () => rememberAgeMode("all"), this._signal);
 
         // Create the tag dropdown for the search page input.
         this.tagSearchBox = new TagSearchBoxWidget({
