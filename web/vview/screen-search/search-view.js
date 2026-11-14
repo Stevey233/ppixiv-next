@@ -201,6 +201,11 @@ export default class SearchView extends Widget
                 </div>
 
                 <div class=thumbnails></div>
+
+                <div class=list-end-notice hidden>
+                    <span class=list-end-text></span>
+                    <button type=button class=n-text-button>继续查找</button>
+                </div>
             </div>
         `});
 
@@ -223,6 +228,7 @@ export default class SearchView extends Widget
         });
 
         this.artistHeader = this.querySelector(".artist-header");
+        this.querySelector(".list-end-notice button").addEventListener("click", () => this.dataSource?.loadMoreFiltered());
 
         // A dictionary of thumbs in the view, in the same order.  This makes iterating
         // existing thumbs faster than iterating the nodes.
@@ -660,7 +666,14 @@ export default class SearchView extends Widget
     {
         let noResults = this.root.querySelector(".no-results");
         noResults.querySelector(".message").textContent = this.dataSource?.noResultsText ?? "没有结果";
-        noResults.hidden = !this.dataSource?.hasNoResults;
+
+        // When loading stopped early, say why under the last row, where the user is when it
+        // happens.  This replaces "没有结果" when nothing was kept, since there may be more later.
+        let stopped = this.dataSource?.loadStoppedText;
+        noResults.hidden = !this.dataSource?.hasNoResults || stopped != null;
+        let endNotice = this.root.querySelector(".list-end-notice");
+        endNotice.hidden = stopped == null;
+        endNotice.querySelector(".list-end-text").textContent = stopped ?? "";
     }
 
     // Return all media IDs currently loaded in the data source, and the page

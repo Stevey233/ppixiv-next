@@ -5,7 +5,7 @@
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
 import {
-    FILTER_GROUPS, HIDE_FILTERS, dataSourceSupportsFilters, getFilters, setFilters, toggleFilter, MAX_EMPTY_PAGES,
+    FILTER_GROUPS, HIDE_FILTERS, dataSourceSupportsFilters, getFilters, setFilters, toggleFilter,
     defaultTypeFilter, typeFilter, filterAvailable, rememberFilters,
 } from '/vview/misc/result-filters.js';
 
@@ -124,9 +124,8 @@ export default class FilterBar extends Widget
             link.setAttribute("aria-pressed", String(on));
         }
 
-        let stopped = this.dataSource.filteredStopPage != null;
-        this.querySelector(".filter-stopped").hidden = !stopped;
-        if(stopped)
-            this.querySelector(".filter-stopped-text").textContent = `连续 ${MAX_EMPTY_PAGES} 页没有符合筛选的作品，已暂停加载。`;
+        let stopped = this.dataSource.loadStoppedText;
+        this.querySelector(".filter-stopped").hidden = stopped == null;
+        this.querySelector(".filter-stopped-text").textContent = stopped ?? "";
     }
 }

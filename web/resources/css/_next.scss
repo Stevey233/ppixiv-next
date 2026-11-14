@@ -2581,6 +2581,21 @@ html:not(.mobile) .floating > .dialog > .header {
             font-size: 15px;
         }
     }
+
+    // Why loading stopped before the end, under the last row, with "继续查找".
+    > .list-end-notice {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px 16px;
+        padding: 24px 16px 40px;
+        color: var(--n-pencil);
+        font-size: 15px;
+        text-align: center;
+        html.mobile & { font-size: 13px; }
+        &[hidden] { display: none; }
+    }
 }
 
 // ------------------------------------------------------------------ user rows

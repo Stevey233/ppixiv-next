@@ -2,7 +2,7 @@ import Widget from '/vview/widgets/widget.js';
 import { AvatarWidget } from '/vview/widgets/user-widgets.js';
 import DialogWidget from '/vview/widgets/dialog.js';
 import FilterBar from '/vview/next/filter-bar.js';
-import { dataSourceSupportsFilters, filterLabel, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
+import { dataSourceSupportsFilters, filterLabel } from '/vview/misc/result-filters.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 export default class SearchUIMobile extends Widget
@@ -27,7 +27,7 @@ export default class SearchUIMobile extends Widget
                     </div>
                     <div class=data-source-ui></div>
                     <div class=mobile-filter-stopped hidden>
-                        <span>连续 ${MAX_EMPTY_PAGES} 页没有符合筛选的作品，已暂停加载。</span>
+                        <span class=mobile-filter-stopped-text></span>
                         <button type=button class=n-text-button>继续查找</button>
                     </div>
                 </div>
@@ -61,7 +61,9 @@ export default class SearchUIMobile extends Widget
 
     _refreshFilterStopped = () =>
     {
-        this.querySelector(".mobile-filter-stopped").hidden = this.dataSource?.filteredStopPage == null;
+        let stopped = this.dataSource?.loadStoppedText;
+        this.querySelector(".mobile-filter-stopped").hidden = stopped == null;
+        this.querySelector(".mobile-filter-stopped-text").textContent = stopped ?? "";
     }
 
     _refreshFilterButton()

@@ -184,6 +184,7 @@ export default class DataSource extends EventTarget
         // Apply the result filters.  If the page had results, add it even if nothing is left, so
         // the next page loads, see below.  Nothing can be left after filtering, or after addPage
         // removes works already on an earlier page, which with few works left is often all of them.
+        let returnedCount = mediaIds?.length ?? 0;
         let filteredAway = false;
         let keep = await this._getResultFilter();
         if(mediaIds && keep)
@@ -201,7 +202,10 @@ export default class DataSource extends EventTarget
         // Count emptied pages only after addPage, which drops works already on an earlier page.
         // Otherwise a list that keeps returning the same works never stops loading.
         if(this.idList.mediaIdsByPage.get(page)?.length)
+        {
             this._filteredEmptyPages = 0;
+            this._emptyRunPages = this._emptyRunWorks = 0;
+        }
 
         // Reduce the start page, which will update the "load more results" button if any.
         if(this.supportsStartPage && page < this.initialPage)
@@ -221,6 +225,8 @@ export default class DataSource extends EventTarget
             // few in a row, so a filter that matches almost nothing doesn't page through the
             // whole list.  loadMoreFiltered continues.
             this._filteredEmptyPages = (this._filteredEmptyPages ?? 0) + 1;
+            this._emptyRunPages = (this._emptyRunPages ?? 0) + 1;
+            this._emptyRunWorks = (this._emptyRunWorks ?? 0) + returnedCount;
             if(this._filteredEmptyPages >= MAX_EMPTY_PAGES)
             {
                 console.log(`Filters removed everything on ${MAX_EMPTY_PAGES} pages, stopping at page ${page}`);
@@ -439,6 +445,16 @@ export default class DataSource extends EventTarget
     _nextFilteredPage(page)
     {
         return this.idList.isPageLoaded(page+1)? page-1:page+1;
+    }
+
+    // Why loading stopped before the end of the list, for the notice at the end of the list and
+    // in the header, or null if it hasn't.  The count runs from the last page that kept a work,
+    // so it keeps growing across "继续查找".
+    get loadStoppedText()
+    {
+        if(this.filteredStopPage == null)
+            return null;
+        return `已查找 ${this._emptyRunPages} 页（${this._emptyRunWorks} 件），没有符合筛选的作品`;
     }
 
     // After loading stopped because the filters removed everything on several pages, load
