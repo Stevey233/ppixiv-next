@@ -149,7 +149,7 @@ export default class FilterBar extends Widget
         this._refreshHidden();
     }
 
-    // "已隐藏 48：看过 30 · 已收藏 12 · 屏蔽标签 6", for what the filters hid on this list.  A reason
+    // "已隐藏 48：看过 30 · 已收藏 12 · 屏蔽标签 6" or "已隐藏 375：已收藏", for what the filters hid on this list.  A reason
     // with a hide toggle links to the list with that toggle off, 屏蔽标签 opens the muted tags, and
     // 其他筛选 links to the list without the type, shape or page filter if only one is on.
     _refreshHidden = () =>
@@ -166,6 +166,9 @@ export default class FilterBar extends Widget
         let others = [...this.querySelectorAll(".filter-group:not([data-group=hide]) .filter-toggle")]
             .filter((link) => urlFilters.has(link.dataset.filter));
 
+        // With one reason the total is its count, so name the reason without repeating the number:
+        // "已隐藏 375：已收藏".
+        let single = HIDDEN_REASONS.filter(([reason]) => counts[reason]).length == 1;
         let parts = [];
         for(let [reason, label, filter] of HIDDEN_REASONS)
         {
@@ -173,7 +176,7 @@ export default class FilterBar extends Widget
             if(!count)
                 continue;
 
-            let text = `${label} ${count}`;
+            let text = single? label:`${label} ${count}`;
             let item;
             let link = filter != null && urlFilters.has(filter)? toggleFor(filter):reason == "other" && others.length == 1? others[0]:null;
             if(link != null)
