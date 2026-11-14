@@ -95,15 +95,18 @@ export default class RelatedTagsRow extends Widget
         this._fitLine();
     }
 
-    // Hide the chips that wrapped past the first line, so the row never takes two lines.
-    _fitLine()
-    {
-        let chips = [...this.root.children];
-        for(let chip of chips)
-            chip.hidden = false;
+    _fitLine() { fitChipsToLine(this.root); }
+}
 
-        let top = chips[0]?.offsetTop;
-        for(let chip of chips)
-            chip.hidden = chip.offsetTop > top;
-    }
+// Hide the chips of a line like this one that wrapped past its first line, so it never takes
+// two lines.  next/tag-sections.js uses it too.
+export function fitChipsToLine(root)
+{
+    let chips = [...root.children];
+    for(let chip of chips)
+        chip.hidden = false;
+
+    let top = chips[0]?.offsetTop;
+    for(let chip of chips)
+        chip.hidden = chip.offsetTop > top;
 }

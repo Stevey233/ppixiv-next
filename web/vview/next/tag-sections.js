@@ -1,8 +1,11 @@
 // 常看标签's sections (sites/pixiv/data-sources/tag-feed.js): the header the search view puts
-// before each tag's first work, and the list's option row with one line of the tags after it,
-// where a click scrolls to that tag's section.  See docs/design.md "常看标签".
+// before each tag's first work, and the list's option row with, on the desktop, one line of the
+// tags after the filter bar, where a click scrolls to that tag's section.  See docs/design.md
+// "常看标签".
 
+import Widget from '/vview/widgets/widget.js';
 import RecommendOptions from '/vview/next/recommend-options.js';
+import { fitChipsToLine } from '/vview/next/related-tags-row.js';
 import { helpers } from '/vview/misc/helpers.js';
 
 // Return the header for a section { tag, translation, mediaIds }: the tag's translated name, the
@@ -38,39 +41,59 @@ export function createTagSectionHeader({ tag, translation, mediaIds })
     return header;
 }
 
+// The list's option row.  On the desktop it also adds the line of tags after the filter bar.
 export class TagFeedUI extends RecommendOptions
 {
     constructor({ dataSource, ...options })
     {
         super({ dataSource, ...options });
 
-        this.dataSource = dataSource;
-        this.jump = document.createElement("div");
-        this.jump.className = "n-tag-jump";
-        this.jump.setAttribute("role", "group");
-        this.jump.setAttribute("aria-label", "跳到标签");
-        this.root.append(this.jump);
+        let header = this.root.closest(".thumbnail-ui-box");
+        if(!ppixiv.mobile && header)
+            new TagJumpRow({ container: header, dataSource, signal: this.shutdownSignal });
+    }
+}
 
-        this.jump.addEventListener("click", (e) => {
+// The tags as one line, where a click scrolls to that tag's section.  It takes the place and the
+// look of the related tags line on tag search (next/related-tags-row.js): after the filter bar
+// when there's room, cut to what fits on one line.
+class TagJumpRow extends Widget
+{
+    constructor({ dataSource, ...options })
+    {
+        super({ ...options, template: `
+            <div class="n-related-tags n-tag-jump" role=group aria-label="跳到标签" hidden></div>
+        `});
+
+        this.dataSource = dataSource;
+        this.root.addEventListener("click", (e) => {
             let button = e.target.closest("button[data-index]");
             if(button != null)
                 this._scrollTo(this.dataSource.shownSections[button.dataset.index]);
         });
         dataSource.addEventListener("pageadded", () => this.refresh(), this._signal);
+        new ResizeObserver(() => fitChipsToLine(this.root)).observe(this.root);
         this.refresh();
     }
 
     refresh()
     {
-        this.jump.replaceChildren(...this.dataSource.shownSections.map((section, index) => {
+        let sections = this.dataSource.shownSections;
+        this.root.replaceChildren(...sections.map((section, index) => {
+            let chip = document.createElement("span");
+            chip.className = "n-related-chip";
+
             let button = document.createElement("button");
             button.type = "button";
+            button.className = "n-related-tag";
             button.dataset.index = index;
             button.textContent = section.translation ?? section.tag;
             button.title = section.tag;
-            return button;
+            chip.append(button);
+            return chip;
         }));
-        this.jump.hidden = this.jump.childElementCount < 2;
+        this.root.hidden = sections.length < 2;
+        fitChipsToLine(this.root);
     }
 
     // Scroll so the section's header is at the top.
