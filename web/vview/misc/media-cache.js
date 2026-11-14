@@ -28,6 +28,9 @@ import MediaCacheMappings from '/vview/misc/media-cache-mappings.js';
 import MediaInfo, { MediaInfoEvents }  from '/vview/misc/media-info.js';
 import { helpers } from '/vview/misc/helpers.js';
 
+// How long a failed load of a work's info is remembered, see MediaCache._failureExpired.
+const FAILED_INFO_RETRY = 3000;
+
 // This handles fetching and caching image data.
 export default class MediaCache extends EventTarget
 {
@@ -41,6 +44,11 @@ export default class MediaCache extends EventTarget
         // Negative cache to remember illusts that don't exist, so we don't try to
         // load them repeatedly:
         this._nonexistantMediaIds = { };
+
+        // When loading a work's info failed, by media ID.  A failure can be a 429, an expired
+        // session or a dropped connection, so it's only remembered for FAILED_INFO_RETRY, enough
+        // to stop repeated loads while one work is open, see _failureExpired.
+        this._loadFailedAt = { };
 
         // Promises for ongoing requests:
         this._mediaInfoLoadsFull = {};
@@ -80,7 +88,7 @@ export default class MediaCache extends EventTarget
             return null;
 
         // Stop if we know this illust doesn't exist.
-        if(mediaId in this._nonexistantMediaIds)
+        if(mediaId in this._nonexistantMediaIds && !this._failureExpired(mediaId))
             return null;
 
         // If we already have the image data, just return it.
@@ -121,6 +129,20 @@ export default class MediaCache extends EventTarget
     }
     
     // If getMediaInfo returned null, return the error message.
+    // If loading mediaId's info failed more than FAILED_INFO_RETRY ago, forget the failure and
+    // return true, so the next request asks again.  Works that a batch load didn't return stay
+    // marked as missing.
+    _failureExpired(mediaId)
+    {
+        let at = this._loadFailedAt[mediaId];
+        if(at == null || Date.now() - at < FAILED_INFO_RETRY)
+            return false;
+
+        delete this._loadFailedAt[mediaId];
+        delete this._nonexistantMediaIds[mediaId];
+        return true;
+    }
+
     getMediaLoadError(mediaId)
     {
         mediaId = helpers.mediaId.getMediaIdFirstPage(mediaId);
@@ -214,6 +236,7 @@ export default class MediaCache extends EventTarget
                 let message = illustResult?.message || "Error loading illustration";
                 console.log(`Error loading illust ${illustId}; ${message}`);
                 this._nonexistantMediaIds[mediaId] = message;
+                this._loadFailedAt[mediaId] = Date.now();
                 return null;
             }
 
@@ -392,7 +415,7 @@ export default class MediaCache extends EventTarget
                 continue;
 
             // Ignore media IDs that have already failed to load.
-            if(!force && this._nonexistantMediaIds[mediaId])
+            if(!force && this._nonexistantMediaIds[mediaId] && !this._failureExpired(mediaId))
                 continue;
 
             // Skip IDs that are already loading.
