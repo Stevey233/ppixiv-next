@@ -419,6 +419,8 @@ class AppStartup
             return true; // history
         else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/from-bookmarks"))
             return true; // from-bookmarks
+        else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/tag-feed"))
+            return true; // tag-feed
         else
             return false;
     }

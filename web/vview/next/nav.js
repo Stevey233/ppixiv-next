@@ -17,7 +17,7 @@ export function mainDestinations()
         {
             key: "discovery", label: "推荐", icon: "mat:auto_awesome",
             url: "/discovery#ppixiv",
-            matches: (ds) => ds?.name == "discovery" || ds?.name == "from-bookmarks",
+            matches: (ds) => ["discovery", "from-bookmarks", "tag-feed"].includes(ds?.name),
         },
         {
             key: "following", label: "关注", icon: "mat:photo_library",

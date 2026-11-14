@@ -15,6 +15,7 @@ This is Stevey's fork of ppixiv, branch `stevey`. It folds the ppixiv-zh feature
 - `web/vview/misc/result-filters.js`, `seen-works.js`, `download-names.js`, `hd-thumbnails.js`, `preload.js`: the features from ppixiv-zh. `muted-works.js` and `downloaded-works.js` (the record behind the downloaded marker) are the fork's own.
 - `web/vview/sites/pixiv/data-sources/history.js`: the 最近看过 list, built on the seen-works record.
 - `web/vview/sites/pixiv/data-sources/from-bookmarks.js` and `web/vview/misc/seed-feed.js`: the 收藏相关 list (related works of the newest bookmarks), its request spacing and its IndexedDB cache. Its request budget is in `docs/design.md`; don't add requests to it without Stevey's yes.
+- `web/vview/sites/pixiv/data-sources/tag-feed.js`, `web/vview/misc/tag-feed.js` and `web/vview/next/tag-sections.js`: the 常看标签 list (Pixiv's home page recommendations per tag, one request kept 10 minutes) and its section headers, which `ThumbnailGrid` in `search-view.js` places between rows. `web/vview/next/recommend-options.js` is the option row of all three recommendation lists.
 - `web/vview/next/tag-refine.js`, `related-tags-row.js` and `web/vview/misc/pixiv-links.js`: adding or excluding a tag in the current search, the related tags line on tag search, and pasted Pixiv links in the search box.
 - `docs/design.md`: the design and the reason for every behavior change. Update it when behavior changes.
 

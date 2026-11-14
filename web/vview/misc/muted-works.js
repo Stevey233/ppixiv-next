@@ -3,7 +3,7 @@
 // Upstream shows a work with a muted tag or by a muted user as a "muted" placeholder in every
 // list.  This fork changes that for muted tags only:
 //
-// - Tag search, recommendations (discovery and 收藏相关) and similar works leave these works out.
+// - Tag search, recommendations (discovery, 收藏相关 and 常看标签) and similar works leave these works out.
 //   The data source drops them as pages load, through the same paging as the result filters, so a
 //   page they empty loads the next one.
 // - The user's own bookmarks show them as normal works, in the list and in the viewer, since the
@@ -17,7 +17,7 @@
 import { filterListKey } from '/vview/misc/result-filters.js';
 import { helpers } from '/vview/misc/helpers.js';
 
-const LISTS_HIDING_MUTED_TAGS = new Set(["search", "discovery", "related-illusts", "from-bookmarks"]);
+const LISTS_HIDING_MUTED_TAGS = new Set(["search", "discovery", "related-illusts", "from-bookmarks", "tag-feed"]);
 
 // Return true if dataSource leaves out works with a muted tag.
 export function listHidesMutedTags(dataSource)

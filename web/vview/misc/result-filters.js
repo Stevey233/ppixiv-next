@@ -63,6 +63,7 @@ export function filterLabel(value)
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",
     "series", "related-illusts", "edited", "completed-requests", "history", "from-bookmarks",
+    "tag-feed",
 ]);
 
 export function dataSourceSupportsFilters(dataSource)

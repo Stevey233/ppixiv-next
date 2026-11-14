@@ -19,6 +19,7 @@ import CompletedRequests from '/vview/sites/pixiv/data-sources/completed-request
 import EditedImages from '/vview/sites/pixiv/data-sources/edited-images.js';
 import History from '/vview/sites/pixiv/data-sources/history.js';
 import FromBookmarks from '/vview/sites/pixiv/data-sources/from-bookmarks.js';
+import TagFeed from '/vview/sites/pixiv/data-sources/tag-feed.js';
 import { Bookmarks, BookmarksMerged } from '/vview/sites/pixiv/data-sources/bookmarks.js';
 
 let allDataSources = {
@@ -42,6 +43,7 @@ let allDataSources = {
     EditedImages,
     History,
     FromBookmarks,
+    TagFeed,
 };
 
 export default class SitePixiv extends Site.Site
@@ -425,6 +427,8 @@ export default class SitePixiv extends Site.Site
                 return allDataSources.History;
             else if(args.hashPath == "/from-bookmarks")
                 return allDataSources.FromBookmarks;
+            else if(args.hashPath == "/tag-feed")
+                return allDataSources.TagFeed;
             else
                 return null;
         }

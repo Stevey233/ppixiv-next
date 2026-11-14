@@ -566,6 +566,66 @@ html:not(.macos) {
     }
 }
 
+// ------------------------------------------------------------------ 常看标签
+//
+// Each tag's works follow a header line between the grid's rows (next/tag-sections.js): the
+// tag's name, the original tag in pencil when the name is a translation, the count, and the link
+// to the tag's search.  A rule above the header marks where the previous tag ends.
+
+.search-title .n-seed-feed-refresh:disabled {
+    color: var(--n-pencil);
+    cursor: default;
+    text-decoration: none;
+}
+
+.search-view .thumbnails > .n-tag-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--n-rule);
+    text-align: left;
+
+    &:first-child {
+        margin-top: 0;
+        padding-top: 4px;
+        border-top: none;
+    }
+
+    .n-tag-section-name {
+        margin: 0;
+        color: var(--n-text);
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 28px;
+    }
+
+    .n-tag-section-original {
+        color: var(--n-pencil);
+        font-size: 13px;
+    }
+
+    .n-tag-section-count {
+        color: var(--n-pencil);
+        font-family: var(--n-font-num);
+        font-size: 15px;
+    }
+
+    .n-tag-section-search {
+        color: var(--n-blue);
+        font-size: 13px;
+        text-decoration: none;
+        &:hover { text-decoration: underline; }
+    }
+}
+
+// On the phone, the three lists and the three modes fit one line at 390px only set closer.
+html.mobile .data-source-ui .box-button-row:has(> .n-source-switch) > .box-link {
+    padding: 0 6px;
+}
+
 // ------------------------------------------------------------------ ranking date
 //
 // "‹ 2026/11/12 周四 ›  最新": one bordered group with the arrows and the date, which opens the date

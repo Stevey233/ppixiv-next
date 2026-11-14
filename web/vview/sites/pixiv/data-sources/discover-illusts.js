@@ -1,16 +1,15 @@
 // /discovery - Recommended Works
 
 import DataSource from '/vview/sites/data-source.js';
-import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
-import { createSourceSwitch } from '/vview/sites/pixiv/data-sources/from-bookmarks.js';
+import RecommendOptions from '/vview/next/recommend-options.js';
 
 export default class DataSource_Discovery extends DataSource
 {
     get name() { return "discovery"; }
     get pageTitle() { return "Recommended Works"; }
     getDisplayingText() { return "Recommended Works"; }
-    get ui() { return UI; }
+    get ui() { return RecommendOptions; }
     get estimatedItemsPerPage() { return 60; }
 
     // Each request returns a random 60 from a pool that runs dry within a sitting: about a third
@@ -72,29 +71,5 @@ export default class DataSource_Discovery extends DataSource
 
         ppixiv.tagTranslations.addTranslationsDict(result.body.tagTranslation);
         return { mediaIds }
-    }
-}
-
-class UI extends Widget
-{
-    constructor({ dataSource, ...options })
-    {
-        super({ ...options, template: `
-            <div>
-                <div class=box-button-row>
-                    ${ helpers.createBoxLink({label: "All",      popup: "Show all works",    dataType: "all" }) }
-                    ${ helpers.createBoxLink({label: "All ages", popup: "All ages",          dataType: "safe" }) }
-                    ${ helpers.createBoxLink({label: "R18",      popup: "R18",               dataType: "r18", classes: ["r18"] }) }
-                </div>
-            </div>
-        `});
-
-        // Pixiv 推荐 / 收藏相关 first, see from-bookmarks.js.
-        let mode = dataSource.url.searchParams.get("mode") || "all";
-        this.root.querySelector(".box-button-row").prepend(...createSourceSwitch("discovery", mode));
-
-        dataSource.setItem(this.root, { type: "all", fields: {mode: "all"}, defaults: {mode: "all"} });
-        dataSource.setItem(this.root, { type: "safe", fields: {mode: "safe"}, defaults: {mode: "all"} });
-        dataSource.setItem(this.root, { type: "r18", fields: {mode: "r18"}, defaults: {mode: "all"} });
     }
 }

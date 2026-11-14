@@ -7,8 +7,8 @@
 // works' age rating.
 
 import DataSource from '/vview/sites/data-source.js';
-import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import RecommendOptions from '/vview/next/recommend-options.js';
 import { SeedFeed, SEED_COUNT, spreadArtists } from '/vview/misc/seed-feed.js';
 
 const seedFeed = new SeedFeed();
@@ -27,7 +27,7 @@ export default class DataSources_FromBookmarks extends DataSource
 {
     get name() { return "from-bookmarks"; }
     get pageTitle() { return "收藏相关"; }
-    get ui() { return UI; }
+    get ui() { return RecommendOptions; }
     get estimatedItemsPerPage() { return 60; }
 
     // Leaving for another list discards this data source, so entering again drops works
@@ -138,44 +138,5 @@ export default class DataSources_FromBookmarks extends DataSource
 
         let spread = spreadArtists(kept, (id) => works.get(id).userId);
         return spread.map((id) => helpers.mediaId.fromIllustId(id));
-    }
-}
-
-// The leading pair on 推荐作品 and 收藏相关 that switches between them, keeping the mode.
-// current is "discovery" or "from-bookmarks", and mode is "all", "safe" or "r18".  Return the
-// two links, to put first in the list's option row.
-export function createSourceSwitch(current, mode)
-{
-    let links = [
-        ["discovery", "Pixiv 推荐", "Pixiv 自己的推荐", `/discovery${mode != "all"? `?mode=${mode}`:""}#ppixiv`],
-        ["from-bookmarks", "收藏相关", "按最近 10 件收藏找相关作品，几件收藏都指向的排在前面", `/#ppixiv/from-bookmarks${mode != "all"? `?mode=${mode}`:""}`],
-    ];
-    return links.map(([key, label, popup, url]) => {
-        let link = helpers.createBoxLink({ label, popup, link: url, asElement: true });
-        link.classList.add("n-source-switch");
-        helpers.html.setClass(link, "selected", key == current);
-        return link;
-    });
-}
-
-class UI extends Widget
-{
-    constructor({ dataSource, ...options })
-    {
-        super({ ...options, template: `
-            <div>
-                <div class=box-button-row>
-                    ${ helpers.createBoxLink({label: "All",      popup: "Show all works",    dataType: "all" }) }
-                    ${ helpers.createBoxLink({label: "All ages", popup: "All ages",          dataType: "safe" }) }
-                    ${ helpers.createBoxLink({label: "R18",      popup: "R18",               dataType: "r18", classes: ["r18"] }) }
-                </div>
-            </div>
-        `});
-
-        let mode = dataSource.args.hash.get("mode") ?? "all";
-        this.root.querySelector(".box-button-row").prepend(...createSourceSwitch("from-bookmarks", mode));
-        dataSource.setItem(this.root, { type: "all", fields: {"#mode": "all"}, defaults: {"#mode": "all"} });
-        dataSource.setItem(this.root, { type: "safe", fields: {"#mode": "safe"}, defaults: {"#mode": "all"} });
-        dataSource.setItem(this.root, { type: "r18", fields: {"#mode": "r18"}, defaults: {"#mode": "all"} });
     }
 }
