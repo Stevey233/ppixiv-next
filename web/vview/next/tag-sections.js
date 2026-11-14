@@ -10,7 +10,7 @@ import { helpers } from '/vview/misc/helpers.js';
 
 // Return the header for a section { tag, translation, mediaIds }: the tag's translated name, the
 // original after it when it differs, the number of works and a link to the tag's search.
-export function createTagSectionHeader({ tag, translation, mediaIds })
+export function createTagSectionHeader({ tag, translation, mediaIds, mode })
 {
     let header = document.createElement("div");
     header.className = "n-tag-section";
@@ -34,7 +34,13 @@ export function createTagSectionHeader({ tag, translation, mediaIds })
 
     let search = document.createElement("a");
     search.className = "n-tag-section-search";
-    search.href = helpers.getArgsForTagSearch(tag, ppixiv.plocation);
+    let searchArgs = helpers.getArgsForTagSearch(tag, ppixiv.plocation);
+
+    // From the R18 list the search opens as R18 too.  A search URL that says its rating wins over
+    // the remembered one (misc/result-filters.js); 全年龄 here leaves it to the remembered one.
+    if(mode == "r18")
+        searchArgs.query.set("mode", "r18");
+    search.href = searchArgs;
     search.textContent = "搜索这个标签";
 
     header.append(count, search);

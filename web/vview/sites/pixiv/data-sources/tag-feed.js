@@ -164,7 +164,7 @@ export default class DataSources_TagFeed extends DataSource
             let start = section.mediaIds[0] == mediaId;
             let end = section.mediaIds.at(-1) == mediaId;
             if(start || end)
-                return { header: start? createTagSectionHeader(section):null, end };
+                return { header: start? createTagSectionHeader({ ...section, mode: this.args.hash.get("mode") }):null, end };
         }
         return null;
     }
