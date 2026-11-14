@@ -3,6 +3,7 @@
 import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { createSourceSwitch } from '/vview/sites/pixiv/data-sources/from-bookmarks.js';
 
 export default class DataSource_Discovery extends DataSource
 {
@@ -87,6 +88,10 @@ class UI extends Widget
                 </div>
             </div>
         `});
+
+        // Pixiv 推荐 / 收藏相关 first, see from-bookmarks.js.
+        let mode = dataSource.url.searchParams.get("mode") || "all";
+        this.root.querySelector(".box-button-row").prepend(...createSourceSwitch("discovery", mode));
 
         dataSource.setItem(this.root, { type: "all", fields: {mode: "all"}, defaults: {mode: "all"} });
         dataSource.setItem(this.root, { type: "safe", fields: {mode: "safe"}, defaults: {mode: "all"} });

@@ -417,6 +417,8 @@ class AppStartup
             return true; // edited_images
         else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/history"))
             return true; // history
+        else if(firstPart == "" && window.location.hash.startsWith("#ppixiv/from-bookmarks"))
+            return true; // from-bookmarks
         else
             return false;
     }

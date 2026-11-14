@@ -62,7 +62,7 @@ export function filterLabel(value)
 // lists users, so it isn't one.
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",
-    "series", "related-illusts", "edited", "completed-requests", "history",
+    "series", "related-illusts", "edited", "completed-requests", "history", "from-bookmarks",
 ]);
 
 export function dataSourceSupportsFilters(dataSource)
