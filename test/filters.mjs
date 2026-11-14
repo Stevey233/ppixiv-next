@@ -207,16 +207,25 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     setupPpixiv();
     ppixiv.settings = fakeSettings();
     ppixiv.pixivInfo = { userId: '77' };
-    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=manga&ai_type=1#ppixiv', 'search'),
-        '/search?q=a&s_mode=tag&type=artwork#ppixiv?filter=manga,hide-ai');
-    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=illust_ugoira#ppixiv?filter=ugoira', 'search'),
-        '/search?q=a&s_mode=tag&type=artwork#ppixiv?filter=ugoira', 'an explicit filter wins');
-    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=artwork#ppixiv', 'search'), null);
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=manga&ai_type=1&mode=all#ppixiv', 'search'),
+        '/search?q=a&s_mode=tag&type=artwork&mode=all#ppixiv?filter=manga,hide-ai');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=illust_ugoira&mode=all#ppixiv?filter=ugoira', 'search'),
+        '/search?q=a&s_mode=tag&type=artwork&mode=all#ppixiv?filter=ugoira', 'an explicit filter wins');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&type=artwork&mode=all#ppixiv', 'search'), null);
     assert.equal(apply('https://www.pixiv.net/new_illust.php?type=manga#ppixiv', 'new_illust'), '/new_illust.php#ppixiv?filter=manga');
     assert.equal(apply('https://www.pixiv.net/new_illust.php?type=illust#ppixiv', 'new_illust'), '/new_illust.php#ppixiv');
     assert.equal(apply('https://www.pixiv.net/users/5/illustrations/%E5%A5%B3#ppixiv', 'artist'), '/users/5/artworks/女#ppixiv?filter=illust');
     assert.equal(apply('https://www.pixiv.net/en/users/5/manga#ppixiv', 'artist'), '/en/users/5/artworks#ppixiv?filter=manga');
     log('ok   Upstream type options in old URLs become filters');
+
+    // A tag search without mode gets the remembered age rating, all by default.  mode in the URL wins.
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag#ppixiv', 'search'), '/search?q=a&s_mode=tag&mode=all#ppixiv');
+    filters.rememberAgeMode('r18');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag#ppixiv', 'search'), '/search?q=a&s_mode=tag&mode=r18#ppixiv');
+    assert.equal(apply('https://www.pixiv.net/search?q=a&s_mode=tag&mode=safe#ppixiv', 'search'), null);
+    assert.equal(apply('https://www.pixiv.net/discovery#ppixiv', 'discovery'), null, 'only tag search');
+    filters.rememberAgeMode('all');
+    log('ok   A tag search without mode gets the remembered age rating');
 
     // Remembered per list: only the hide filters, not on other lists, and turning them off is
     // remembered too.
