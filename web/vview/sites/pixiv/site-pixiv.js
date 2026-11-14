@@ -306,9 +306,21 @@ export default class SitePixiv extends Site.Site
         let path = helpers.pixiv.getPathWithoutLanguage(args.path);
         if(path.startsWith("/tags/"))
         {
-            // Keep the hash arguments, like the result filters.
-            let tag = path.split("/")[2];
-            let searchArgs = new helpers.args("/search?q=" + tag + "&s_mode=tag_full&type=artwork#ppixiv");
+            // Keep Pixiv's conditions (order, scd, blt, mode, p and the rest) and the hash
+            // arguments, like the result filters.  Pixiv writes the search mode as s_tag, s_tc and
+            // so on, and no s_mode means an exact tag match.  /illustrations and /manga become
+            // upstream's type, which opening the list turns into the filter bar's type.
+            let [, , tag, kind] = path.split("/");
+            let searchArgs = new helpers.args("/search#ppixiv");
+            searchArgs.query.set("q", decodeURIComponent(tag));
+            for(let [key, value] of args.query)
+            {
+                if(key != "q")
+                    searchArgs.query.set(key, value);
+            }
+            searchArgs.query.set("s_mode", (args.query.get("s_mode") ?? "tag_full").replace(/^s_/, ""));
+            if(!args.query.has("type"))
+                searchArgs.query.set("type", { illustrations: "illust", manga: "manga" }[kind] ?? "artwork");
             searchArgs.hash = args.hash;
             args = searchArgs;
         }
