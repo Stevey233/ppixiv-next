@@ -100,6 +100,10 @@ export class SeedFeed extends EventTarget
         this._lastRequest = 0;
         this._building = null;
 
+        // What _put stored since the page loaded, read back only when IndexedDB fails, so a
+        // broken store doesn't make every open of the list load everything from Pixiv again.
+        this._memory = new Map();
+
         // { done, total } while a build loads related works, or null.
         this.progress = null;
     }
@@ -236,17 +240,21 @@ export class SeedFeed extends EventTarget
     async _get(key)
     {
         let request = await this._dbOp("readonly", (store) => store.get(key));
-        return request?.result ?? null;
+        if(request == null)
+            return this._memory.get(key) ?? null;
+        return request.result ?? null;
     }
 
     _put(key, value)
     {
+        this._memory.set(key, value);
         return this._dbOp("readwrite", (store) => { store.put(value, key); });
     }
 
     // Run func(store) in a transaction, and resolve to what it returned once the transaction
-    // completes, or to null if IndexedDB is unavailable.  Without IndexedDB nothing is cached,
-    // and every open loads from Pixiv, still spaced.
+    // completes, or to null if IndexedDB is unavailable.  Without IndexedDB the cache lasts only
+    // until the page is reloaded (see _memory), and the first open after that loads from Pixiv,
+    // still spaced.
     async _dbOp(mode, func)
     {
         let db;
