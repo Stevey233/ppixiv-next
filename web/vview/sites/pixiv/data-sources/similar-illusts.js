@@ -62,16 +62,24 @@ export default class DataSource_SimilarIllusts extends DataSource
             illusts = result.body.illusts;
         }
 
-        // Pixiv masks works it won't show this account.  They have no title or image.
-        illusts = illusts.filter((illust) => !illust.isMasked);
+        // Pixiv masks works it won't show this account (they have no title or image), and it can
+        // put ad slots among the works.
+        illusts = illusts.filter((illust) => !illust.isMasked && !illust.isAdContainer);
         await ppixiv.mediaCache.addMediaInfosPartial(illusts, "normal");
         await this._sourceInfo;
 
         let mediaIds = illusts.map((illust) => helpers.mediaId.fromIllustId(illust.id));
 
-        // The header counts the works the list shows, before the filter bar.
+        // The header counts the works the list shows, before the filter bar.  A later page can
+        // repeat an earlier one, so count each work once.
         let hideMuted = listHidesMutedTags(this);
-        this.workCount = (this.workCount ?? 0) + mediaIds.filter((mediaId) => !hideMuted || !hasMutedTag(mediaId)).length;
+        this._countedIds ??= new Set();
+        for(let mediaId of mediaIds)
+        {
+            if(!hideMuted || !hasMutedTag(mediaId))
+                this._countedIds.add(mediaId);
+        }
+        this.workCount = this._countedIds.size;
         this.callUpdateListeners();
 
         return { mediaIds };
