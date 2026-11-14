@@ -7,6 +7,10 @@ import { helpers, SafetyBackoffTimer } from '/vview/misc/helpers.js';
 import { dataSourceSupportsFilters, getFilters, hideReason, filterListKey, filterAvailable, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 import { listHidesMutedTags, hasMutedTag } from '/vview/misc/muted-works.js';
 
+// Retrying a page that failed to load, see _loadPageRetrying.
+const RETRY_DELAYS = [2000, 6000, 15000];
+const FAILED_COOLDOWN = 30*1000;
+
 export default class DataSource extends EventTarget
 {
     constructor({url})
@@ -94,16 +98,54 @@ export default class DataSource extends EventTarget
         let result = this.loadedPages[page] || this.loadingPages[page];
         if(result == null)
         {
-            result = this._loadPageAsync(page, { cause });
-            this.loadingPages[page] = result;
-            result.finally(() => {
-                // Move the load from loadingPages to loadedPages.
-                delete this.loadingPages[page];
-                this.loadedPages[page] = result;
+            let loadedPages = this.loadedPages, loadingPages = this.loadingPages;
+            result = this._loadPageRetrying(page, { cause });
+            loadingPages[page] = result;
+            result.then(() => {
+                // Move the load from loadingPages to loadedPages.  A page that failed isn't kept,
+                // so the next call asks Pixiv again instead of ending the list there.
+                delete loadingPages[page];
+                if(this._pageFailedAt?.[page] == null)
+                    loadedPages[page] = result;
             });
         }
 
         return result;
+    }
+
+    // Run _loadPageAsync, and if it throws (a 429, an expired session, a dropped connection, or
+    // an HTML error page instead of JSON), try again a few times with a growing delay.  After the
+    // last try, resolve to false and leave the page unloaded, and wait FAILED_COOLDOWN
+    // before trying that page again, so a reader scrolling at the end of a list that keeps
+    // failing doesn't send a request on every scroll.
+    async _loadPageRetrying(page, { cause })
+    {
+        let loadedPages = this.loadedPages;
+        this._pageFailedAt ??= {};
+        if(Date.now() - (this._pageFailedAt[page] ?? -Infinity) < FAILED_COOLDOWN)
+            return false;
+
+        for(let attempt = 0; ; attempt++)
+        {
+            try {
+                let result = await this._loadPageAsync(page, { cause });
+                delete this._pageFailedAt[page];
+                return result;
+            } catch(e) {
+                // Stop if the list was reset (refreshed) while this was waiting.
+                if(attempt >= RETRY_DELAYS.length || this.loadedPages !== loadedPages)
+                {
+                    console.error(`Couldn't load page ${page}:`, e);
+                    this._pageFailedAt[page] = Date.now();
+                    return false;
+                }
+
+                console.warn(`Loading page ${page} failed, trying again in ${RETRY_DELAYS[attempt]} ms:`, e);
+                await helpers.other.sleep(RETRY_DELAYS[attempt]);
+                if(this.loadedPages !== loadedPages)
+                    return false;
+            }
+        }
     }
 
     // Return true if the given page is either loaded, or currently being loaded by a call to loadPage.
