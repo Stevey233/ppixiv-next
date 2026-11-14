@@ -186,6 +186,17 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.deepEqual(keptBy('ugoira'), ['illust:3-0']);
     log('ok   The type filters keep their types on lists filtered locally');
 
+    // A hidden work is counted under the first reason that hides it: the type, shape and page
+    // filters, then AI, bookmarked, seen.
+    setupPpixiv({
+        media: { 1: { illustType: 1, aiType: 2 }, 2: { illustType: 0, aiType: 2, bookmarkData: {} }, 3: { illustType: 0, bookmarkData: {} }, 4: { illustType: 0 }, 5: { illustType: 0 } },
+        seen: new Set(['illust:3-0', 'illust:4-0']),
+    });
+    let reason = filters.hideReason(set('illust', 'hide-ai', 'hide-bookmarked', 'hide-seen'));
+    assert.deepEqual([1, 2, 3, 4, 5].map((id) => reason(`illust:${id}-0`)), ['other', 'ai', 'bookmarked', 'seen', null]);
+    assert.equal(filters.hideReason(set()), null);
+    log('ok   Hidden works get the first reason that hides them');
+
     let { default: Args } = await import('/vview/util/args.js');
     let apply = (url, name) => {
         let args = new Args(url);

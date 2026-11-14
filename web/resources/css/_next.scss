@@ -672,6 +672,28 @@ html.mobile .n-rank-stepper {
         color: var(--n-pencil);
         font-size: 14px;
     }
+
+    // "已隐藏 48：看过 30 · 已收藏 12": quiet secondary text.  The reasons that turn a filter off are
+    // links, marked with a light underline.
+    .filter-hidden {
+        color: var(--n-pencil);
+        font-size: 13px;
+        white-space: nowrap;
+        &[hidden] { display: none; }
+
+        .filter-hidden-link, .filter-hidden-muted {
+            padding: 0;
+            border: none;
+            background: none;
+            font: inherit;
+            color: inherit;
+            text-decoration: underline;
+            text-decoration-color: var(--n-rule);
+            text-underline-offset: 3px;
+            cursor: pointer;
+            &:hover { color: var(--n-blue); text-decoration-color: currentColor; }
+        }
+    }
 }
 
 .n-text-button, .filter-continue {

@@ -4,10 +4,21 @@
 
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { SettingsDialog } from '/vview/widgets/settings-widgets.js';
 import {
     FILTER_GROUPS, HIDE_FILTERS, dataSourceSupportsFilters, getFilters, setFilters, toggleFilter,
-    defaultTypeFilter, typeFilter, filterAvailable, rememberFilters,
+    defaultTypeFilter, typeFilter, filterAvailable, rememberFilters, filterLabel,
 } from '/vview/misc/result-filters.js';
+
+// The reasons in the hidden count, in display order, with the hide filter each one turns off.
+// "other" is the type, shape and page count filters together.
+const HIDDEN_REASONS = [
+    ["seen", "看过", "hide-seen"],
+    ["bookmarked", "已收藏", "hide-bookmarked"],
+    ["ai", "AI", "hide-ai"],
+    ["muted", "屏蔽标签", null],
+    ["other", "其他筛选", null],
+];
 
 export default class FilterBar extends Widget
 {
@@ -25,6 +36,7 @@ export default class FilterBar extends Widget
                         <span class=filter-stopped-text></span>
                         <button type=button class=filter-continue>继续查找</button>
                     </div>
+                    <div class=filter-hidden hidden></div>
                 </div>
             `,
         });
@@ -53,7 +65,7 @@ export default class FilterBar extends Widget
         // Replace the history entry rather than adding one for each toggle, so Back leaves the list
         // instead of stepping through filter changes.
         this.root.addEventListener("click", (e) => {
-            let link = e.target.closest(".filter-toggle");
+            let link = e.target.closest(".filter-toggle, .filter-hidden-link");
             if(link == null)
                 return;
             e.preventDefault();
@@ -65,6 +77,10 @@ export default class FilterBar extends Widget
         });
 
         this.querySelector(".filter-continue").addEventListener("click", () => this.dataSource?.loadMoreFiltered());
+        this.querySelector(".filter-hidden").addEventListener("click", (e) => {
+            if(e.target.closest(".filter-hidden-muted"))
+                new SettingsDialog({ showPage: "tagMuting" });
+        });
         window.addEventListener("pp:statechange", () => {
             this.refresh();
 
@@ -77,6 +93,7 @@ export default class FilterBar extends Widget
     shutdown()
     {
         this.dataSource?.removeEventListener("updated", this.refresh);
+        this.dataSource?.removeEventListener("pageadded", this._refreshHidden);
         super.shutdown();
     }
 
@@ -86,8 +103,10 @@ export default class FilterBar extends Widget
             return;
 
         this.dataSource?.removeEventListener("updated", this.refresh);
+        this.dataSource?.removeEventListener("pageadded", this._refreshHidden);
         this.dataSource = dataSource;
         this.dataSource?.addEventListener("updated", this.refresh);
+        this.dataSource?.addEventListener("pageadded", this._refreshHidden);
         this.refresh();
     }
 
@@ -127,5 +146,57 @@ export default class FilterBar extends Widget
         let stopped = this.dataSource.loadStoppedText;
         this.querySelector(".filter-stopped").hidden = stopped == null;
         this.querySelector(".filter-stopped-text").textContent = stopped ?? "";
+        this._refreshHidden();
+    }
+
+    // "已隐藏 48：看过 30 · 已收藏 12 · 屏蔽标签 6", for what the filters hid on this list.  A reason
+    // with a hide toggle links to the list with that toggle off, 屏蔽标签 opens the muted tags, and
+    // 其他筛选 links to the list without the type, shape or page filter if only one is on.
+    _refreshHidden = () =>
+    {
+        let node = this.querySelector(".filter-hidden");
+        let counts = this.dataSource?.hiddenCounts ?? {};
+        let total = HIDDEN_REASONS.reduce((sum, [reason]) => sum + (counts[reason] ?? 0), 0);
+        node.hidden = total == 0;
+        if(total == 0)
+            return;
+
+        let toggleFor = (value) => this.root.querySelector(`.filter-toggle[data-filter="${value}"]`);
+        let urlFilters = getFilters(helpers.args.location);
+        let others = [...this.querySelectorAll(".filter-group:not([data-group=hide]) .filter-toggle")]
+            .filter((link) => urlFilters.has(link.dataset.filter));
+
+        let parts = [];
+        for(let [reason, label, filter] of HIDDEN_REASONS)
+        {
+            let count = counts[reason];
+            if(!count)
+                continue;
+
+            let text = `${label} ${count}`;
+            let item;
+            let link = filter != null && urlFilters.has(filter)? toggleFor(filter):reason == "other" && others.length == 1? others[0]:null;
+            if(link != null)
+            {
+                item = document.createElement("a");
+                item.className = "filter-hidden-link";
+                item.href = link.href;
+                item.title = `关掉${filterLabel(link.dataset.filter)}`;
+            }
+            else if(reason == "muted")
+            {
+                item = document.createElement("button");
+                item.type = "button";
+                item.className = "filter-hidden-muted";
+                item.title = "编辑屏蔽标签";
+            }
+            else
+                item = document.createElement("span");
+            item.textContent = text;
+            if(parts.length)
+                parts.push(" · ");
+            parts.push(item);
+        }
+        node.replaceChildren(`已隐藏 ${total}：`, ...parts);
     }
 }

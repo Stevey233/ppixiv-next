@@ -4,7 +4,7 @@ import { DropdownMenuOpener } from '/vview/widgets/dropdown.js';
 import IllustIdList from '/vview/sites/illust-id-list.js';
 import LocalAPI from '/vview/misc/local-api.js';
 import { helpers, SafetyBackoffTimer } from '/vview/misc/helpers.js';
-import { dataSourceSupportsFilters, getFilters, makeFilter, filterListKey, filterAvailable, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
+import { dataSourceSupportsFilters, getFilters, hideReason, filterListKey, filterAvailable, MAX_EMPTY_PAGES } from '/vview/misc/result-filters.js';
 import { listHidesMutedTags, hasMutedTag } from '/vview/misc/muted-works.js';
 
 export default class DataSource extends EventTarget
@@ -15,6 +15,10 @@ export default class DataSource extends EventTarget
 
         this.url = new URL(url);
         this. _resetLoadedPages();
+
+        // How many works the filters hid on this list, by reason, see _getHideReason.  Each work
+        // counts once, the first time a page returns it.
+        this.hiddenCounts = {};
     };
 
     _resetLoadedPages()
@@ -176,7 +180,8 @@ export default class DataSource extends EventTarget
         // the page would count as emptied and the list would pause and continue forever.  This
         // checks the works as returned, since the list only holds what the filters kept.
         this._returnedMediaIds ??= new Set();
-        let returnedNew = mediaIds?.filter((mediaId) => !this._returnedMediaIds.has(mediaId)).length ?? 0;
+        let newMediaIds = new Set(mediaIds?.filter((mediaId) => !this._returnedMediaIds.has(mediaId)));
+        let returnedNew = newMediaIds.size;
         if(!this.randomPages && mediaIds?.length && returnedNew == 0)
         {
             console.log(`Page ${page} only repeats earlier pages, treating it as the end`);
@@ -191,13 +196,18 @@ export default class DataSource extends EventTarget
         // removes works already on an earlier page, which with few works left is often all of them.
         let returnedCount = mediaIds?.length ?? 0;
         let filteredAway = false;
-        let keep = await this._getResultFilter();
-        if(mediaIds && keep)
+        let getReason = await this._getHideReason();
+        if(mediaIds && getReason)
         {
             filteredAway = mediaIds.length > 0;
             if(filteredAway)
                 allowEmpty = true;
-            mediaIds = mediaIds.filter(keep);
+            mediaIds = mediaIds.filter((mediaId) => {
+                let reason = getReason(mediaId);
+                if(reason != null && newMediaIds.has(mediaId))
+                    this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + 1;
+                return reason == null;
+            });
         }
 
         // Register the page if media IDs were returned.
@@ -427,14 +437,15 @@ export default class DataSource extends EventTarget
         return filterListKey(this.name, this.url);
     }
 
-    // Return a function that says whether to keep a media ID, or null if nothing is filtered.
-    // Lists that leave out works with a muted tag drop them here too, see misc/muted-works.js.
-    async _getResultFilter()
+    // Return a function that gives the reason to hide a media ID (see hideReason in
+    // misc/result-filters.js) or null to keep it, or null if nothing is filtered.  Lists that leave
+    // out works with a muted tag hide them here too, with the reason "muted", see misc/muted-works.js.
+    async _getHideReason()
     {
         let filters = this.resultFilters;
         if(filters.has("hide-seen"))
             await ppixiv.seenWorks.loaded;
-        let filter = makeFilter(filters);
+        let filter = hideReason(filters);
         let hideMuted = listHidesMutedTags(this);
         if(filter == null && !hideMuted)
             return null;
@@ -448,10 +459,8 @@ export default class DataSource extends EventTarget
         return (mediaId) => {
             if(viewingId != null && helpers.mediaId.parse(mediaId).type == "illust" &&
                helpers.mediaId.toIllustIdAndPage(mediaId)[0] == viewingId)
-                return true;
-            if(hideMuted && hasMutedTag(mediaId))
-                return false;
-            return filter == null || filter(mediaId);
+                return null;
+            return filter?.(mediaId) ?? (hideMuted && hasMutedTag(mediaId)? "muted":null);
         };
     }
 

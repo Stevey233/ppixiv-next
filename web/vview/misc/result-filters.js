@@ -289,45 +289,54 @@ export function toggleFilter(filters, value, enable)
 // Return a function that says whether to keep a media ID, or null if nothing is filtered.
 export function makeFilter(filters)
 {
+    let reason = hideReason(filters);
+    return reason && ((mediaId) => reason(mediaId) == null);
+}
+
+// Return a function that gives the reason a media ID is hidden, or null to keep it, or null if
+// nothing is filtered.  The reasons are "other" (type, shape and page count), "ai", "bookmarked"
+// and "seen", in the order they're checked.
+export function hideReason(filters)
+{
     if(filters.size == 0)
         return null;
 
     return (mediaId) => {
         // Only works are filtered.  Users and local files pass through.
         if(helpers.mediaId.parse(mediaId).type != "illust")
-            return true;
+            return null;
 
         let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
         if(info == null)
-            return true;
+            return null;
 
         let type = info.illustType;
         if(filters.has("illust") && type == 1)
-            return false;
+            return "other";
         if(filters.has("manga") && type != 1)
-            return false;
+            return "other";
         if(filters.has("ugoira") && type != 2)
-            return false;
+            return "other";
 
         let { width, height } = info;
         if(filters.has("portrait") && !(height > width))
-            return false;
+            return "other";
         if(filters.has("landscape") && !(width > height))
-            return false;
+            return "other";
 
         let pages = info.pageCount ?? 1;
         if(filters.has("single") && pages != 1)
-            return false;
+            return "other";
         if(filters.has("multi") && pages <= 1)
-            return false;
+            return "other";
 
         if(filters.has("hide-ai") && info.aiType == 2)
-            return false;
+            return "ai";
         if(filters.has("hide-bookmarked") && info.bookmarkData != null)
-            return false;
+            return "bookmarked";
         if(filters.has("hide-seen") && ppixiv.seenWorks.hasSeen(mediaId))
-            return false;
-        return true;
+            return "seen";
+        return null;
     };
 }
 
