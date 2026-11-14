@@ -498,6 +498,27 @@ html:not(.macos) {
     }
 }
 
+// The search field on your own 收藏 page, at the end of its options row: as tall as the options.
+.n-bookmark-search.input-field-container {
+    display: flex;
+    align-items: center;
+    width: 260px;
+    height: 32px;
+    min-height: 0;
+    padding: 0 2px 0 10px;
+    &[hidden] { display: none; }
+
+    > input { flex: 1; min-width: 0; font-size: 14px; }
+    > .search-submit-button {
+        display: flex;
+        padding: 4px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        .font-icon { font-size: 18px; }
+    }
+}
+
 // ------------------------------------------------------------------ ranking date
 //
 // "‹ 2026/11/12 周四 ›  最新": one bordered group with the arrows and the date, which opens the date

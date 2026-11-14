@@ -510,10 +510,38 @@ class UI extends Widget
                 ${ helpers.createBoxLink({ popup: "Shuffle", icon: "shuffle",   dataType: "order-shuffle" }) }
 
                 ${ helpers.createBoxLink({label: "All bookmarks",    popup: "Bookmark tags",  icon: "ppixiv:tag", classes: ["bookmark-tag-button"] }) }
+
+                <!-- Only on your own bookmarks. -->
+                <div class="n-bookmark-search input-field-container" hidden>
+                    <input placeholder="在收藏里搜索标签或标题" size=1 autocorrect=off enterkeyhint=search>
+                    <button type=button class="search-submit-button right-side-button" aria-label="搜索">
+                        ${ helpers.createIcon("search") }
+                    </button>
+                </div>
             </div>
         `});
 
         this.dataSource = dataSource;
+
+        // Search inside your bookmarks.  This is Pixiv's own search with 已收藏 (wib=1): it returns
+        // only works you bookmarked, by tag, title or caption, with the normal paging and sorts, so
+        // it needs no local copy of the bookmarks.  The result page shows 已收藏 as a chip, so the
+        // reason the results are few stays visible.
+        let bookmarkSearch = this.querySelector(".n-bookmark-search");
+        bookmarkSearch.hidden = !dataSource.viewingOwnBookmarks();
+        let submitBookmarkSearch = () => {
+            let text = bookmarkSearch.querySelector("input").value.trim();
+            if(text == "")
+                return;
+            let url = new URL("/search#ppixiv", ppixiv.plocation);
+            url.searchParams.set("q", text);
+            url.searchParams.set("s_mode", "tag_tc");
+            url.searchParams.set("type", "artwork");
+            url.searchParams.set("wib", "1");
+            helpers.navigate(url);
+        };
+        helpers.inputHandler(bookmarkSearch.querySelector("input"), submitBookmarkSearch);
+        bookmarkSearch.querySelector(".search-submit-button").addEventListener("click", submitBookmarkSearch);
 
         dataSource.setupDropdown(this.querySelector(".sort-button"), [{
             createOptions: { label: "Newest",              dataset: { default: true } },
