@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.155.g9f395e51
+// @version     258.159.gdd271dc3
 // ==/UserScript==
 (function() {
 
@@ -3192,6 +3192,14 @@ let bundle = `(() => {
 
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
+    {
+      id: "2026-11-14.3",
+      title: "请求失败后能接着加载",
+      items: [
+        "列表往下翻时某一页请求失败（Pixiv 限流、网络断一下），会隔几秒自动重试，之后接着加载。以前失败一次列表就停在那里，只能刷新页面。",
+        "点开作品时请求失败，过几秒再点开就能正常打开。以前这件作品会一直显示出错，直到刷新页面。"
+      ]
+    },
     {
       id: "2026-11-14.2",
       title: "常看标签：按标签分组的推荐",
@@ -20007,6 +20015,8 @@ let bundle = `(() => {
   };
 
   /\x2f web/vview/sites/data-source.js
+  var RETRY_DELAYS = [2e3, 6e3, 15e3];
+  var FAILED_COOLDOWN = 30 * 1e3;
   var DataSource = class extends EventTarget {
     constructor({ url }) {
       super();
@@ -20054,14 +20064,39 @@ let bundle = `(() => {
     loadPage(page, { cause } = {}) {
       let result = this.loadedPages[page] || this.loadingPages[page];
       if (result == null) {
-        result = this._loadPageAsync(page, { cause });
-        this.loadingPages[page] = result;
-        result.finally(() => {
-          delete this.loadingPages[page];
-          this.loadedPages[page] = result;
+        let loadedPages = this.loadedPages, loadingPages = this.loadingPages;
+        result = this._loadPageRetrying(page, { cause });
+        loadingPages[page] = result;
+        result.then(() => {
+          delete loadingPages[page];
+          if (this._pageFailedAt?.[page] == null)
+            loadedPages[page] = result;
         });
       }
       return result;
+    }
+    async _loadPageRetrying(page, { cause }) {
+      let loadedPages = this.loadedPages;
+      this._pageFailedAt ??= {};
+      if (Date.now() - (this._pageFailedAt[page] ?? -Infinity) < FAILED_COOLDOWN)
+        return false;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          let result = await this._loadPageAsync(page, { cause });
+          delete this._pageFailedAt[page];
+          return result;
+        } catch (e) {
+          if (attempt >= RETRY_DELAYS.length || this.loadedPages !== loadedPages) {
+            console.error(\`Couldn't load page \${page}:\`, e);
+            this._pageFailedAt[page] = Date.now();
+            return false;
+          }
+          console.warn(\`Loading page \${page} failed, trying again in \${RETRY_DELAYS[attempt]} ms:\`, e);
+          await helpers.other.sleep(RETRY_DELAYS[attempt]);
+          if (this.loadedPages !== loadedPages)
+            return false;
+        }
+      }
     }
     isPageLoadedOrLoading(page) {
       if (this.idList.isPageLoaded(page))
@@ -27029,11 +27064,13 @@ let bundle = `(() => {
   ]);
 
   /\x2f web/vview/misc/media-cache.js
+  var FAILED_INFO_RETRY = 3e3;
   var MediaCache = class extends EventTarget {
     constructor() {
       super();
       this._mediaInfo = {};
       this._nonexistantMediaIds = {};
+      this._loadFailedAt = {};
       this._mediaInfoLoadsFull = {};
       this._mediaInfoLoadsPartial = {};
       this.userProfileUrls = {};
@@ -27054,7 +27091,7 @@ let bundle = `(() => {
       mediaId = helpers.mediaId.getMediaIdFirstPage(mediaId);
       if (mediaId == null)
         return null;
-      if (mediaId in this._nonexistantMediaIds)
+      if (mediaId in this._nonexistantMediaIds && !this._failureExpired(mediaId))
         return null;
       if (this._mediaInfo[mediaId] != null && (!full || this._mediaInfo[mediaId].full))
         return Promise.resolve(this._mediaInfo[mediaId]);
@@ -27074,6 +27111,14 @@ let bundle = `(() => {
       if (mediaInfo && !full && safe)
         mediaInfo = mediaInfo.partialInfo;
       return mediaInfo;
+    }
+    _failureExpired(mediaId) {
+      let at = this._loadFailedAt[mediaId];
+      if (at == null || Date.now() - at < FAILED_INFO_RETRY)
+        return false;
+      delete this._loadFailedAt[mediaId];
+      delete this._nonexistantMediaIds[mediaId];
+      return true;
     }
     getMediaLoadError(mediaId) {
       mediaId = helpers.mediaId.getMediaIdFirstPage(mediaId);
@@ -27127,6 +27172,7 @@ let bundle = `(() => {
           let message = illustResult?.message || "Error loading illustration";
           console.log(\`Error loading illust \${illustId}; \${message}\`);
           this._nonexistantMediaIds[mediaId] = message;
+          this._loadFailedAt[mediaId] = Date.now();
           return null;
         }
         mediaInfo = illustResult.body;
@@ -27220,7 +27266,7 @@ let bundle = `(() => {
         mediaId = helpers.mediaId.getMediaIdFirstPage(mediaId);
         if (!force && this._mediaInfo[mediaId] != null)
           continue;
-        if (!force && this._nonexistantMediaIds[mediaId])
+        if (!force && this._nonexistantMediaIds[mediaId] && !this._failureExpired(mediaId))
           continue;
         let existingLoad = this._mediaInfoLoadsFull[mediaId] ?? this._mediaInfoLoadsPartial[mediaId];
         if (existingLoad) {
@@ -41053,7 +41099,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.155.g9f395e51"}\`);
+      console.log(\`vview setup: \${"r258.159.gdd271dc3"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -41102,7 +41148,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.155.g9f395e51"}\`);
+      console.log(\`ppixiv setup: \${"r258.159.gdd271dc3"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
