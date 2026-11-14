@@ -2,67 +2,77 @@
 //
 // We use this as an anchor page for viewing recommended illusts for an image, since
 // there's no dedicated page for this.
+//
+// 相似作品 reads Pixiv's related-works endpoint, the one under a work on Pixiv's own page.  Asked
+// for 180, it returns the whole related set, 150 to 175 works, in one request, in Pixiv's order.
+// If it leaves some for later (nextIds), each further page loads 18 of them.  See docs/design.md.
 
 import DataSource from '/vview/sites/data-source.js';
+import { listHidesMutedTags, hasMutedTag } from '/vview/misc/muted-works.js';
 import { helpers } from '/vview/misc/helpers.js';
+
+// IDs per /ajax/illust/recommend/illusts request.
+const NEXT_IDS_PER_PAGE = 18;
 
 export default class DataSource_SimilarIllusts extends DataSource
 {
     get name() { return "related-illusts"; }
-    get pageTitle() { return "Similar Illusts"; }
-    getDisplayingText() { return "Similar Illustrations"; }
-    get estimatedItemsPerPage() { return 60; }
+    get pageTitle() { return "相似作品"; }
 
-    async _loadPageAsync(page, args)
+    getDisplayingText()
     {
-        // The first time we load a page, get info about the source illustration too, so
-        // we can show it in the UI.
-        if(!this.fetchedMediaInfo)
-        {
-            this.fetchedMediaInfo = true;
-
-            // Don't wait for this to finish before continuing.
-            let illustId = this.url.searchParams.get("illust_id");
-            let mediaId = helpers.mediaId.fromIllustId(illustId)
-            ppixiv.mediaCache.getMediaInfo(mediaId).then((mediaInfo) => {
-                this.mediaInfo = mediaInfo;
-                this.callUpdateListeners();
-            }).catch((e) => {
-                console.error(e);
-            });
-        }
-
-        return await super._loadPageAsync(page, args);
+        return this.workCount == null? "相似作品":`相似作品 ${this.workCount}`;
     }
-     
+
+    get estimatedItemsPerPage() { return 180; }
+
     async loadPageInternal(page)
     {
-        // Don't load more than one page.  Related illusts for the same post generally
-        // returns the same results, so if we load more pages we can end up making lots of
-        // requests that give only one or two new images each, and end up loading up to
-        // page 5 or 6 for just a few extra results.
-        if(page > 1)
-            return;
-
-        // Get "mode" from the URL.  If it's not present, use "all".
-        let mode = this.url.searchParams.get("mode") || "all";
-        let result = await helpers.pixivRequest.get("/ajax/discovery/artworks", {
-            sampleIllustId: this.url.searchParams.get("illust_id"),
-            mode: mode,
-            limit: this.estimatedItemsPerPage,
-            lang: "en",
+        // Get info about the source illustration too, so we can show it in the UI.  The first
+        // page waits for it, since whether muted works are hidden depends on its tags (see
+        // misc/muted-works.js).
+        let illustId = this.url.searchParams.get("illust_id");
+        this._sourceInfo ??= ppixiv.mediaCache.getMediaInfo(helpers.mediaId.fromIllustId(illustId)).then((mediaInfo) => {
+            this.mediaInfo = mediaInfo;
+            this.callUpdateListeners();
+        }).catch((e) => {
+            console.error(e);
         });
 
-        // result.body.recommendedIllusts[].recommendMethods, recommendSeedIllustIds
-        // has info about why it recommended it.
-        let thumbs = result.body.thumbnails.illust;
-        await ppixiv.mediaCache.addMediaInfosPartial(thumbs, "normal");
+        // Page 1 is the whole set the first request returns.  Later pages are the IDs it left for
+        // later, which was none in every set seen so far.
+        let illusts;
+        if(page == 1)
+        {
+            let result = await helpers.pixivRequest.get(`/ajax/illust/${illustId}/recommend/init`, {
+                limit: this.estimatedItemsPerPage,
+                lang: "en",
+            });
+            this._nextIds = result.body.nextIds ?? [];
+            illusts = result.body.illusts;
+        }
+        else
+        {
+            let ids = this._nextIds?.slice((page-2)*NEXT_IDS_PER_PAGE, (page-1)*NEXT_IDS_PER_PAGE) ?? [];
+            if(ids.length == 0)
+                return;
+            let result = await helpers.pixivRequest.get("/ajax/illust/recommend/illusts", {
+                "illust_ids[]": ids,
+            });
+            illusts = result.body.illusts;
+        }
 
-        ppixiv.tagTranslations.addTranslationsDict(result.body.tagTranslation);
+        // Pixiv masks works it won't show this account.  They have no title or image.
+        illusts = illusts.filter((illust) => !illust.isMasked);
+        await ppixiv.mediaCache.addMediaInfosPartial(illusts, "normal");
+        await this._sourceInfo;
 
-        let mediaIds = [];
-        for(let thumb of thumbs)
-            mediaIds.push(helpers.mediaId.fromIllustId(thumb.id));
+        let mediaIds = illusts.map((illust) => helpers.mediaId.fromIllustId(illust.id));
+
+        // The header counts the works the list shows, before the filter bar.
+        let hideMuted = listHidesMutedTags(this);
+        this.workCount = (this.workCount ?? 0) + mediaIds.filter((mediaId) => !hideMuted || !hasMutedTag(mediaId)).length;
+        this.callUpdateListeners();
 
         return { mediaIds };
     };
