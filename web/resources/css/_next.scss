@@ -570,7 +570,9 @@ html:not(.macos) {
 //
 // Each tag's works follow a header line between the grid's rows (next/tag-sections.js): the
 // tag's name, the original tag in pencil when the name is a translation, the count, and the link
-// to the tag's search.  A rule above the header marks where the previous tag ends.
+// to the tag's search.  A rule above the header marks where the previous tag ends.  The option
+// row is followed by the tags as one line of plain text, like the related tags on tag search; a
+// click scrolls to that tag.
 
 .search-title .n-seed-feed-refresh:disabled {
     color: var(--n-pencil);
@@ -621,9 +623,38 @@ html:not(.macos) {
     }
 }
 
-// On the phone, the three lists and the three modes fit one line at 390px only set closer.
+// On the phone, the three lists and the three modes fit one line at 390px only set closer.  The
+// line of tags is left out there: it would add two lines to the title bar.
 html.mobile .data-source-ui .box-button-row:has(> .n-source-switch) > .box-link {
     padding: 0 6px;
+}
+
+html.mobile .n-tag-jump {
+    display: none !important;
+}
+
+.n-tag-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 4px;
+    margin-top: 4px;
+
+    &[hidden] { display: none; }
+
+    > button {
+        height: 30px;
+        padding: 0 6px;
+        border: none;
+        background: none;
+        color: var(--n-pencil);
+        font: inherit;
+        font-size: 14px;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &::before { content: "#"; margin-right: 1px; opacity: 0.6; }
+        &:hover { color: var(--n-blue); }
+    }
 }
 
 // ------------------------------------------------------------------ ranking date

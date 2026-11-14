@@ -12,8 +12,7 @@
 import DataSource from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { loadTagFeed, tagFeedLoading } from '/vview/misc/tag-feed.js';
-import { createTagSectionHeader } from '/vview/next/tag-sections.js';
-import RecommendOptions from '/vview/next/recommend-options.js';
+import { TagFeedUI, createTagSectionHeader } from '/vview/next/tag-sections.js';
 
 // Set by 换一批, so the data source created by it sends a new request.
 let refreshRequested = false;
@@ -22,7 +21,7 @@ export default class DataSources_TagFeed extends DataSource
 {
     get name() { return "tag-feed"; }
     get pageTitle() { return "常看标签"; }
-    get ui() { return RecommendOptions; }
+    get ui() { return TagFeedUI; }
 
     // Leaving for another list discards this data source, so entering again drops works
     // bookmarked meanwhile.  The viewer keeps the same one, so the order stays put.
