@@ -27,15 +27,33 @@ class ThumbnailGrid
     {
         for(let row of this.rows)
             row.remove();
+        for(let header of this.container.querySelectorAll(":scope > .n-tag-section"))
+            header.remove();
 
         this.rows = [];
     }
 
     // Add a thumbnail to the first or last row, adding a new row if it's full.
+    //
+    // A list in sections (常看标签, see sites/pixiv/data-sources/tag-feed.js) gives a section's
+    // first thumb a sectionHeader element: the section starts a new row, with the header before
+    // it.  Its last thumb has sectionEnd, so that row keeps its thumbs' size like the list's last
+    // row instead of scaling them up to fill the width.
     addThumbToRow(node, {atEnd})
     {
-        // Get the row to add to.
         let row = this.getRow({atEnd});
+        let edge = atEnd? node:row.firstElementChild;
+        if(edge?.sectionHeader && row.children.length > 0)
+            row = this.createRow({atEnd});
+
+        row = this._addThumbToRow(node, row, {atEnd});
+        if(node.sectionHeader)
+            node.parentNode.before(node.sectionHeader);
+        return row;
+    }
+
+    _addThumbToRow(node, row, {atEnd})
+    {
         row.insertAdjacentElement(atEnd? "beforeend":"afterbegin", node);
 
         // Re-align the row with the new thumb.
@@ -157,6 +175,10 @@ class ThumbnailGrid
         // triggers wrapping onto a new row, and scaling down would make us try to fit 
         if(row.children.length > 1)
             scaleX = Math.max(scaleX, 1);
+
+        // A section's last row, see addThumbToRow.
+        if(row.lastElementChild.sectionEnd)
+            scaleX = Math.min(scaleX, 1);
 
         let scaleY = scaleX;
 
@@ -1114,6 +1136,9 @@ export default class SearchView extends Widget
         `});
 
         entry.dataset.id = mediaId;
+        let section = observe? this.dataSource?.sectionAt?.(mediaId):null;
+        entry.sectionHeader = section?.header;
+        entry.sectionEnd = section?.end;
 
         if(searchPage != null)
             entry.dataset.searchPage = searchPage;
