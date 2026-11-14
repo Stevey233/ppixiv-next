@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.164.gb9bde2b4
+// @version     258.168.g66e02683
 // ==/UserScript==
 (function() {
 
@@ -3193,6 +3193,14 @@ let bundle = `(() => {
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
     {
+      id: "2026-11-14.4",
+      title: "网络慢时点开作品更快出图",
+      items: [
+        "点开作品后，原图下完之前先显示列表里已经下载好的那张缩略图，不再另外下载一张预览。以前网速慢时，点开后要等十几秒才出现预览图，这段时间画面是空的。",
+        "点开一件作品时，停止下载鼠标划过时预加载的其他作品原图，不和这件作品的原图抢网速。"
+      ]
+    },
+    {
       id: "2026-11-14.3",
       title: "请求失败后能接着加载",
       items: [
@@ -3915,6 +3923,292 @@ let bundle = `(() => {
     }
   };
 
+  /\x2f web/vview/misc/hd-thumbnails.js
+  var saveData = () => navigator.connection?.saveData == true;
+  var THUMB_TIERS = [
+    { spec: "600x1200_90_webp", box: [600, 1200] },
+    { spec: "1200x1200_80_webp", box: [1200, 1200] },
+    { spec: "1200x1200_90_webp", box: [1200, 1200] }
+  ];
+  var THUMB_BASE = -1;
+  var THUMB_URL_RE = /^(.*\\/c\\/)540x540_70(\\/img-master\\/.*_master1200\\.jpg)\$/;
+  var THUMB_SLOW_MS = 400;
+  var THUMB_VERY_SLOW_MS = 1e3;
+  var THUMB_TIMING_SAMPLES = 40;
+  var THUMB_MAX_FAILURES = 5;
+  var thumbStates = /* @__PURE__ */ new WeakMap();
+  var thumbTimings = [];
+  var failedThumbUrls = /* @__PURE__ */ new Set();
+  var loadedThumbTiers = /* @__PURE__ */ new Map();
+  var LOADED_THUMBS_LIMIT = 5e3;
+  var thumbLoadMs = null;
+  var thumbFailures = 0;
+  function thumbsEnabled() {
+    return !saveData() && window.ppixiv.settings.get("hd_thumbnails") != "off" && thumbFailures < THUMB_MAX_FAILURES;
+  }
+  function allowedThumbTiers() {
+    if (saveData())
+      return [];
+    if (thumbLoadMs == null || thumbLoadMs < THUMB_SLOW_MS)
+      return [0, 2];
+    if (thumbLoadMs < THUMB_VERY_SLOW_MS)
+      return [0, 1];
+    return [0];
+  }
+  function thumbUrl(state, tier) {
+    return tier == THUMB_BASE ? state.base : state.prefix + THUMB_TIERS[tier].spec + state.path;
+  }
+  function pickThumbTier(mediaId, cssWidth, cssHeight) {
+    let allowed = allowedThumbTiers();
+    if (allowed.length == 0)
+      return THUMB_BASE;
+    if (!(cssWidth > 0 && cssHeight > 0))
+      return allowed[0];
+    let mediaCache = window.ppixiv?.mediaCache;
+    let width = 1, height = 1;
+    try {
+      let info = mediaCache?.getMediaInfoSync(mediaId, { full: false });
+      if (info != null)
+        ({ width, height } = mediaCache.getImageDimensions(info, mediaId));
+    } catch (e) {
+    }
+    if (!(width > 0 && height > 0))
+      width = height = 1;
+    let dpr = window.devicePixelRatio || 1;
+    let scale2 = Math.max(cssWidth * dpr / width, cssHeight * dpr / height);
+    let neededWidth = width * scale2;
+    let best = allowed[0], bestWidth = 0;
+    for (let tier of allowed) {
+      let [boxWidth, boxHeight] = THUMB_TIERS[tier].box;
+      let fit = Math.min(1, boxWidth / width, boxHeight / height, 1200 / Math.max(width, height));
+      let delivered = width * fit;
+      if (delivered >= neededWidth * 0.9)
+        return tier;
+      if (delivered > bestWidth + 1) {
+        best = tier;
+        bestWidth = delivered;
+      }
+    }
+    return best;
+  }
+  var setImgSrc = (img, url) => {
+    img.src = url;
+  };
+  function thumbZoom() {
+    return 1;
+  }
+  function thumbTierLoaded(state, tier) {
+    return loadedThumbTiers.get(state.base)?.has(tier) == true;
+  }
+  function markThumbTierLoaded(state, tier) {
+    let tiers = loadedThumbTiers.get(state.base);
+    if (tiers == null) {
+      loadedThumbTiers.set(state.base, tiers = /* @__PURE__ */ new Set());
+      while (loadedThumbTiers.size > LOADED_THUMBS_LIMIT)
+        loadedThumbTiers.delete(loadedThumbTiers.keys().next().value);
+    }
+    tiers.add(tier);
+  }
+  function loadedPreviewUrl(url) {
+    let tiers = url == null ? null : loadedThumbTiers.get(url);
+    let match = tiers?.size ? THUMB_URL_RE.exec(url) : null;
+    if (match == null)
+      return url;
+    return thumbUrl({ base: url, prefix: match[1], path: match[2] }, Math.max(...tiers));
+  }
+  function shownThumbTier(state, wanted) {
+    let tiers = loadedThumbTiers.get(state.base);
+    if (tiers == null || tiers.has(wanted))
+      return wanted;
+    return Math.max(...tiers);
+  }
+  var inMangaView = () => window.ppixiv?.app?.currentDataSource?.name == "manga";
+  var thumbResizeObserver = new ResizeObserver((entries) => {
+    let zoom = thumbZoom();
+    for (let entry of entries)
+      maybeUpgradeThumb(entry.target, entry.contentRect.width * zoom, entry.contentRect.height * zoom);
+  });
+  function trackThumb(img, url, mediaId) {
+    let match = THUMB_URL_RE.exec(url);
+    if (match == null || mediaId == null) {
+      thumbStates.delete(img);
+      return null;
+    }
+    let state = { base: url, prefix: match[1], path: match[2], mediaId, tier: THUMB_BASE, upgrading: null, failed: failedThumbUrls.has(url) };
+    thumbStates.set(img, state);
+    watchThumb(img);
+    return state;
+  }
+  function watchThumb(img) {
+    thumbResizeObserver.observe(img);
+    thumbVisibilityObserver.observe(img);
+  }
+  function forgetThumb(img) {
+    thumbResizeObserver.unobserve(img);
+    thumbVisibilityObserver.unobserve(img);
+    visibleThumbs.delete(img);
+    thumbStates.delete(img);
+  }
+  function setThumbnail(img, url, mediaId, box) {
+    forgetThumb(img);
+    let state = thumbsEnabled() ? trackThumb(img, url, mediaId) : null;
+    if (state == null || state.failed || inMangaView()) {
+      img.src = url;
+      return;
+    }
+    let zoom = thumbZoom();
+    state.tier = shownThumbTier(state, pickThumbTier(mediaId, box.origWidth * zoom, box.origHeight * zoom));
+    img.src = thumbUrl(state, state.tier);
+    queueMicrotask(() => {
+      if (thumbStates.get(img) != state || state.failed || !thumbsEnabled() || box.currentWidth == null)
+        return;
+      let width = box.currentWidth * zoom, height = box.currentHeight * zoom;
+      if (thumbTierLoaded(state, state.tier)) {
+        maybeUpgradeThumb(img, width, height);
+        return;
+      }
+      let tier = pickThumbTier(mediaId, width, height);
+      if (tier > state.tier) {
+        state.tier = tier;
+        img.src = thumbUrl(state, tier);
+      }
+    });
+  }
+  function upgradeThumb(img, state, tier) {
+    state.upgrading = tier;
+    let url = thumbUrl(state, tier);
+    let loader = document.createElement("img");
+    loader.decoding = "async";
+    loader.onload = async () => {
+      markThumbTierLoaded(state, tier);
+      await loader.decode().catch(() => {
+      });
+      if (thumbStates.get(img) != state || state.upgrading != tier)
+        return;
+      state.upgrading = null;
+      if (state.failed || !thumbsEnabled())
+        return;
+      state.tier = tier;
+      setImgSrc(img, url);
+    };
+    loader.onerror = () => {
+      if (state.upgrading == tier)
+        state.upgrading = null;
+      thumbFailed(state, url);
+    };
+    setImgSrc(loader, url);
+  }
+  function loadDetached(url, done) {
+    let loader = document.createElement("img");
+    loader.onload = () => done(true);
+    loader.onerror = () => done(false);
+    setImgSrc(loader, url);
+  }
+  function thumbFailed(state, url) {
+    if (state.failed)
+      return;
+    state.failed = true;
+    if (failedThumbUrls.has(state.base))
+      return;
+    failedThumbUrls.add(state.base);
+    let forget = () => {
+      failedThumbUrls.delete(state.base);
+      state.failed = false;
+    };
+    Promise.resolve().then(() => (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" })).then(() => loadDetached(url, (ok) => ok || navigator.onLine === false ? forget() : thumbFailures++), forget);
+  }
+  function thumbnailLoaded(img) {
+    let state = thumbStates.get(img);
+    if (state != null && img.currentSrc == thumbUrl(state, state.tier))
+      markThumbTierLoaded(state, state.tier);
+  }
+  function thumbnailFailed(img) {
+    let state = thumbStates.get(img);
+    if (state == null || state.tier == THUMB_BASE || img.currentSrc != thumbUrl(state, state.tier))
+      return;
+    thumbFailed(state, img.currentSrc);
+    state.tier = THUMB_BASE;
+    state.upgrading = null;
+    setImgSrc(img, state.base);
+    img.addEventListener("load", () => {
+      if (thumbStates.get(img) == state && img.currentSrc == state.base)
+        window.ppixiv?.extraCache?.registerLoadingThumbnail?.(state.mediaId, img)?.catch?.(() => {
+        });
+    }, { once: true });
+  }
+  function updateThumbLoadMs() {
+    let adjusted = [];
+    for (let a of thumbTimings) {
+      let duration = a.end - a.start;
+      if (duration <= 0)
+        continue;
+      let overlap = 0;
+      for (let b of thumbTimings)
+        overlap += Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start));
+      adjusted.push(duration * duration / overlap);
+    }
+    if (adjusted.length == 0)
+      return;
+    adjusted.sort((a, b) => a - b);
+    thumbLoadMs = adjusted[Math.floor(adjusted.length / 2)];
+  }
+  new PerformanceObserver((list) => {
+    let maxBefore = Math.max(THUMB_BASE, ...allowedThumbTiers());
+    let changed = false;
+    for (let entry of list.getEntries()) {
+      if (!entry.name.includes("i.pximg.net/c/") || !entry.name.includes("_webp/"))
+        continue;
+      if (entry.duration < 10)
+        continue;
+      thumbTimings.push({ start: entry.startTime, end: entry.responseEnd || entry.startTime + entry.duration });
+      if (thumbTimings.length > THUMB_TIMING_SAMPLES)
+        thumbTimings.shift();
+      changed = true;
+    }
+    if (changed)
+      updateThumbLoadMs();
+    if (Math.max(THUMB_BASE, ...allowedThumbTiers()) > maxBefore)
+      upgradeVisibleThumbs();
+  }).observe({ type: "resource" });
+  function maybeUpgradeThumb(img, width, height) {
+    let state = thumbStates.get(img);
+    if (state?.failed && !failedThumbUrls.has(state.base))
+      state.failed = false;
+    if (state == null || state.failed || !img.isConnected || !thumbsEnabled())
+      return;
+    let tier = pickThumbTier(state.mediaId, width, height);
+    if (tier > state.tier && tier != state.upgrading)
+      upgradeThumb(img, state, tier);
+  }
+  var visibleThumbs = /* @__PURE__ */ new Set();
+  var thumbVisibilityObserver = new IntersectionObserver((entries) => {
+    for (let entry of entries) {
+      if (!entry.isIntersecting) {
+        visibleThumbs.delete(entry.target);
+        continue;
+      }
+      visibleThumbs.add(entry.target);
+      maybeUpgradeThumb(entry.target, entry.boundingClientRect.width, entry.boundingClientRect.height);
+    }
+  });
+  function upgradeVisibleThumbs() {
+    for (let img of visibleThumbs) {
+      if (!img.isConnected) {
+        visibleThumbs.delete(img);
+        continue;
+      }
+      let rect = img.getBoundingClientRect();
+      maybeUpgradeThumb(img, rect.width, rect.height);
+    }
+  }
+  function watchPixelRatio() {
+    window.matchMedia(\`(resolution: \${window.devicePixelRatio}dppx)\`).addEventListener("change", () => {
+      watchPixelRatio();
+      upgradeVisibleThumbs();
+    }, { once: true });
+  }
+  watchPixelRatio();
+
   /\x2f web/vview/misc/preload.js
   var HOVER_DELAY_MS = 300;
   var HOVER_PREFETCH_LIMIT = 30;
@@ -3927,7 +4221,7 @@ let bundle = `(() => {
   var hoverTimer = null;
   var hoveredMediaId = null;
   var lastMangaMediaId = null;
-  var saveData = () => navigator.connection?.saveData == true;
+  var saveData2 = () => navigator.connection?.saveData == true;
   var hoverPrefetchEnabled = () => window.ppixiv.settings.get("hover_preload");
   function takeHoverPrefetch() {
     let now = performance.now();
@@ -3946,7 +4240,7 @@ let bundle = `(() => {
   var later = (callback, ms) => (window.realSetTimeout ?? window.setTimeout)(callback, ms);
   var cancelLater = (id) => (window.realClearTimeout ?? window.clearTimeout)(id);
   function prefetchUrl(url) {
-    if (saveData() || !url || prefetched.has(url) || prefetching.has(url))
+    if (saveData2() || !url || prefetched.has(url) || prefetching.has(url))
       return;
     if (prefetching.size >= MAX_PREFETCHES) {
       let [oldUrl, oldImg] = prefetching.entries().next().value;
@@ -3966,6 +4260,15 @@ let bundle = `(() => {
     img.decoding = "async";
     prefetching.set(url, img);
     img.src = url;
+  }
+  function cancelOtherPrefetches(mediaId) {
+    let illustId = /^illust:(\\d+)/.exec(mediaId ?? "")?.[1];
+    for (let [url, img] of prefetching) {
+      if (illustId != null && new RegExp(\`/\${illustId}_p\\\\d+[._]\`).test(url))
+        continue;
+      img.src = "";
+      prefetching.delete(url);
+    }
   }
   function parseMediaId(mediaId) {
     let match = /^illust:(\\d+)(?:-(\\d+))?\$/.exec(mediaId ?? "");
@@ -3988,19 +4291,19 @@ let bundle = `(() => {
     if (parseMediaId(mediaId) == null || ppixiv2?.mediaCache == null)
       return;
     let info = await getMediaInfoForPrefetch(ppixiv2.mediaCache, mediaId);
-    if (saveData() || shownPage == null && !hoverPrefetchEnabled() || info == null)
+    if (saveData2() || shownPage == null && !hoverPrefetchEnabled() || info == null)
       return;
     if (shownPage != null && mediaId != lastMangaMediaId)
       return;
     if (ppixiv2.muting?.anyTagMuted?.(info.tagList) || ppixiv2.muting?.isUserIdMuted?.(info.userId))
       return;
     if (shownPage == null)
-      prefetchUrl(info.previewUrls?.[pages[0]]);
+      prefetchUrl(viewerPreviewUrl(info.previewUrls?.[pages[0]]));
     if (info.illustType == 2)
       return;
     if (shownPage != null && !await waitForShownPage(info.getMainImageUrl(shownPage).url))
       return;
-    if (saveData() || shownPage != null && mediaId != lastMangaMediaId)
+    if (saveData2() || shownPage != null && mediaId != lastMangaMediaId)
       return;
     for (let page of pages)
       if (page < info.mangaPages.length)
@@ -4020,6 +4323,9 @@ let bundle = `(() => {
       loader.src = url;
     });
   }
+  function viewerPreviewUrl(url) {
+    return loadedPreviewUrl(url) == url ? url : null;
+  }
   function hoverWouldFetch(mediaId, page) {
     let mediaCache = window.ppixiv?.mediaCache;
     try {
@@ -4027,7 +4333,7 @@ let bundle = `(() => {
       if (info == null)
         return true;
       let have = (url) => url == null || prefetched.has(url) || prefetching.has(url);
-      return info.illustType != 2 && !have(info.getMainImageUrl(page).url) || !have(mediaCache.getMediaInfoSync(mediaId, { full: false })?.previewUrls?.[page]);
+      return info.illustType != 2 && !have(info.getMainImageUrl(page).url) || !have(viewerPreviewUrl(mediaCache.getMediaInfoSync(mediaId, { full: false })?.previewUrls?.[page]));
     } catch (e) {
       return true;
     }
@@ -4070,7 +4376,7 @@ let bundle = `(() => {
       return;
     hoverTimer = later(() => {
       hoverTimer = null;
-      if (hoveredMediaId != mediaId || saveData() || !hoverPrefetchEnabled())
+      if (hoveredMediaId != mediaId || saveData2() || !hoverPrefetchEnabled())
         return;
       if (thumb.closest(".thumbnail-box")?.classList.contains("muted") || !hoverWouldFetch(mediaId, parsed.page) || !takeHoverPrefetch())
         return;
@@ -4088,7 +4394,7 @@ let bundle = `(() => {
       }
       prefetchPages(mediaId, [parsed.page]).catch(() => {
       });
-      prefetchUrl(partialInfo?.previewUrls?.[parsed.page]);
+      prefetchUrl(viewerPreviewUrl(partialInfo?.previewUrls?.[parsed.page]));
     }, HOVER_DELAY_MS);
   }
   function preloadMangaPages(mediaId) {
@@ -4101,8 +4407,9 @@ let bundle = `(() => {
       shownPageLoader.src = "";
       shownPageLoader = null;
     }
+    cancelOtherPrefetches(mediaId);
     let parsed = parseMediaId(mediaId);
-    if (parsed == null || saveData())
+    if (parsed == null || saveData2())
       return;
     let mode = window.ppixiv?.settings?.get?.("preload_manga");
     if (mode == "thumbnails")
@@ -16163,6 +16470,8 @@ let bundle = `(() => {
         this._pointerListener.checkMissedClicks();
       if (this._slideshowMode)
         previewUrl = url;
+      else
+        previewUrl = loadedPreviewUrl(previewUrl);
       if (!LocalAPI.shouldPreloadThumbs(this.mediaId, previewUrl))
         previewUrl = null;
       this._imageContainer.setImageUrls({ imageUrl: url, previewUrl, translationUrl, inpaintUrl });
@@ -18733,7 +19042,7 @@ let bundle = `(() => {
       for (let url of mediaInfo.previewUrls) {
         if (!LocalAPI.shouldPreloadThumbs(mediaId, url))
           continue;
-        previewUrls.push(url);
+        previewUrls.push(loadedPreviewUrl(url));
       }
       if (previewUrls.length > 0)
         results.push(new ImgResourceLoader(previewUrls));
@@ -23073,285 +23382,6 @@ let bundle = `(() => {
       this.setHover(null);
     }
   };
-
-  /\x2f web/vview/misc/hd-thumbnails.js
-  var saveData2 = () => navigator.connection?.saveData == true;
-  var THUMB_TIERS = [
-    { spec: "600x1200_90_webp", box: [600, 1200] },
-    { spec: "1200x1200_80_webp", box: [1200, 1200] },
-    { spec: "1200x1200_90_webp", box: [1200, 1200] }
-  ];
-  var THUMB_BASE = -1;
-  var THUMB_URL_RE = /^(.*\\/c\\/)540x540_70(\\/img-master\\/.*_master1200\\.jpg)\$/;
-  var THUMB_SLOW_MS = 400;
-  var THUMB_VERY_SLOW_MS = 1e3;
-  var THUMB_TIMING_SAMPLES = 40;
-  var THUMB_MAX_FAILURES = 5;
-  var thumbStates = /* @__PURE__ */ new WeakMap();
-  var thumbTimings = [];
-  var failedThumbUrls = /* @__PURE__ */ new Set();
-  var loadedThumbTiers = /* @__PURE__ */ new Map();
-  var LOADED_THUMBS_LIMIT = 5e3;
-  var thumbLoadMs = null;
-  var thumbFailures = 0;
-  function thumbsEnabled() {
-    return !saveData2() && window.ppixiv.settings.get("hd_thumbnails") != "off" && thumbFailures < THUMB_MAX_FAILURES;
-  }
-  function allowedThumbTiers() {
-    if (saveData2())
-      return [];
-    if (thumbLoadMs == null || thumbLoadMs < THUMB_SLOW_MS)
-      return [0, 2];
-    if (thumbLoadMs < THUMB_VERY_SLOW_MS)
-      return [0, 1];
-    return [0];
-  }
-  function thumbUrl(state, tier) {
-    return tier == THUMB_BASE ? state.base : state.prefix + THUMB_TIERS[tier].spec + state.path;
-  }
-  function pickThumbTier(mediaId, cssWidth, cssHeight) {
-    let allowed = allowedThumbTiers();
-    if (allowed.length == 0)
-      return THUMB_BASE;
-    if (!(cssWidth > 0 && cssHeight > 0))
-      return allowed[0];
-    let mediaCache = window.ppixiv?.mediaCache;
-    let width = 1, height = 1;
-    try {
-      let info = mediaCache?.getMediaInfoSync(mediaId, { full: false });
-      if (info != null)
-        ({ width, height } = mediaCache.getImageDimensions(info, mediaId));
-    } catch (e) {
-    }
-    if (!(width > 0 && height > 0))
-      width = height = 1;
-    let dpr = window.devicePixelRatio || 1;
-    let scale2 = Math.max(cssWidth * dpr / width, cssHeight * dpr / height);
-    let neededWidth = width * scale2;
-    let best = allowed[0], bestWidth = 0;
-    for (let tier of allowed) {
-      let [boxWidth, boxHeight] = THUMB_TIERS[tier].box;
-      let fit = Math.min(1, boxWidth / width, boxHeight / height, 1200 / Math.max(width, height));
-      let delivered = width * fit;
-      if (delivered >= neededWidth * 0.9)
-        return tier;
-      if (delivered > bestWidth + 1) {
-        best = tier;
-        bestWidth = delivered;
-      }
-    }
-    return best;
-  }
-  var setImgSrc = (img, url) => {
-    img.src = url;
-  };
-  function thumbZoom() {
-    return 1;
-  }
-  function thumbTierLoaded(state, tier) {
-    return loadedThumbTiers.get(state.base)?.has(tier) == true;
-  }
-  function markThumbTierLoaded(state, tier) {
-    let tiers = loadedThumbTiers.get(state.base);
-    if (tiers == null) {
-      loadedThumbTiers.set(state.base, tiers = /* @__PURE__ */ new Set());
-      while (loadedThumbTiers.size > LOADED_THUMBS_LIMIT)
-        loadedThumbTiers.delete(loadedThumbTiers.keys().next().value);
-    }
-    tiers.add(tier);
-  }
-  function shownThumbTier(state, wanted) {
-    let tiers = loadedThumbTiers.get(state.base);
-    if (tiers == null || tiers.has(wanted))
-      return wanted;
-    return Math.max(...tiers);
-  }
-  var inMangaView = () => window.ppixiv?.app?.currentDataSource?.name == "manga";
-  var thumbResizeObserver = new ResizeObserver((entries) => {
-    let zoom = thumbZoom();
-    for (let entry of entries)
-      maybeUpgradeThumb(entry.target, entry.contentRect.width * zoom, entry.contentRect.height * zoom);
-  });
-  function trackThumb(img, url, mediaId) {
-    let match = THUMB_URL_RE.exec(url);
-    if (match == null || mediaId == null) {
-      thumbStates.delete(img);
-      return null;
-    }
-    let state = { base: url, prefix: match[1], path: match[2], mediaId, tier: THUMB_BASE, upgrading: null, failed: failedThumbUrls.has(url) };
-    thumbStates.set(img, state);
-    watchThumb(img);
-    return state;
-  }
-  function watchThumb(img) {
-    thumbResizeObserver.observe(img);
-    thumbVisibilityObserver.observe(img);
-  }
-  function forgetThumb(img) {
-    thumbResizeObserver.unobserve(img);
-    thumbVisibilityObserver.unobserve(img);
-    visibleThumbs.delete(img);
-    thumbStates.delete(img);
-  }
-  function setThumbnail(img, url, mediaId, box) {
-    forgetThumb(img);
-    let state = thumbsEnabled() ? trackThumb(img, url, mediaId) : null;
-    if (state == null || state.failed || inMangaView()) {
-      img.src = url;
-      return;
-    }
-    let zoom = thumbZoom();
-    state.tier = shownThumbTier(state, pickThumbTier(mediaId, box.origWidth * zoom, box.origHeight * zoom));
-    img.src = thumbUrl(state, state.tier);
-    queueMicrotask(() => {
-      if (thumbStates.get(img) != state || state.failed || !thumbsEnabled() || box.currentWidth == null)
-        return;
-      let width = box.currentWidth * zoom, height = box.currentHeight * zoom;
-      if (thumbTierLoaded(state, state.tier)) {
-        maybeUpgradeThumb(img, width, height);
-        return;
-      }
-      let tier = pickThumbTier(mediaId, width, height);
-      if (tier > state.tier) {
-        state.tier = tier;
-        img.src = thumbUrl(state, tier);
-      }
-    });
-  }
-  function upgradeThumb(img, state, tier) {
-    state.upgrading = tier;
-    let url = thumbUrl(state, tier);
-    let loader = document.createElement("img");
-    loader.decoding = "async";
-    loader.onload = async () => {
-      markThumbTierLoaded(state, tier);
-      await loader.decode().catch(() => {
-      });
-      if (thumbStates.get(img) != state || state.upgrading != tier)
-        return;
-      state.upgrading = null;
-      if (state.failed || !thumbsEnabled())
-        return;
-      state.tier = tier;
-      setImgSrc(img, url);
-    };
-    loader.onerror = () => {
-      if (state.upgrading == tier)
-        state.upgrading = null;
-      thumbFailed(state, url);
-    };
-    setImgSrc(loader, url);
-  }
-  function loadDetached(url, done) {
-    let loader = document.createElement("img");
-    loader.onload = () => done(true);
-    loader.onerror = () => done(false);
-    setImgSrc(loader, url);
-  }
-  function thumbFailed(state, url) {
-    if (state.failed)
-      return;
-    state.failed = true;
-    if (failedThumbUrls.has(state.base))
-      return;
-    failedThumbUrls.add(state.base);
-    let forget = () => {
-      failedThumbUrls.delete(state.base);
-      state.failed = false;
-    };
-    Promise.resolve().then(() => (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" })).then(() => loadDetached(url, (ok) => ok || navigator.onLine === false ? forget() : thumbFailures++), forget);
-  }
-  function thumbnailLoaded(img) {
-    let state = thumbStates.get(img);
-    if (state != null && img.currentSrc == thumbUrl(state, state.tier))
-      markThumbTierLoaded(state, state.tier);
-  }
-  function thumbnailFailed(img) {
-    let state = thumbStates.get(img);
-    if (state == null || state.tier == THUMB_BASE || img.currentSrc != thumbUrl(state, state.tier))
-      return;
-    thumbFailed(state, img.currentSrc);
-    state.tier = THUMB_BASE;
-    state.upgrading = null;
-    setImgSrc(img, state.base);
-    img.addEventListener("load", () => {
-      if (thumbStates.get(img) == state && img.currentSrc == state.base)
-        window.ppixiv?.extraCache?.registerLoadingThumbnail?.(state.mediaId, img)?.catch?.(() => {
-        });
-    }, { once: true });
-  }
-  function updateThumbLoadMs() {
-    let adjusted = [];
-    for (let a of thumbTimings) {
-      let duration = a.end - a.start;
-      if (duration <= 0)
-        continue;
-      let overlap = 0;
-      for (let b of thumbTimings)
-        overlap += Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start));
-      adjusted.push(duration * duration / overlap);
-    }
-    if (adjusted.length == 0)
-      return;
-    adjusted.sort((a, b) => a - b);
-    thumbLoadMs = adjusted[Math.floor(adjusted.length / 2)];
-  }
-  new PerformanceObserver((list) => {
-    let maxBefore = Math.max(THUMB_BASE, ...allowedThumbTiers());
-    let changed = false;
-    for (let entry of list.getEntries()) {
-      if (!entry.name.includes("i.pximg.net/c/") || !entry.name.includes("_webp/"))
-        continue;
-      if (entry.duration < 10)
-        continue;
-      thumbTimings.push({ start: entry.startTime, end: entry.responseEnd || entry.startTime + entry.duration });
-      if (thumbTimings.length > THUMB_TIMING_SAMPLES)
-        thumbTimings.shift();
-      changed = true;
-    }
-    if (changed)
-      updateThumbLoadMs();
-    if (Math.max(THUMB_BASE, ...allowedThumbTiers()) > maxBefore)
-      upgradeVisibleThumbs();
-  }).observe({ type: "resource" });
-  function maybeUpgradeThumb(img, width, height) {
-    let state = thumbStates.get(img);
-    if (state?.failed && !failedThumbUrls.has(state.base))
-      state.failed = false;
-    if (state == null || state.failed || !img.isConnected || !thumbsEnabled())
-      return;
-    let tier = pickThumbTier(state.mediaId, width, height);
-    if (tier > state.tier && tier != state.upgrading)
-      upgradeThumb(img, state, tier);
-  }
-  var visibleThumbs = /* @__PURE__ */ new Set();
-  var thumbVisibilityObserver = new IntersectionObserver((entries) => {
-    for (let entry of entries) {
-      if (!entry.isIntersecting) {
-        visibleThumbs.delete(entry.target);
-        continue;
-      }
-      visibleThumbs.add(entry.target);
-      maybeUpgradeThumb(entry.target, entry.boundingClientRect.width, entry.boundingClientRect.height);
-    }
-  });
-  function upgradeVisibleThumbs() {
-    for (let img of visibleThumbs) {
-      if (!img.isConnected) {
-        visibleThumbs.delete(img);
-        continue;
-      }
-      let rect = img.getBoundingClientRect();
-      maybeUpgradeThumb(img, rect.width, rect.height);
-    }
-  }
-  function watchPixelRatio() {
-    window.matchMedia(\`(resolution: \${window.devicePixelRatio}dppx)\`).addEventListener("change", () => {
-      watchPixelRatio();
-      upgradeVisibleThumbs();
-    }, { once: true });
-  }
-  watchPixelRatio();
 
   /\x2f web/vview/next/quick-bookmark.js
   var inFlight = /* @__PURE__ */ new Set();
@@ -41125,7 +41155,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.164.gb9bde2b4"}\`);
+      console.log(\`vview setup: \${"r258.168.g66e02683"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -41174,7 +41204,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.164.gb9bde2b4"}\`);
+      console.log(\`ppixiv setup: \${"r258.168.g66e02683"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
