@@ -6,6 +6,7 @@ import { ConfirmPrompt, TextPrompt } from '/vview/widgets/prompts.js';
 import { TagDropdownWidget } from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { parsePixivLink, looksLikePixivId, getArgsForPixivLink, getPixivLinkUrl } from '/vview/misc/pixiv-links.js';
+import { createRefineButtons, handleRefineClick } from '/vview/next/tag-refine.js';
 
 // Handle showing the search history and tag edit dropdowns.
 export class TagSearchBoxWidget extends widget
@@ -1439,9 +1440,14 @@ class RelatedTagDropdown extends TagDropdownWidget
                 asElement: true,
             });
 
-            this.root.appendChild(a);
-
             a.dataset.tag = tag;
+
+            // + and − add the tag to the search or exclude it.  Shift+click and Alt+click do the same.
+            let row = document.createElement("div");
+            row.className = "n-related-row";
+            row.append(a, createRefineButtons(tag) ?? "");
+            a.addEventListener("click", (e) => handleRefineClick(e, tag));
+            this.root.appendChild(row);
         }
     }
 

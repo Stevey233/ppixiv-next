@@ -2,6 +2,7 @@
 
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { createRefineButtons, handleRefineClick } from '/vview/next/tag-refine.js';
 
 export default class TagListWidget extends Widget
 {
@@ -13,6 +14,25 @@ export default class TagListWidget extends Widget
                 <div class="tag-list box-button-row"></div>
             `
         });
+
+        // Shift+click adds a tag to the current tag search, Alt+click excludes it.
+        this.root.addEventListener("click", (e) => {
+            let link = e.target.closest(".tag-entry[data-refine]");
+            if(link)
+                handleRefineClick(e, link.dataset.tag);
+        });
+
+        // The + and − of a pill hang off its right end, or its left end if the list's edge is
+        // too close.
+        let placeRefine = (e) => {
+            let pill = e.target.closest?.(".n-tag-pill");
+            if(pill == null)
+                return;
+            let room = this.root.getBoundingClientRect().right - pill.getBoundingClientRect().right;
+            helpers.html.setClass(pill, "n-refine-left", room < pill.querySelector(".n-tag-refine").offsetWidth);
+        };
+        this.root.addEventListener("pointerover", placeRefine);
+        this.root.addEventListener("focusin", placeRefine);
     };
 
     formatTagLink(tag)
@@ -56,8 +76,11 @@ export default class TagListWidget extends Widget
         else if(showR18)
             tags.splice(0, 0, {tag: "R-18"});
 
+        // The links keep the current search's conditions, so they change with the list too.
+        let list = helpers.getCanonicalUrl(ppixiv.plocation).url.toString();
+
         // Short circuit if the tag list isn't changing, since IndexedDB is really slow.
-        if(this._currentTags != null && JSON.stringify(this._currentTags) == JSON.stringify(tags))
+        if(this._currentTags != null && JSON.stringify(this._currentTags) == JSON.stringify(tags) && this._currentList == list)
             return;
 
         // Look up tag translations.
@@ -69,6 +92,7 @@ export default class TagListWidget extends Widget
             return;
 
         this._currentTags = tags;
+        this._currentList = list;
 
         // Remove any old tag list and create a new one.
         helpers.html.removeElements(this.root);
@@ -93,9 +117,21 @@ export default class TagListWidget extends Widget
                 asElement: true,
             });
 
-            this.root.appendChild(a);
-
             a.dataset.tag = tag;
+
+            // On a tag search, a pill also has + and − to add or exclude the tag.  Not for the
+            // R-18 and AI pills.
+            let refine = ai || tag == "R-18" || tag == "R-18G"? null:createRefineButtons(tag);
+            if(refine)
+            {
+                a.dataset.refine = "";
+                let pill = document.createElement("span");
+                pill.className = "n-tag-pill";
+                pill.append(a, refine);
+                this.root.appendChild(pill);
+            }
+            else
+                this.root.appendChild(a);
         }
     }
 }

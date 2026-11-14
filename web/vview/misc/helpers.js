@@ -572,6 +572,29 @@ export class helpers
         return args;
     }
 
+    // Return the args of the tag search at url with tag added ("q tag"), or excluded ("q -tag")
+    // if exclude is true, keeping every other condition.  A tag already in the search changes in
+    // place instead of being added twice.  Return null if url isn't a tag search.
+    static getArgsForTagRefine(tag, url, { exclude=false }={})
+    {
+        url = helpers.pixiv.getUrlWithoutLanguage(url);
+        let current = helpers.pixiv.getSearchTagsFromUrl(url);
+        if(helpers.pixiv.getPageTypeFromUrl(url) != "search" || !current)
+            return null;
+
+        let word = exclude? `-${tag}`:tag;
+        let words = current.split(/\s+/).filter((w) => w);
+        let index = words.findIndex((w) => w == tag || w == `-${tag}`);
+        if(index == -1)
+            words.push(word);
+        else
+            words[index] = word;
+
+        url = new URL(url);
+        url.searchParams.set("q", words.join(" "));
+        return helpers.getCanonicalUrl(url);
+    }
+
     // Return a canonical URL for a data source.  If the canonical URL is the same,
     // the same instance of the data source should be used.
     //

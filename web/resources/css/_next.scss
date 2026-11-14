@@ -1329,7 +1329,7 @@ html, html.mobile {
         .tag-list-container .tag-list {
             gap: 6px;
 
-            > .box-link {
+            > .box-link, > .n-tag-pill > .box-link {
                 height: auto;
                 min-height: 28px;
                 padding: 0 10px;
@@ -1340,6 +1340,47 @@ html, html.mobile {
                 @media(hover: hover) {
                     &:hover { border-color: var(--n-blue); color: var(--n-blue); background: none; }
                 }
+            }
+        }
+
+        // On a tag search, hovering or focusing a pill shows + and − hung off its right end
+        // (next/tag-refine.js): add the tag to the search, or exclude it.  They float over the
+        // neighbouring pill instead of widening this one, so the list doesn't reflow on hover.
+        .n-tag-pill {
+            position: relative;
+            display: inline-flex;
+
+            > .n-tag-refine {
+                position: absolute;
+                left: 100%;
+                top: 0;
+                bottom: 0;
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                padding: 0 4px 0 2px;
+                background: var(--n-surface);
+                border: 1px solid var(--n-blue);
+                border-left: none;
+                border-radius: 0 999px 999px 0;
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            &.n-refine-left > .n-tag-refine {
+                left: auto;
+                right: 100%;
+                padding: 0 2px 0 4px;
+                border-left: 1px solid var(--n-blue);
+                border-right: none;
+                border-radius: 999px 0 0 999px;
+            }
+
+            &:hover, &:focus-within {
+                > .n-tag-refine { opacity: 1; pointer-events: auto; }
+                > .box-link { border-color: var(--n-blue); }
+                &:not(.n-refine-left) > .box-link { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+                &.n-refine-left > .box-link { border-top-left-radius: 0; border-bottom-left-radius: 0; }
             }
         }
 
@@ -3119,6 +3160,36 @@ html:not(.mobile) .floating > .dialog > .header {
     .font-icon { font-size: 18px; }
     &.selected { color: var(--n-text); background: none; }
     @media(hover: hover) { &:hover { border-color: var(--n-pencil); color: var(--n-text); } }
+}
+
+// The related tags dropdown: + and − at the end of each row, shown on hover or focus.
+.data-source-tag-list .n-related-row {
+    display: flex;
+    align-items: center;
+
+    > .box-link { flex: 1; min-width: 0; color: var(--n-text); }
+    > .n-tag-refine { opacity: 0; padding-right: 4px; }
+    &:hover, &:focus-within { > .n-tag-refine { opacity: 1; } }
+}
+
+// The + and − of a tag (next/tag-refine.js), in the viewer's pills, the related tags dropdown
+// and the related tags row.
+.n-tag-refine {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.n-tag-refine-button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--n-radius);
+    color: var(--n-pencil);
+    text-decoration: none;
+
+    .font-icon { font-size: 18px; }
+    &:hover { color: var(--n-blue); background: var(--n-surface-2); }
 }
 
 // With no recent or saved searches, the dropdown was an empty bordered strip under the box.

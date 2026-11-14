@@ -48,6 +48,8 @@ const SHORTCUTS = [
             ["Ctrl+0", "切换缩放，同上"],
             ["Ctrl+P", "打开或关闭自动平移"],                         // context-menu.js _handleKeyEventForImage
             ["Ctrl+C", "鼠标停在标题或说明上时，复制这段文字"],        // desktop-image-info.js handleKeydown
+            ["Shift+点击标签", "从标签搜索点进来时，把这个标签加到当前搜索"],  // next/tag-refine.js, tag-list-widget.js
+            ["Alt+点击标签", "从标签搜索点进来时，在当前搜索里排除这个标签"],
             ["双击", "全屏，要先在\"看图\"页打开\"双击全屏\""],         // screen-illust.js dblclick
         ],
     },
