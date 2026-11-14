@@ -23,12 +23,16 @@ export default class RelatedTagsRow extends Widget
 
         this.root.addEventListener("click", (e) => {
             let link = e.target.closest(".n-related-tag");
-            if(link == null || !e.shiftKey)
+            if(link == null || (!e.shiftKey && !e.altKey))
                 return;
 
+            // Shift searches the tag alone.  Alt excludes it, as on the viewer's tags; left to
+            // the browser, an Alt click would download the link.
             e.preventDefault();
             e.stopPropagation();
-            helpers.navigate(helpers.getArgsForTagSearch(link.dataset.tag, ppixiv.plocation));
+            helpers.navigate(e.altKey?
+                helpers.getArgsForTagRefine(link.dataset.tag, ppixiv.plocation, { exclude: true }):
+                helpers.getArgsForTagSearch(link.dataset.tag, ppixiv.plocation));
         });
 
         new ResizeObserver(() => this._fitLine()).observe(this.root);

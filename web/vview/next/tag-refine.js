@@ -22,6 +22,16 @@ export function createRefineButtons(tag)
         a.setAttribute("aria-label", `${title}：${tag}`);
         a.dataset.refine = exclude? "exclude":"add";
         a.innerHTML = helpers.createIcon(icon);
+
+        // The app's link handler skips Alt clicks and the browser downloads an Alt-clicked link,
+        // so do here what a plain click does.
+        a.addEventListener("click", (e) => {
+            if(e.button != 0 || !e.altKey)
+                return;
+            e.preventDefault();
+            e.stopPropagation();
+            helpers.navigate(helpers.getArgsForTagRefine(tag, ppixiv.plocation, { exclude }));
+        });
         buttons.appendChild(a);
     }
     return buttons;
