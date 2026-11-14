@@ -2972,6 +2972,11 @@ html:not(.mobile) .floating > .dialog > .header {
     }
 
     .search .word.or { color: var(--n-pencil); }
+
+    // "打开作品 N" and "打开用户 N" for a pasted link or a number, above the searches.
+    .entry.open-link .font-icon { font-size: 18px; color: var(--n-pencil); }
+    .open-links { display: flex; flex-direction: column; }
+    .open-links:has(.entry) { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid var(--n-rule); }
 }
 
 // Edit-mode buttons and the collapse button: upstream's #bbb outlined squares, white on hover.

@@ -5,6 +5,7 @@ import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.j
 import { ConfirmPrompt, TextPrompt } from '/vview/widgets/prompts.js';
 import { TagDropdownWidget } from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { parsePixivLink, looksLikePixivId, getArgsForPixivLink, getPixivLinkUrl } from '/vview/misc/pixiv-links.js';
 
 // Handle showing the search history and tag edit dropdowns.
 export class TagSearchBoxWidget extends widget
@@ -141,8 +142,12 @@ export class TagSearchBoxWidget extends widget
         if(tags.length == 0)
             return;
 
+        // A work or user link opens what it names, and isn't a search to remember.
+        let link = parsePixivLink(tags);
+
         // Add this tag to the recent search list.
-        SavedSearchTags.add(tags);
+        if(link == null)
+            SavedSearchTags.add(tags);
 
         // If we're submitting by pressing enter on an input element, unfocus it and
         // close any widgets inside it (tag dropdowns).
@@ -153,7 +158,7 @@ export class TagSearchBoxWidget extends widget
         }
         
         // Run the search.
-        let args = helpers.getArgsForTagSearch(tags, ppixiv.plocation);
+        let args = link? getArgsForPixivLink(link):helpers.getArgsForTagSearch(tags, ppixiv.plocation);
         helpers.navigate(args);
     }
 }
@@ -171,6 +176,9 @@ class TagSearchDropdownWidget extends widget
                         </div>
                         <div class=label>Add section</div>
                     </div>
+
+                    <!-- Rows that open a pasted work or user link, or a number as a work or user ID. -->
+                    <vv-container class=open-links></vv-container>
 
                     <!-- template-tag-dropdown-entry instances will be added here. -->
                     <vv-container class=contents></vv-container>
@@ -204,6 +212,7 @@ class TagSearchDropdownWidget extends widget
         this._allResults = this.root;
         this._inputDropdown = this.root.querySelector(".input-dropdown-list");
         this._inputDropdownContents = this._inputDropdown.querySelector(".contents");
+        this._openLinks = this._inputDropdown.querySelector(".open-links");
         let observer = new MutationObserver((mutations) => {
             // resize sets the width.  Use this instead of offsetWidth, since offsetWidth sometimes reads
             // as 0 here.
@@ -642,6 +651,8 @@ class TagSearchDropdownWidget extends widget
         // Clear the selection on input.
         this.setSelection(null);
 
+        this._refreshOpenLinks();
+
         // Update autocomplete when the text changes.
         this._runAutocomplete();
     }
@@ -663,7 +674,39 @@ class TagSearchDropdownWidget extends widget
             return;
 
         this._selectCurrentSearch();
+        this._refreshOpenLinks();
         this._runAutocomplete();
+    }
+
+    // Show "打开作品" and "打开用户" rows at the top for a link or a bare ID.  A link opens on Enter
+    // anyway; a number still searches as a tag on Enter, since numbers can be tags, so the rows are
+    // how it opens as an ID.  Each row's data-tag is the link's URL, so picking it with the arrow
+    // keys puts that URL in the box and Enter opens it.
+    _refreshOpenLinks()
+    {
+        let text = this._inputElement.value.trim();
+        let link = parsePixivLink(text);
+        let links = link? [link]:
+            looksLikePixivId(text)? [{ type: "illust", id: text }, { type: "user", id: text }]:
+            [];
+
+        helpers.html.removeElements(this._openLinks);
+        for(let link of links)
+        {
+            let entry = this.createTemplate({name: "open-link-entry", html: `
+                <a class="entry open-link" href=#>
+                    ${ helpers.createIcon("mat:open_in_new") }
+                    <span class=search><span class=word></span></span>
+                </a>
+            `});
+            entry.querySelector(".word").textContent = `${link.type == "illust"? "打开作品":"打开用户"} ${link.id}`;
+            entry.dataset.tag = getPixivLinkUrl(link);
+            entry.href = getArgsForPixivLink(link).url.toString();
+            this._openLinks.appendChild(entry);
+        }
+
+        if(links.length)
+            this.root.classList.remove("loading");
     }
 
     hide()
@@ -730,6 +773,10 @@ class TagSearchDropdownWidget extends widget
         // Don't autocomplete the search keyword "or".
         if(keyword == "or")
             return;
+
+        // A work or user link opens on Enter, so there's nothing to complete.
+        if(parsePixivLink(tags) != null)
+            keyword = "";
 
         // Stop if we're already up to date.
         if(this._mostRecentAutocomplete == keyword)
