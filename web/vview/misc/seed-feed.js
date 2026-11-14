@@ -55,6 +55,43 @@ export function rankRelated(lists)
         .map((entry) => entry.id);
 }
 
+// Return ids reordered so no more than max works by one artist are among any window consecutive
+// works.  A work that doesn't fit moves down to the first place it fits; nothing is dropped.  If
+// no waiting work fits and the input has run out, the rest go at the end in order.
+export function spreadArtists(ids, artistOf, { max=3, window=30 }={})
+{
+    // counts covers the last window-1 works placed.
+    let result = [], waiting = [], counts = new Map(), next = 0;
+    let fits = (id) => (counts.get(artistOf(id)) ?? 0) < max;
+    let place = (id) => {
+        result.push(id);
+        counts.set(artistOf(id), (counts.get(artistOf(id)) ?? 0) + 1);
+        if(result.length >= window)
+        {
+            let old = artistOf(result[result.length - window]);
+            counts.set(old, counts.get(old) - 1);
+        }
+    };
+
+    while(result.length < ids.length)
+    {
+        let index = waiting.findIndex(fits);
+        if(index != -1)
+            place(waiting.splice(index, 1)[0]);
+        else if(next < ids.length)
+        {
+            let id = ids[next++];
+            if(fits(id))
+                place(id);
+            else
+                waiting.push(id);
+        }
+        else
+            place(waiting.shift());
+    }
+    return result;
+}
+
 export class SeedFeed extends EventTarget
 {
     constructor()

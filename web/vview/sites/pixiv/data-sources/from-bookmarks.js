@@ -9,7 +9,7 @@
 import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
-import { SeedFeed, SEED_COUNT } from '/vview/misc/seed-feed.js';
+import { SeedFeed, SEED_COUNT, spreadArtists } from '/vview/misc/seed-feed.js';
 
 const seedFeed = new SeedFeed();
 seedFeed.watchBookmarks();
@@ -136,7 +136,8 @@ export default class DataSources_FromBookmarks extends DataSource
         // knows, like a bookmark made since.
         await ppixiv.mediaCache.addMediaInfosPartial(kept.filter((id) => infoFor(id) == null).map((id) => works.get(id)), "normal");
 
-        return kept.map((id) => helpers.mediaId.fromIllustId(id));
+        let spread = spreadArtists(kept, (id) => works.get(id).userId);
+        return spread.map((id) => helpers.mediaId.fromIllustId(id));
     }
 }
 
