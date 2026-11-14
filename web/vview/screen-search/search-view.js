@@ -585,6 +585,12 @@ export default class SearchView extends Widget
 
         // Wait until the load started by the most recent call to setDataSource finishes.
         await this._setDataSourceRunner.promise;
+
+        // Store the position now.  Coming back from the viewer, the list already scrolled to the
+        // last work while the viewer was in front, so no scroll event follows and this entry would
+        // keep the position it had when the viewer opened until the user scrolls.
+        if(this._active)
+            this.storeScrollPosition();
     }
 
     deactivate()
