@@ -9,6 +9,14 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-14.4",
+        title: "网络慢时点开作品更快出图",
+        items: [
+            "点开作品后，原图下完之前先显示列表里已经下载好的那张缩略图，不再另外下载一张预览。以前网速慢时，点开后要等十几秒才出现预览图，这段时间画面是空的。",
+            "点开一件作品时，停止下载鼠标划过时预加载的其他作品原图，不和这件作品的原图抢网速。",
+        ],
+    },
+    {
         id: "2026-11-14.3",
         title: "请求失败后能接着加载",
         items: [
