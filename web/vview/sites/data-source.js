@@ -137,6 +137,10 @@ export default class DataSource extends EventTarget
         if(this.firstEmptyPage != -1 && page >= this.firstEmptyPage)
             return false;
 
+        // While loading is stopped, only loadMoreFiltered loads on.
+        if(this.filteredStopPage != null && page == this._nextFilteredPage(this.filteredStopPage))
+            return false;
+
         // If we've loaded pages 5-6, we can load anything between pages 4 and 7.
         let lowestPage = this.idList.getLowestLoadedPage();
         let highestPage = this.idList.getHighestLoadedPage();
@@ -172,7 +176,8 @@ export default class DataSource extends EventTarget
         // the page would count as emptied and the list would pause and continue forever.  This
         // checks the works as returned, since the list only holds what the filters kept.
         this._returnedMediaIds ??= new Set();
-        if(mediaIds?.length && mediaIds.every((mediaId) => this._returnedMediaIds.has(mediaId)))
+        let returnedNew = mediaIds?.filter((mediaId) => !this._returnedMediaIds.has(mediaId)).length ?? 0;
+        if(!this.randomPages && mediaIds?.length && returnedNew == 0)
         {
             console.log(`Page ${page} only repeats earlier pages, treating it as the end`);
             mediaIds = [];
@@ -197,7 +202,7 @@ export default class DataSource extends EventTarget
 
         // Register the page if media IDs were returned.
         if(mediaIds)
-            await this.addPage(page, mediaIds, { allowEmpty });
+            await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
 
         // Count emptied pages only after addPage, which drops works already on an earlier page.
         // Otherwise a list that keeps returning the same works never stops loading.
@@ -205,6 +210,16 @@ export default class DataSource extends EventTarget
         {
             this._filteredEmptyPages = 0;
             this._emptyRunPages = this._emptyRunWorks = 0;
+        }
+
+        let stopText = this._stopAfterPage({ added: this.idList.mediaIdsByPage.get(page)?.length ?? 0, returnedNew });
+        if(stopText != null)
+        {
+            console.log(`Stopping at page ${page}: ${stopText}`);
+            this.filteredStopPage = page;
+            this._stopText = stopText;
+            this.callUpdateListeners();
+            return true;
         }
 
         // Reduce the start page, which will update the "load more results" button if any.
@@ -219,7 +234,7 @@ export default class DataSource extends EventTarget
             if(this.firstEmptyPage == -1 || page < this.firstEmptyPage)
                 this.firstEmptyPage = page;
         }
-        else if(this.idList.mediaIdsByPage.get(page).length == 0 && filteredAway)
+        else if(this.idList.mediaIdsByPage.get(page).length == 0 && (filteredAway || this.randomPages))
         {
             // The filters removed everything on this page.  Load the next one, but stop after a
             // few in a row, so a filter that matches almost nothing doesn't page through the
@@ -440,6 +455,15 @@ export default class DataSource extends EventTarget
         };
     }
 
+    // True if every page is a new random batch from the same pool, like 推荐作品.  A page that only
+    // repeats earlier ones isn't the end there, and an empty page loads the next one.
+    get randomPages() { return false; }
+
+    // Called after each page with the number of works it added to the list (after filters and
+    // removing works already in it) and the number it returned that no earlier page did.  Return
+    // the text to show to stop loading until "继续查找", or null to go on.
+    _stopAfterPage({ added, returnedNew }) { return null; }
+
     // The page to load after page, which the filters emptied.  This is the next page, or the
     // previous one if the list is loading backwards.
     _nextFilteredPage(page)
@@ -454,7 +478,7 @@ export default class DataSource extends EventTarget
     {
         if(this.filteredStopPage == null)
             return null;
-        return `已查找 ${this._emptyRunPages} 页（${this._emptyRunWorks} 件），没有符合筛选的作品`;
+        return this._stopText ?? `已查找 ${this._emptyRunPages} 页（${this._emptyRunWorks} 件），没有符合筛选的作品`;
     }
 
     // After loading stopped because the filters removed everything on several pages, load
@@ -465,6 +489,7 @@ export default class DataSource extends EventTarget
         if(page == null)
             return;
         this.filteredStopPage = null;
+        this._stopText = null;
         this._filteredEmptyPages = 0;
         this.callUpdateListeners();
         let nextPage = this._nextFilteredPage(page);
