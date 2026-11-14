@@ -538,6 +538,10 @@ class UI extends Widget
             url.searchParams.set("s_mode", "tag_tc");
             url.searchParams.set("type", "artwork");
             url.searchParams.set("wib", "1");
+
+            // Search every rating: a remembered 全年龄 or R18 from tag search would leave part of
+            // the bookmarks out.  The result page's own choices still narrow it.
+            url.searchParams.set("mode", "all");
             helpers.navigate(url);
         };
         helpers.inputHandler(bookmarkSearch.querySelector("input"), submitBookmarkSearch);
