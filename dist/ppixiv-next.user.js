@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.159.gdd271dc3
+// @version     258.164.gb9bde2b4
 // ==/UserScript==
 (function() {
 
@@ -20105,6 +20105,12 @@ let bundle = `(() => {
         return true;
       return false;
     }
+    pageFailed(page) {
+      return this._pageFailedAt?.[page] != null;
+    }
+    get anyPageFailed() {
+      return Object.keys(this._pageFailedAt ?? {}).length > 0;
+    }
     get isAnyPageLoading() {
       for (let page in this.loadingPages)
         if (this.loadingPages[page])
@@ -20141,10 +20147,12 @@ let bundle = `(() => {
         mediaIds = [];
         allowEmpty = false;
       }
-      for (let mediaId of mediaIds ?? [])
+      for (let mediaId of newMediaIds)
         this._returnedMediaIds.add(mediaId);
+      let addedNow = [...newMediaIds];
       let returnedCount = mediaIds?.length ?? 0;
       let filteredAway = false;
+      let hidden = {};
       let getReason = await this._getHideReason();
       if (mediaIds && getReason) {
         filteredAway = mediaIds.length > 0;
@@ -20152,13 +20160,23 @@ let bundle = `(() => {
           allowEmpty = true;
         mediaIds = mediaIds.filter((mediaId) => {
           let reason = getReason(mediaId);
-          if (reason != null && newMediaIds.delete(mediaId))
+          if (reason != null && newMediaIds.delete(mediaId)) {
             this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + 1;
+            hidden[reason] = (hidden[reason] ?? 0) + 1;
+          }
           return reason == null;
         });
       }
-      if (mediaIds)
-        await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
+      try {
+        if (mediaIds)
+          await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
+      } catch (e) {
+        for (let mediaId of addedNow)
+          this._returnedMediaIds.delete(mediaId);
+        for (let [reason, count] of Object.entries(hidden))
+          this.hiddenCounts[reason] -= count;
+        throw e;
+      }
       if (this.idList.mediaIdsByPage.get(page)?.length) {
         this._filteredEmptyPages = 0;
         this._emptyRunPages = this._emptyRunWorks = 0;
@@ -23760,6 +23778,14 @@ let bundle = `(() => {
       }, { capture: true });
       this.root.addEventListener("error", (e) => thumbnailFailed(e.target), { capture: true });
       this.scrollContainer.addEventListener("scroll", (e) => this.scheduleStoreScrollPosition(), { passive: true });
+      let retryFailedPage = () => {
+        if (!this.dataSource?.anyPageFailed || Date.now() - (this._lastFailedRetry ?? 0) < 1e3)
+          return;
+        this._lastFailedRetry = Date.now();
+        this.loadDataSourcePage({ cause: "retry failed page" });
+      };
+      this.scrollContainer.addEventListener("wheel", retryFailedPage, { passive: true, signal: this.shutdownSignal });
+      this.scrollContainer.addEventListener("touchend", retryFailedPage, { passive: true, signal: this.shutdownSignal });
       this.thumbnailBox.addEventListener("click", (e) => this.thumbnailClick(e));
       setupQuickBookmark({
         container: this.thumbnailBox,
@@ -23912,6 +23938,8 @@ let bundle = `(() => {
       signal.throwIfAborted();
       if (this.dataSource?.hasNoResults)
         this._refreshNoResults();
+      if (this.dataSource?.pageFailed(loadPage))
+        return;
       (async () => {
         await helpers.other.sleep(100);
         this.loadDataSourcePage();
@@ -31314,9 +31342,7 @@ let bundle = `(() => {
     }
     async _get(key) {
       let request = await this._dbOp("readonly", (store) => store.get(key));
-      if (request == null)
-        return this._memory.get(key) ?? null;
-      return request.result ?? null;
+      return request?.result ?? this._memory.get(key) ?? null;
     }
     _put(key, value) {
       this._memory.set(key, value);
@@ -41099,7 +41125,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.159.gdd271dc3"}\`);
+      console.log(\`vview setup: \${"r258.164.gb9bde2b4"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -41148,7 +41174,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.159.gdd271dc3"}\`);
+      console.log(\`ppixiv setup: \${"r258.164.gb9bde2b4"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
