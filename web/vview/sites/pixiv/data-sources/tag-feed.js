@@ -3,8 +3,9 @@
 // 常看标签: Pixiv's recommendations for the tags the user looks at most, grouped by tag.
 // misc/tag-feed.js loads and keeps the data; this drops what shouldn't show and lists the rest
 // in Pixiv's order of tags.  The search view puts a header before each tag's first work
-// (sectionAt).  Like 收藏相关, the URL is under the top page's hash, and the mode (#mode=safe,
-// r18) filters locally by the works' age rating.
+// (sectionAt).  Like 收藏相关, the URL is under the top page's hash.  全年龄 (the default) and R18
+// (#mode=r18) are separate lists from Pixiv, each with its own request; the works' age rating is
+// checked too, so each label stays true whatever Pixiv sends.
 //
 // Every work is on page 1.  The list is local, so there's nothing to page through, and a filter
 // that empties several tags in a row can't count as several emptied pages and pause the list.
@@ -36,12 +37,15 @@ export default class DataSources_TagFeed extends DataSource
         refreshRequested = false;
     }
 
+    // The request's mode: "r18", or "all" for 全年龄.
+    get _mode() { return this.args.hash.get("mode") == "r18"? "r18":"all"; }
+
     getDisplayingText()
     {
         let fragment = document.createDocumentFragment();
         fragment.append("常看标签");
 
-        let loading = tagFeedLoading();
+        let loading = tagFeedLoading(this._mode);
         if(loading && this.feed == null)
         {
             let status = document.createElement("span");
@@ -78,7 +82,7 @@ export default class DataSources_TagFeed extends DataSource
         if(page != 1)
             return;
 
-        let loading = loadTagFeed({ refresh: this._refresh });
+        let loading = loadTagFeed({ mode: this._mode, refresh: this._refresh });
         this.callUpdateListeners();
         this.feed = await loading;
         if(this.feed.status == "ok")
@@ -93,7 +97,7 @@ export default class DataSources_TagFeed extends DataSource
     // Set this.sections and this.mediaIds from a loaded feed, and register the works' data.
     async _listFeed({ sections, works, tagTranslation })
     {
-        let mode = this.args.hash.get("mode") ?? "all";
+        let r18 = this._mode == "r18";
         let infoFor = (id) => ppixiv.mediaCache.getMediaInfoSync(helpers.mediaId.fromIllustId(id), { full: false });
 
         // A work under two tags stays under the first.
@@ -111,11 +115,7 @@ export default class DataSources_TagFeed extends DataSource
             // here keeps them out of the count in the title.
             if(ppixiv.muting.anyTagMuted(work.tags))
                 return false;
-            if(mode == "safe")
-                return work.xRestrict == 0;
-            if(mode == "r18")
-                return work.xRestrict != 0;
-            return true;
+            return r18 == (work.xRestrict != 0);
         };
         let shown = sections.map(({ tag, ids }) => ({ tag, ids: ids.filter(kept) })).filter(({ ids }) => ids.length > 0);
         let ids = shown.flatMap((section) => section.ids);
