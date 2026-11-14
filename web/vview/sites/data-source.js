@@ -244,7 +244,9 @@ export default class DataSource extends EventTarget
             mediaIds = [];
             allowEmpty = false;
         }
-        let returnedMediaIds = mediaIds ?? [];
+        for(let mediaId of newMediaIds)
+            this._returnedMediaIds.add(mediaId);
+        let addedNow = [...newMediaIds];
 
         // Apply the result filters.  If the page had results, add it even if nothing is left, so
         // the next page loads, see below.  Nothing can be left after filtering, or after addPage
@@ -262,21 +264,28 @@ export default class DataSource extends EventTarget
                 let reason = getReason(mediaId);
                 // delete, so a work one response lists twice counts once.
                 if(reason != null && newMediaIds.delete(mediaId))
+                {
+                    this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + 1;
                     hidden[reason] = (hidden[reason] ?? 0) + 1;
+                }
                 return reason == null;
             });
         }
 
         // Register the page if media IDs were returned.
-        if(mediaIds)
-            await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
-
-        // Record what the page returned and hid only once it's added: if addPage throws, the page
-        // is loaded again (see _loadPageRetrying), and that answer mustn't count as repeats.
-        for(let mediaId of returnedMediaIds)
-            this._returnedMediaIds.add(mediaId);
-        for(let [reason, count] of Object.entries(hidden))
-            this.hiddenCounts[reason] = (this.hiddenCounts[reason] ?? 0) + count;
+        // If addPage throws, the page is loaded again (see _loadPageRetrying), so take back what
+        // this answer recorded, or the next answer would count as repeats and as hidden twice.
+        // The counts are recorded before addPage, since the filter bar reads them while it runs.
+        try {
+            if(mediaIds)
+                await this.addPage(page, mediaIds, { allowEmpty: allowEmpty || this.randomPages });
+        } catch(e) {
+            for(let mediaId of addedNow)
+                this._returnedMediaIds.delete(mediaId);
+            for(let [reason, count] of Object.entries(hidden))
+                this.hiddenCounts[reason] -= count;
+            throw e;
+        }
 
         // Count emptied pages only after addPage, which drops works already on an earlier page.
         // Otherwise a list that keeps returning the same works never stops loading.
