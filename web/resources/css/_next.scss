@@ -3248,29 +3248,131 @@ html:not(.mobile) .floating > .dialog > .header {
 
 // ------------------------------------------------------------------ tag search dropdown
 //
-// The dropdown under the search box: recent and saved searches, autocomplete, and the edit mode.
+// The dropdown under the search box: saved and recent searches, autocomplete, and the edit mode.
+// Saved and recent searches are chips that wrap, several to a line; upstream gave each search a
+// full-width row.  Autocomplete stays one row per tag, since each row has the translation and the
+// Japanese tag.  Edit mode goes back to rows, since dragging a saved search moves it up or down.
+
+// DropdownBoxOpener places a dropdown 4px left of its button; the margin lines it up with the box.
+// border-box keeps a phone-wide dropdown inside the window.
+.input-dropdown.search-history {
+    box-sizing: border-box;
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 10px;
+    min-width: var(--box-width);
+    // Entries scrolled into view with the arrow keys stop above the sticky footer.
+    scroll-padding-bottom: 48px;
+}
+
+// On a phone it's exactly as wide as the box, which spans the window less its margins.
+html.mobile .input-dropdown.search-history { width: var(--box-width); }
 
 .input-dropdown .input-dropdown-list {
     margin: 0;
 
-    // Section headers ("最近的标签", "「碧蓝」的建议", saved groups) were navy bars.
-    .tag-section {
-        margin-bottom: 2px;
-        padding: 6px 10px;
-        border-radius: 4px;
-        background-color: var(--n-surface-2);
-        color: var(--n-pencil);
-        font-size: 13px;
-        line-height: 22px;
+    > .contents {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        column-gap: 6px;
+        row-gap: 6px;
+    }
 
-        .section-icon { font-size: 18px; }
+    // Section headers: a small gray line, with the count and a chevron.  Upstream's were navy bars.
+    .tag-section {
+        flex: 0 0 100%;
+        box-sizing: border-box;
+        z-index: 1;
+        margin: 0;
+        padding: 10px 4px 2px;
+        gap: 6px;
+        background-color: var(--n-surface);
+        color: var(--n-pencil);
+        font-size: 12px;
+        line-height: 24px;
+
+        .label { flex: none; color: var(--n-pencil); }
+        .count { font-family: var(--n-font-num); opacity: 0.7; }
+        .spacer { flex: 1; }
+        .section-icon { font-size: 16px; }
+        .collapse-icon { font-size: 18px; transition: transform 0.15s; }
+        &.collapsed .collapse-icon { transform: rotate(-90deg); }
+        &.autocomplete .collapse-icon { display: none; }
+
+        @media(hover: hover) { &:hover { color: var(--n-text); .label { color: var(--n-text); } } }
     }
 
     .entry {
+        position: relative;
+        box-sizing: border-box;
         padding: 6px 10px;
-        border-radius: 4px;
-        font-size: 15px;
-        &.selected { background-color: var(--n-surface-2); box-shadow: inset 2px 0 0 var(--n-blue); }
+        border-radius: var(--n-radius);
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--n-text);
+        &.selected { background-color: var(--n-surface-2); box-shadow: inset 0 0 0 1px var(--n-blue); }
+    }
+
+    // Autocomplete and link rows take the full width.
+    .entry.autocomplete { flex: 0 0 100%; }
+
+    // Saved and recent searches are chips.
+    &:not(.editing) .entry.saved, &:not(.editing) .entry.recent {
+        flex: 0 1 auto;
+        max-width: 100%;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background-color: var(--n-surface-2);
+
+        .search { flex-wrap: nowrap; gap: 4px; min-width: 0; }
+        .word { white-space: nowrap; }
+        // The Japanese tag after a translation is in the chip's tooltip instead.
+        .word .original-tag { display: none; }
+
+        &.selected { color: var(--n-blue); background-color: var(--n-surface-2); }
+        @media(hover: hover) { &:hover { background-color: var(--n-rule); } }
+    }
+
+    // Recent searches are lighter than saved ones, and the last section, so they read as history.
+    &:not(.editing) .entry.recent {
+        background: none;
+        box-shadow: inset 0 0 0 1px var(--n-rule);
+        color: var(--n-pencil);
+        &.selected { box-shadow: inset 0 0 0 1px var(--n-blue); }
+        @media(hover: hover) { &:hover { color: var(--n-text); background-color: var(--n-surface-2); } }
+    }
+
+    // The pin and X of a recent search sit over the chip's right end while it's hovered, so the
+    // chips don't change width and reflow under the pointer.
+    &:not(.editing) .entry.recent {
+        min-width: 64px;
+        .n-quick {
+            display: none !important;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 22px;
+            height: auto;
+            background: var(--n-surface-2);
+        }
+        .n-quick.save-search { right: 24px; }
+        .n-quick.delete-entry { right: 4px; }
+        @media(hover: hover) {
+            &:hover {
+                .n-quick { display: flex !important; }
+                // Fade the text under the buttons.
+                &::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    right: 46px;
+                    width: 16px;
+                    background: linear-gradient(to right, transparent, var(--n-surface-2));
+                }
+            }
+        }
     }
 
     // Autocomplete shows the Chinese name and then the Japanese tag.  Without a style the two ran
@@ -3286,20 +3388,65 @@ html:not(.mobile) .floating > .dialog > .header {
     // "打开作品 N" and "打开用户 N" for a pasted link or a number, above the searches.
     .entry.open-link .font-icon { font-size: 18px; color: var(--n-pencil); }
     .open-links { display: flex; flex-direction: column; }
-    .open-links:has(.entry) { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid var(--n-rule); }
+    .open-links:has(.entry) { margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--n-rule); }
+
+    // Edit mode: one row per search, with the handle, edit and X.
+    &.editing .entry {
+        flex: 0 0 100%;
+        padding: 3px 4px;
+        // Line recent searches up with saved ones, which have a drag handle first.
+        &.recent { color: var(--n-pencil); padding-left: calc(4px + 26px + 0.5em); }
+    }
+    &.editing .tag-section { padding-top: 12px; }
+
+    // The edit toggle and "新建分组", at the bottom.
+    .n-search-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        margin-top: 8px;
+        padding: 6px 0;
+        border-top: 1px solid var(--n-rule);
+        background: var(--n-surface);
+
+        > .create-section-button { margin-right: auto; }
+
+        > button {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border: none;
+            border-radius: var(--n-radius);
+            background: none;
+            color: var(--n-pencil);
+            font: 13px var(--n-font);
+            cursor: pointer;
+            .font-icon { font-size: 16px; }
+            @media(hover: hover) { &:hover { color: var(--n-text); background: var(--n-surface-2); } }
+        }
+    }
+    &.editing .n-search-edit { color: var(--n-blue); }
 }
 
-// Edit-mode buttons and the collapse button: upstream's #bbb outlined squares, white on hover.
+// Edit-mode buttons and the collapse button: plain icons, with a background on hover.  Upstream
+// drew #bbb outlined squares, and the X was the letter X.
 .input-dropdown .edit-button, .input-dropdown .group-suggestions-button {
-    width: 24px;
-    height: 24px;
-    border: 1px solid var(--n-rule);
-    border-radius: 4px;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: var(--n-radius);
     color: var(--n-pencil);
     .font-icon { font-size: 18px; }
     &.selected { color: var(--n-text); background: none; }
-    @media(hover: hover) { &:hover { border-color: var(--n-pencil); color: var(--n-text); } }
+    @media(hover: hover) { &:hover { color: var(--n-text); background-color: var(--n-rule); } }
 }
+.input-dropdown .edit-button.delete-entry { @media(hover: hover) { &:hover { color: var(--n-heart); } } }
+.input-dropdown .drag-handle { cursor: grab; }
 
 // The related tags dropdown: + and − at the end of each row, shown on hover or focus.
 .data-source-tag-list .n-related-row {
@@ -3618,7 +3765,8 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
 // The search dropdown can be resized sideways.  Its resize grip was a black square, which stood
 // out in both themes.
 .input-dropdown::-webkit-resizer {
-    background: linear-gradient(135deg, transparent 60%, var(--n-rule) 60%);
+    // The resizer has a black backing, so its empty half is the dropdown's color, not transparent.
+    background: linear-gradient(135deg, var(--n-surface) 60%, var(--n-rule) 60%);
 }
 .input-dropdown::-webkit-scrollbar-corner { background: transparent; }
 

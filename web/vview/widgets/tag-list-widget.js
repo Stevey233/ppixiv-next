@@ -31,6 +31,7 @@ export default class TagListWidget extends Widget
             let room = this.root.getBoundingClientRect().right - pill.getBoundingClientRect().right;
             helpers.html.setClass(pill, "n-refine-left", room < pill.querySelector(".n-tag-refine").offsetWidth);
         };
+        window.addEventListener("tag-translations-changed", this._translationsChanged, { signal: this.shutdownSignal });
         this.root.addEventListener("pointerover", placeRefine);
         this.root.addEventListener("focusin", placeRefine);
     };
@@ -38,6 +39,14 @@ export default class TagListWidget extends Widget
     formatTagLink(tag)
     {
         return helpers.getArgsForTagSearch(tag, ppixiv.plocation);
+    };
+
+    // Redraw when translations looked up in the background arrive.  The short circuit in refresh
+    // compares tags, not translations, so clear it.
+    _translationsChanged = () =>
+    {
+        this._currentTags = null;
+        this.refresh();
     };
 
     async set(mediaInfo)

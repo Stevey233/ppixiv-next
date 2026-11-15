@@ -20,6 +20,7 @@ export default class RelatedTagsRow extends Widget
         this.dataSource = dataSource;
         this.dataSource.addEventListener("updated", () => this.refresh(), this._signal);
         ppixiv.settings.addEventListener("search_related_tags", () => this.refresh(), this._signal);
+        window.addEventListener("tag-translations-changed", () => { this._shownKey = null; this.refresh(); }, this._signal);
 
         this.root.addEventListener("click", (e) => {
             let link = e.target.closest(".n-related-tag");
@@ -52,7 +53,7 @@ export default class RelatedTagsRow extends Widget
             return;
         this._shownKey = key;
 
-        let translations = await ppixiv.tagTranslations.getTranslations([...candidates, ...search], "en");
+        let translations = await ppixiv.tagTranslations.getTranslations([...candidates, ...search], "en", { lookups: MAX_CHIPS });
         if(key != this._shownKey)
             return;
 

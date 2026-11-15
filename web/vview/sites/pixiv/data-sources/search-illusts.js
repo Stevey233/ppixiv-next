@@ -77,12 +77,14 @@ export default class DataSource_Search extends DataSource
 
         // Refresh our title when translations are toggled.
         ppixiv.settings.addEventListener("disable-translations", this.cacheSearchTitle);
+        window.addEventListener("tag-translations-changed", this.cacheSearchTitle);
     }
 
     shutdown()
     {
         super.shutdown();
         ppixiv.settings.removeEventListener("disable-translations", this.cacheSearchTitle);
+        window.removeEventListener("tag-translations-changed", this.cacheSearchTitle);
     }
 
     cacheSearchTitle = async() =>

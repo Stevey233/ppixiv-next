@@ -46,6 +46,26 @@ export default class DataSources_Artist extends DataSource
         return helpers.strings.getPathPart(this.url, 1);
     };
 
+    startup()
+    {
+        super.startup();
+        window.addEventListener("tag-translations-changed", this._retranslateTags);
+    }
+
+    shutdown()
+    {
+        super.shutdown();
+        window.removeEventListener("tag-translations-changed", this._retranslateTags);
+    }
+
+    _retranslateTags = async() =>
+    {
+        if(this._postTagNames == null)
+            return;
+        this.translatedTags = await ppixiv.tagTranslations.getTranslations(this._postTagNames, "en", { lookups: 0 });
+        this.callUpdateListeners();
+    };
+
     async loadPageInternal(page)
     {
         // We'll load translations for all tags if the tag dropdown is opened, but for now
@@ -212,7 +232,10 @@ export default class DataSources_Artist extends DataSource
         let tags = [];
         for(let tagInfo of this.postTags)
             tags.push(tagInfo.tag);
-        this.translatedTags = await ppixiv.tagTranslations.getTranslations(tags, "en");
+        // An artist can have hundreds of tags.  Look up the most used ones that have no
+        // translation, and redraw when they arrive.
+        this._postTagNames = tags;
+        this.translatedTags = await ppixiv.tagTranslations.getTranslations(tags, "en", { lookups: 15 });
 
         // Refresh the tag list now that it's loaded.
         this.callUpdateListeners();

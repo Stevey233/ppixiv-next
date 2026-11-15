@@ -18,10 +18,6 @@ export class TagSearchBoxWidget extends widget
                 <div class="input-field-container hover-menu-box">
                     <input placeholder=Tags size=1 autocorrect=off>
 
-                    <span class="edit-search-button right-side-button">
-                        ${ helpers.createIcon("mat:edit") }
-                    </span>
-
                     <span class="save-tags-button right-side-button popup">
                         ${ helpers.createIcon("mat:push_pin") }
                     </span>
@@ -42,13 +38,11 @@ export class TagSearchBoxWidget extends widget
 
         this._inputElement = this.root.querySelector(".input-field-container > input");
 
-        this.querySelector(".edit-search-button").addEventListener("click", (e) => {
-            this._dropdownOpener.visible = true;
-            this._dropdownOpener.dropdown.editing = !this._dropdownOpener.dropdown.editing;
-        });
-
+        // The dropdown lines up with the box around the input, not the input inside it, and is
+        // at least as wide as the box.
+        let inputBox = this.root.querySelector(".input-field-container");
         this._dropdownOpener = new DropdownBoxOpener({
-            button: this._inputElement,
+            button: inputBox,
 
             createDropdown: ({...options}) => {
                 this.tagDropdown.visible = false;
@@ -59,6 +53,7 @@ export class TagSearchBoxWidget extends widget
                     textPrompt: (args) => this.textPrompt(args),
                     ...options,
                 });
+                dropdown.root.style.setProperty("--box-width", `${inputBox.offsetWidth}px`);
 
                 // Save the scroll position when the dropdown closes, so we can restore it the
                 // next time we open it.
@@ -205,18 +200,22 @@ class TagSearchDropdownWidget extends widget
         super({...options, template: `
             <div class="search-history input-dropdown" tabindex=1>
                 <div class=input-dropdown-list>
-                    <div class="tag-section create-section-button editing-only">
-                        <div class="edit-button">
-                            ${ helpers.createIcon("mat:create_new_folder") }
-                        </div>
-                        <div class=label>Add section</div>
-                    </div>
-
                     <!-- Rows that open a pasted work or user link, or a number as a work or user ID. -->
                     <vv-container class=open-links></vv-container>
 
                     <!-- template-tag-dropdown-entry instances will be added here. -->
                     <vv-container class=contents></vv-container>
+
+                    <div class=n-search-footer>
+                        <button type=button class="create-section-button editing-only">
+                            ${ helpers.createIcon("mat:create_new_folder") }
+                            <span>新建分组</span>
+                        </button>
+                        <button type=button class=n-search-edit>
+                            ${ helpers.createIcon("mat:edit") }
+                            <span class=label>编辑</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `});
@@ -235,6 +234,7 @@ class TagSearchDropdownWidget extends widget
 
         // Refresh the dropdown when the tag search history changes.
         window.addEventListener("recent-tag-searches-changed", this._populateDropdown, { signal: this.shutdownSignal });
+        window.addEventListener("tag-translations-changed", this._populateDropdown, { signal: this.shutdownSignal });
 
         // Update the selection if the page is navigated while we're open.
         window.addEventListener("pp:popstate", this._selectCurrentSearch, { signal: this.shutdownSignal });
@@ -279,6 +279,11 @@ class TagSearchDropdownWidget extends widget
 
         this.editing = false;
 
+        this.root.querySelector(".n-search-edit").addEventListener("click", (e) => {
+            e.preventDefault();
+            this.editing = !this.editing;
+        });
+
         this._load();
     }
     
@@ -292,6 +297,7 @@ class TagSearchDropdownWidget extends widget
         this._editing = value;
         helpers.html.setClass(this.root, "editing", this._editing);
         helpers.html.setClass(this.root.querySelector(".input-dropdown-list"), "editing", this._editing);
+        this.root.querySelector(".n-search-edit .label").textContent = this._editing? "完成":"编辑";
     }
 
     _findTagEntry(tag)
@@ -466,6 +472,34 @@ class TagSearchDropdownWidget extends widget
             return;
         }
         
+        // The pin and X on a recent search or a suggestion work without edit mode.  A saved
+        // search's X is only shown while editing.
+        let quickSave = entry && e.target.closest(".save-search");
+        let quickRemove = entry && !entry.classList.contains("saved") && e.target.closest(".delete-entry");
+        if(quickSave || quickRemove)
+        {
+            e.stopPropagation();
+            e.preventDefault();
+
+            if(quickRemove)
+            {
+                SavedSearchTags.remove(entry.dataset.tag);
+                return;
+            }
+
+            let group = SavedSearchTags.save(entry.dataset.tag);
+            if(!this.editing)
+                ppixiv.message.show(`已保存「${entry.dataset.tag}」到「${group == "Saved tags"? "已保存的标签":group}」`);
+
+            // We tried to keep the new tag in view, but scroll it into view if it isn't, such as
+            // if we had to expand the group and the scroll position is in the wrong place now.
+            await this._populateDropdown();
+            let newEntry = this.getEntryForTag(entry.dataset.tag);
+            if(newEntry)
+                this._scrollEntryIntoView(newEntry);
+            return;
+        }
+
         let tagButton = e.target.closest("a[data-tag]");
         if(tagButton)
         {
@@ -502,21 +536,6 @@ class TagSearchDropdownWidget extends widget
                 e.preventDefault();
                 SavedSearchTags.moveGroup(tagSection.groupName, { down: moveGroupDown != null });
                 return;
-            }
-
-            let saveSearch = e.target.closest(".save-search");
-            if(saveSearch)
-            {
-                e.stopPropagation();
-                e.preventDefault();
-
-                SavedSearchTags.save(entry.dataset.tag);
-
-                // We tried to keep the new tag in view, but scroll it into view if it isn't, such as
-                // if we had to expand the group and the scroll position is in the wrong place now.
-                await this._populateDropdown();
-                let newEntry = this.getEntryForTag(entry.dataset.tag);
-                this._scrollEntryIntoView(newEntry);
             }
 
             let editTags = e.target.closest(".edit-tags-button");
@@ -908,14 +927,11 @@ class TagSearchDropdownWidget extends widget
                     ${ helpers.createIcon("mat:drag_handle") }
                 </div>
 
-                <div class="edit-button save-search" data-shown-in="recent autocomplete">
-                    ${ helpers.createIcon("mat:push_pin") }
-                </div>
-
                 <span class=search></span>
 
                 <span class="edit-button edit-tags-button" data-shown-in="saved">${ helpers.createIcon("mat:edit") }</span>
-                <span class="edit-button delete-entry" data-shown-in="recent saved">X</span>
+                <span class="edit-button n-quick save-search popup" data-popup="保存" data-shown-in="recent autocomplete">${ helpers.createIcon("mat:push_pin") }</span>
+                <span class="edit-button n-quick delete-entry popup" data-popup="删除" data-shown-in="recent saved">${ helpers.createIcon("mat:close") }</span>
             </a>
         `});
 
@@ -969,6 +985,10 @@ class TagSearchDropdownWidget extends widget
             tagContainer.appendChild(span);
         }
 
+        // Saved searches show only the translated names, so show the search as typed on hover.
+        if(entry.querySelector(".original-tag"))
+            entry.title = tags;
+
         let url = helpers.getArgsForTagSearch(targetTags, ppixiv.plocation);
         entry.href = url;
         return entry;
@@ -981,6 +1001,7 @@ class TagSearchDropdownWidget extends widget
         collapsed=false,
         classes=[],
         isAutocompleteHeader=false,
+        count=null,
     })
     {
         let section = this.createTemplate({html: `
@@ -995,12 +1016,18 @@ class TagSearchDropdownWidget extends widget
                 ${ helpers.createIcon(icon, { classes: ['section-icon']}) }
                 <span class=label></span>
 
+                <span class=count></span>
+                <span class=spacer></span>
+
                 <span class="edit-button rename-group-button">${ helpers.createIcon("mat:edit") }</span>
-                <span class="edit-button delete-entry">X</span>
+                <span class="edit-button delete-entry">${ helpers.createIcon("mat:close") }</span>
                 <span class="group-suggestions-button" hidden>${ helpers.createIcon("mat:unfold_less") }</span>
+                ${ helpers.createIcon("mat:expand_more", { classes: ['collapse-icon'] }) }
             </div>
         `});
         section.querySelector(".label").textContent = label;
+        if(count != null)
+            section.querySelector(".count").textContent = count;
 
         helpers.html.setClass(section, "user-section", isUserSection);
         helpers.html.setClass(section, "collapsed", collapsed);
@@ -1195,7 +1222,7 @@ class TagSearchDropdownWidget extends widget
         let translatedTags;
         if(this.draggingTag == null)
         {
-            translatedTags = await ppixiv.tagTranslations.getTranslations(allTags, "en");
+            translatedTags = await ppixiv.tagTranslations.getTranslations(allTags, "en", { lookups: 20 });
         
             // Check if we were aborted while we were loading tags.
             if(abortSignal.aborted)
@@ -1258,10 +1285,11 @@ class TagSearchDropdownWidget extends widget
 
             let collapsed = SavedSearchTags.getCollapsedTagGroups().has(groupName);
             this._inputDropdownContents.appendChild(this.createSeparator(groupName, {
-                icon: collapsed? "mat:folder":"mat:folder_open",
+                icon: "mat:folder",
                 isUserSection: true,
                 groupName: groupName,
                 collapsed,
+                count: tagsInGroup.length,
             }));
 
             // Add contents if this section isn't collapsed.
@@ -1279,6 +1307,7 @@ class TagSearchDropdownWidget extends widget
             this._inputDropdownContents.appendChild(this.createSeparator("Recent tags", {
                 icon: "mat:history",
                 collapsed: recentsCollapsed,
+                count: recentTags.length,
             }));
 
         if(!recentsCollapsed)

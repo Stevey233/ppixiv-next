@@ -4,6 +4,15 @@ import { helpers } from '/vview/misc/helpers.js';
 const KANA_RE = /[\u3040-\u30ff]/;
 const HAN_RE = /[\u3400-\u9fff]/;
 
+// Fetching missing translations: one request at a time this far apart, at most this many tags
+// waiting (the newest are kept), a pause after an error, and how long a tag Pixiv has no
+// translation for is left alone.
+const FETCH_SPACING_MS = 700;
+const FETCH_QUEUE_MAX = 40;
+const FETCH_ERROR_PAUSE_MS = 60 * 1000;
+const CHANGED_EVENT_SPACING_MS = 2000;
+const RECHECK_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
 export default class TagTranslations
 {
     constructor()
@@ -17,6 +26,11 @@ export default class TagTranslations
         // tag -> translations by language.
         this._cache = new Map();
         this._pendingWrites = Promise.resolve();
+
+        // Tags waiting for a translation request, oldest first, and every tag queued this session.
+        this._fetchQueue = [];
+        this._fetchQueued = new Set();
+        this._fetching = false;
     }
 
     // Return true if translations are enabled by the user.
@@ -125,6 +139,8 @@ export default class TagTranslations
             this._cache.set(tag, translation);
 
             let tagInfo = { tag, translation };
+            if(old?.checked)
+                tagInfo.checked = old.checked;
             romaji ??= old?.romaji;
             if(romaji)
                 tagInfo.romaji = romaji;
@@ -177,7 +193,12 @@ export default class TagTranslations
 
     // Return { tag: translation } for the tags in tags that have one.  Callers from upstream pass
     // "en" as the language.  It's ignored, and the user's tag language is used.
-    async getTranslations(tags, language=null)
+    //
+    // Tags with no translation in the user's language are looked up on Pixiv in the background;
+    // "tag-translations-changed" on window says when new ones arrive, so the caller can redraw.
+    //
+    // lookups limits how many of the tags are looked up, for long lists like an artist's tags.
+    async getTranslations(tags, language=null, { lookups=Infinity }={})
     {
         if(!this.enabled)
             return {};
@@ -185,13 +206,129 @@ export default class TagTranslations
         await this._pendingWrites;
         let info = await this.getTagInfo(tags);
         let result = {};
+        let missing = [];
         for(let tag of tags)
         {
             let translation = { ...info[tag]?.translation, ...this._cache.get(tag) };
             let value = TagTranslations.pickTranslation(tag, translation, this.displayLanguage);
             if(value != null)
                 result[tag] = value;
+
+            if(this._needsLookup(tag, translation, info[tag]?.checked))
+                missing.push(tag);
         }
+
+        this._queueLookups(missing.slice(0, lookups));
+        return result;
+    }
+
+    // Whether to ask Pixiv for tag's translation.  Pixiv's work info only has English, and the
+    // other lists only translate the tags on their own works, so a saved search or a work's tags
+    // often have no Chinese translation stored.  Only Japanese is looked up for Chinese: a tag in
+    // kanji alone or in Latin letters reads fine as it is.
+    _needsLookup(tag, translation, checked)
+    {
+        if(!tag || ppixiv.native)
+            return false;
+        if(checked && Date.now() - checked < RECHECK_AFTER_MS)
+            return false;
+
+        if(this.displayLanguage == "en")
+            return !translation.en && /[^\x00-\x7f]/.test(tag);
+        return !translation.zh && !translation.zh_tw && KANA_RE.test(tag);
+    }
+
+    _queueLookups(tags)
+    {
+        for(let tag of tags)
+        {
+            if(this._fetchQueued.has(tag))
+                continue;
+            this._fetchQueued.add(tag);
+            this._fetchQueue.push(tag);
+        }
+
+        // Keep the newest tags, the ones on screen now.  Dropped tags are queued again the next
+        // time they're shown.
+        while(this._fetchQueue.length > FETCH_QUEUE_MAX)
+            this._fetchQueued.delete(this._fetchQueue.shift());
+
+        if(this._fetchQueue.length && !this._fetching)
+            this._runLookups();
+    }
+
+    async _runLookups()
+    {
+        this._fetching = true;
+
+        // "tag-translations-changed" redraws tag lists and page headers, so it's only sent when a
+        // looked-up tag got a translation, at most every CHANGED_EVENT_SPACING_MS and when the
+        // queue is done.  A redraw under the pointer can swallow a click.
+        let changed = false, lastEvent = 0;
+        let sendChanged = () => {
+            changed = false;
+            lastEvent = Date.now();
+            window.dispatchEvent(new Event("tag-translations-changed"));
+        };
+
+        try {
+            while(this._fetchQueue.length)
+            {
+                // Newest first.
+                let tag = this._fetchQueue.pop();
+                let result = await helpers.pixivRequest.get(`/ajax/search/tags/${encodeURIComponent(tag)}`);
+                if(result?.error || result?.body == null)
+                {
+                    // Back off in case this was a rate limit.  An error page or a failed request
+                    // ("429 Too Many Requests", "Invalid response") is tried again the next time
+                    // the tag is shown.  An error Pixiv answers in JSON is about this tag, so it
+                    // isn't asked again for a while.
+                    let message = result?.message ?? "";
+                    console.log(`Tag translation lookup for ${tag} failed: ${message}`);
+                    if(/^\d{3} |^Invalid response$/.test(message) || result == null)
+                        this._fetchQueued.delete(tag);
+                    else
+                        await this._markChecked(tag);
+
+                    if(changed)
+                        sendChanged();
+                    await helpers.other.sleep(FETCH_ERROR_PAUSE_MS);
+                    continue;
+                }
+
+                // The response also translates the user's favorite tags.  Keep those too.
+                let translations = result.body.tagTranslation;
+                if(translations && !Array.isArray(translations))
+                {
+                    await this.addTranslationsDict(translations);
+                    if(TagTranslations.pickTranslation(tag, translations[tag], this.displayLanguage) != null)
+                        changed = true;
+                }
+                await this._markChecked(tag);
+
+                if(changed && (this._fetchQueue.length == 0 || Date.now() - lastEvent >= CHANGED_EVENT_SPACING_MS))
+                    sendChanged();
+
+                await helpers.other.sleep(FETCH_SPACING_MS);
+            }
+
+            if(changed)
+                sendChanged();
+        } finally {
+            this._fetching = false;
+        }
+    }
+
+    // Record that tag was looked up, so a tag Pixiv has no translation for isn't asked again
+    // for a while.
+    _markChecked(tag)
+    {
+        let result = this._pendingWrites.then(async() => {
+            // multiGet returns {} if IndexedDB is unavailable (Firefox's private mode).
+            let old = (await this._db.multiGet([tag]))?.[0];
+            await this._db.multiSet({ [tag]: { translation: {}, ...old, tag, checked: Date.now() } });
+        });
+        this._pendingWrites = result.catch(() => {});
         return result;
     }
 
