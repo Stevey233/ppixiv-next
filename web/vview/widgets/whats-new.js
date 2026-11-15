@@ -9,6 +9,13 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-15",
+        title: "搜索框里一键保存标签",
+        items: [
+            "搜索框里加了图钉按钮，点一下把框里的搜索存进已保存的标签，再点一下取消保存。已经保存的搜索图钉是蓝色的。以前要打开下拉框、点铅笔进编辑模式、找到这条再点图钉。",
+        ],
+    },
+    {
         id: "2026-11-14.4",
         title: "网络慢时点开作品更快出图",
         items: [
