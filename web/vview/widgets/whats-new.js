@@ -9,6 +9,15 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16",
+        title: "搜索下拉框重做，标签都显示中文",
+        items: [
+            "搜索框的下拉框里，已保存的和最近的搜索改成横向排列的标签块，一行放好几个，不用再滚动找。已保存的是实心块，最近的是描边块。",
+            "鼠标停在最近搜索上会出现图钉和 ×，直接保存或删掉，不用先进编辑模式。编辑按钮挪到了下拉框底部。",
+            "标签没有中文译名时会去 Pixiv 查一次，查到后保存的搜索、看图界面的标签、搜索标题等都显示中文。查过的不会再查。",
+        ],
+    },
+    {
         id: "2026-11-15",
         title: "搜索框里一键保存标签",
         items: [
