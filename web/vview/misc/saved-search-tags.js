@@ -156,6 +156,24 @@ export default class SavedSearchTags
         window.dispatchEvent(new Event("recent-tag-searches-changed"));
     }
 
+    // Save a search into the group a new save goes to, and return the group's name.
+    //
+    // With no groups, this is the first saved search, so create "Saved tags".  With one group,
+    // use it.  Otherwise use the bottommost expanded group, closest to recents, where the user
+    // can see where the search went, or the last group if all are collapsed.  The group is
+    // expanded if it was collapsed.
+    static save(tag)
+    {
+        let groups = [...this.getAllGroups().keys()].filter((group) => group != null);
+        let collapsedGroups = this.getCollapsedTagGroups();
+        let expanded = groups.filter((group) => !collapsedGroups.has(group));
+        let group = expanded.at(-1) ?? groups.at(-1) ?? "Saved tags";
+
+        this.setTagGroupCollapsed(group, false);
+        this.add(tag, {group, addToEnd: true});
+        return group;
+    }
+
     // Replace a saved tag.
     static modifyTag(oldTags, newTags)
     {

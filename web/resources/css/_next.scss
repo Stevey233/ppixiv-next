@@ -402,6 +402,12 @@ html:not(.macos) {
                 &:hover { color: var(--n-text); }
                 &.disabled { display: none; }
             }
+
+            // The pin is blue while the search in the box is saved.
+            > .save-tags-button.saved {
+                color: var(--n-blue);
+                &:hover { color: var(--n-blue); }
+            }
         }
     }
 

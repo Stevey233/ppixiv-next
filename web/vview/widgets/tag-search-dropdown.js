@@ -22,6 +22,10 @@ export class TagSearchBoxWidget extends widget
                         ${ helpers.createIcon("mat:edit") }
                     </span>
 
+                    <span class="save-tags-button right-side-button popup">
+                        ${ helpers.createIcon("mat:push_pin") }
+                    </span>
+
                     <span class="related-tags-button right-side-button popup" data-popup="相关标签">
                         ${ helpers.createIcon("sell") }
                     </span>
@@ -86,6 +90,24 @@ export class TagSearchBoxWidget extends widget
             },
         });
 
+        // The pin saves what's in the box as a saved search, or removes it if it's saved already.
+        this._saveButton = this.querySelector(".save-tags-button");
+        this._saveButton.addEventListener("click", () => {
+            let tags = this._inputElement.value.trim();
+            if(SavedSearchTags.groupNameForTag(tags) != null)
+            {
+                SavedSearchTags.remove(tags);
+                ppixiv.message.show(`已取消保存「${tags}」`);
+            }
+            else
+            {
+                let group = SavedSearchTags.save(tags);
+                ppixiv.message.show(`已保存「${tags}」到「${group == "Saved tags"? "已保存的标签":group}」`);
+            }
+        });
+        this._inputElement.addEventListener("input", () => this._refreshSaveButton(), this._signal);
+        window.addEventListener("recent-tag-searches-changed", () => this._refreshSaveButton(), this._signal);
+
         // Show the dropdown when the input box is focused.
         this._inputElement.addEventListener("focus", () => this._dropdownOpener.visible = true, true);
 
@@ -108,6 +130,18 @@ export class TagSearchBoxWidget extends widget
         super.refresh();
 
         helpers.html.setClass(this.querySelector(".related-tags-button"), "disabled", this.dataSource?.relatedTags == null);
+        this._refreshSaveButton();
+    }
+
+    // The pin is hidden for an empty box or a pasted work or user link, and filled in when the
+    // search in the box is saved.
+    _refreshSaveButton()
+    {
+        let tags = this._inputElement.value.trim();
+        let saved = SavedSearchTags.groupNameForTag(tags) != null;
+        helpers.html.setClass(this._saveButton, "disabled", tags == "" || parsePixivLink(tags) != null);
+        helpers.html.setClass(this._saveButton, "saved", saved);
+        this._saveButton.dataset.popup = saved? "取消保存":"保存标签";
     }
 
     // Run a text prompt.
@@ -476,53 +510,7 @@ class TagSearchDropdownWidget extends widget
                 e.stopPropagation();
                 e.preventDefault();
 
-                // Figure out which group to put it in.  If there are no groups, this is the first
-                // saved search, so create "Saved tags" by default.  If there's just one group, use
-                // it.  Otherwise, ask the user.
-                //
-                // maybe only expand one group at a time
-                let tagGroups = new Set(SavedSearchTags.getAllGroups().keys());
-                tagGroups.delete(null); // ignore the recents group
-                let addToGroup = "Saved tags";
-                if(tagGroups.size == 1)
-                    addToGroup = Array.from(tagGroups)[0];
-                else if(tagGroups.size > 1)
-                {
-                    // For now, add to the bottommost uncollapsed group.  This is a group which is
-                    // closest to recents, where the user should be able to see where the tag he
-                    // saved went.
-                    let allGroups = new Set(SavedSearchTags.getAllGroups().keys());
-                    allGroups.delete(null);
-
-                    let collapsedGroups = SavedSearchTags.getCollapsedTagGroups();
-                    addToGroup = null;
-                    for(let group of allGroups)
-                    {
-                        if(collapsedGroups.has(group))
-                            continue;
-                        addToGroup = group;
-                    }
-
-                    if(addToGroup == null)
-                    {
-                        // If no groups are uncollapsed, use the last group.  It'll be uncollapsed
-                        // below.
-                        for(let group of allGroups)
-                            addToGroup = group;
-                    }
-                }
-
-                console.log(`Adding search "${entry.dataset.tag}" to group "${addToGroup}"`);
-
-                // If the group we're adding to is collapsed, uncollapse it.
-                if(SavedSearchTags.getCollapsedTagGroups().has(addToGroup))
-                {
-                    console.log(`Uncollapsing group ${addToGroup} because we're adding to it`);
-                    SavedSearchTags.setTagGroupCollapsed(addToGroup, false);
-                }
-
-                // Add or change the tag to a saved tag.
-                SavedSearchTags.add(entry.dataset.tag, {group: addToGroup, addToEnd: true});
+                SavedSearchTags.save(entry.dataset.tag);
 
                 // We tried to keep the new tag in view, but scroll it into view if it isn't, such as
                 // if we had to expand the group and the scroll position is in the wrong place now.
