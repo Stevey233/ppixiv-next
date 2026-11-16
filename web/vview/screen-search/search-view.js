@@ -1985,7 +1985,7 @@ export default class SearchView extends Widget
     refreshSeen(thumbnailElement)
     {
         let name = this.dataSource?.name;
-        let seen = name != "manga" && name != "history" && ppixiv.seenWorks.shouldDim(thumbnailElement.dataset.id);
+        let seen = name != "manga" && name != "history" && name != "gb-history" && ppixiv.seenWorks.shouldDim(thumbnailElement.dataset.id);
         helpers.html.setClass(thumbnailElement, "seen", seen);
     }
 

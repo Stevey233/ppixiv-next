@@ -60,7 +60,7 @@ export function splitQuery(query)
         {
             let end = text.indexOf("}", i);
             if(end == -1)
-                end = text.length-1;
+                end = text.length;
             let inner = text.slice(i+1, end).trim().split(/\s+/).filter((w) => w);
             tokens.push(`{${inner.join(" ")}}`);
             i = end + 1;

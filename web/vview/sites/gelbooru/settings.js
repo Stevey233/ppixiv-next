@@ -16,7 +16,7 @@ export function fillSettingsPage(globalOptions)
         label: "重新读取 API key",
         explanationEnabled: () => `${accountText()}换了账号或在 Gelbooru 重置了 key 时，点这里从账号设置页重新读取。`,
         onclick: async () => {
-            let credentials = await api.readCredentials();
+            let credentials = await api.readCredentials().catch(() => null);
             ppixiv.message.show(credentials? "已重新读取 API key":"没有读到 API key，请先登录 Gelbooru");
             account.refresh();
         },

@@ -79,7 +79,7 @@ export default class SiteGelbooru extends Site.Site
         };
 
         // Read or check the favorites in the background.  The first list doesn't wait for it.
-        syncFavorites(credentials.userId);
+        syncFavorites(credentials.userId).catch((error) => console.log("Favorites not read:", error.message));
 
         // The tag library gives categories (and later Chinese names) without requests.  Nothing
         // waits for it, and without it tags are looked up with the tag API.
@@ -186,7 +186,9 @@ export default class SiteGelbooru extends Site.Site
 
     async batchLoadMediaInfo(mediaIds)
     {
-        await Promise.all(mediaIds.map((mediaId) => this.loadMediaInfo(mediaId)));
+        // A post whose request fails is left unregistered, which the cache reports as missing.
+        await Promise.all(mediaIds.map((mediaId) => this.loadMediaInfo(mediaId).catch((error) =>
+            console.log(`Couldn't load ${mediaId}:`, error.message))));
     }
 
     // The viewer opened a post, or it's being downloaded: load its tag categories, for the grouped
@@ -232,19 +234,19 @@ export default class SiteGelbooru extends Site.Site
     async bookmarkAdd(mediaId)
     {
         let [postId] = helpers.mediaId.toIllustIdAndPage(mediaId);
-        if(!await api.addFavorite(postId))
+        if(!await api.addFavorite(postId).catch(() => false))
             return false;
 
         setFavorite(postId, true);
         if(ppixiv.settings.get("gelbooru_upvote_on_favorite"))
-            api.upvote(postId);
+            api.upvote(postId).catch((error) => console.log("Upvote failed:", error.message));
         return true;
     }
 
     async bookmarkRemove(mediaId)
     {
         let [postId] = helpers.mediaId.toIllustIdAndPage(mediaId);
-        if(!await api.removeFavorite(postId))
+        if(!await api.removeFavorite(postId).catch(() => false))
             return false;
 
         setFavorite(postId, false);
