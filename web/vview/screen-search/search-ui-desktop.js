@@ -33,7 +33,7 @@ export default class DesktopSearchUI extends Widget
                         <vv-container class=header-follow-container></vv-container>
                     </div>
 
-                    <div class="header-search pixiv-only"></div>
+                    <div class="header-search needs-tag-search"></div>
 
                     <div class="button-row header-tools">
                         <div class="icon-button toggle-local-navigation-button popup" data-popup="Show navigation" hidden>

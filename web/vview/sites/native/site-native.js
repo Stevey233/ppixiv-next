@@ -5,8 +5,13 @@ import { helpers } from '/vview/misc/helpers.js';
 import { VView, VViewSearch } from '/vview/sites/native/data-sources/vview.js';
 import VViewSimilar from '/vview/sites/native/data-sources/similar.js';
 
+// The header search box and the download buttons were Pixiv-only before sites had caps.
+const CAPS = Object.freeze({ ...Site.DEFAULT_CAPS, tagSearch: false, download: false });
+
 export default class SiteNative extends Site.Site
 {
+    get caps() { return CAPS; }
+
     async init()
     {
         helpers.html.setClass(document.body, "native", ppixiv.native);

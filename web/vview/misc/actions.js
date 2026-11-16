@@ -93,6 +93,9 @@ export default class Actions
         if(options == null)
             options = {};
 
+        if(ppixiv.site.bookmarkAdd)
+            return await this._siteBookmarkAdd(mediaId, options);
+
         // If bookmark_privately_by_default is enabled and private wasn't specified
         // explicitly, set it to true.
         if(options.private == null && ppixiv.settings.get("bookmark_privately_by_default"))
@@ -178,6 +181,8 @@ export default class Actions
     {
         if(helpers.mediaId.isLocal(mediaId))
             return await this._localBookmarkRemove(mediaId);
+        if(ppixiv.site.bookmarkRemove)
+            return await this._siteBookmarkRemove(mediaId);
 
         let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
         if(mediaInfo.bookmarkData == null)
@@ -288,6 +293,49 @@ export default class Actions
         });
     }
 
+    // Bookmarks on a site with its own (Gelbooru's favorites): no tags, no privacy, no like.
+    // options.restore is set by 撤销, which puts a bookmark back and doesn't download.
+    static async _siteBookmarkAdd(mediaId, { noDownload=false, restore=false }={})
+    {
+        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+        if(mediaInfo.bookmarkData != null)
+            return;
+
+        if(!await ppixiv.site.bookmarkAdd(mediaId))
+        {
+            ppixiv.message.show(restore? "撤销失败，请重试":"收藏失败，请重试");
+            return;
+        }
+
+        let [illustId] = helpers.mediaId.toIllustIdAndPage(mediaId);
+        mediaInfo.bookmarkData = { id: illustId, private: false };
+        ppixiv.message.show("已收藏");
+
+        if(!restore && !noDownload && ppixiv.settings.get("download_on_bookmark", false))
+            Actions.downloadWork(mediaId);
+    }
+
+    static async _siteBookmarkRemove(mediaId)
+    {
+        let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
+        if(mediaInfo.bookmarkData == null)
+            return;
+
+        if(!await ppixiv.site.bookmarkRemove(mediaId))
+        {
+            ppixiv.message.show("取消收藏失败，请重试");
+            return;
+        }
+
+        mediaInfo.bookmarkData = null;
+        ppixiv.message.show("已取消收藏", {
+            action: {
+                label: "撤销",
+                onclick: () => Actions._siteBookmarkAdd(mediaId, { restore: true }),
+            },
+        });
+    }
+
     static async _localBookmarkAdd(mediaId, options)
     {
         let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
@@ -343,7 +391,7 @@ export default class Actions
     // Change an existing bookmark to public or private.
     static async bookmarkSetPrivate(mediaId, private_bookmark)
     {
-        if(helpers.mediaId.isLocal(mediaId))
+        if(helpers.mediaId.isLocal(mediaId) || !ppixiv.site.caps.privateBookmarks)
             return;
 
         let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId, { full: false });
@@ -373,6 +421,9 @@ export default class Actions
     // list.  Add the bookmarks to recents, and bookmark the image with the entered tags.
     static async addNewBookmarkTag(mediaId)
     {
+        if(!ppixiv.site.caps.bookmarkTags)
+            return;
+
         console.log("Show tag prompt");
 
         let prompt = new TextPrompt({ title: "New tag:" });
@@ -414,7 +465,7 @@ export default class Actions
     // If quiet is true, don't print any messages.
     static async likeImage(mediaId, quiet)
     {
-        if(helpers.mediaId.isLocal(mediaId))
+        if(helpers.mediaId.isLocal(mediaId) || !ppixiv.site.caps.likes)
             return;
 
         let illustId = helpers.mediaId.toIllustIdAndPage(mediaId)[0];
@@ -699,7 +750,7 @@ export default class Actions
             let blob = new Blob([results[0]]);
             let ext = results[0].extension;
             let filename = downloadFilename({
-                mediaInfo, userName: userInfo.name, page: pages[0], ext,
+                mediaInfo, userName: userInfo?.name, page: pages[0], ext,
                 singlePageOfMany: downloadType == "image" && mediaInfo.mangaPages.length > 1,
             });
             helpers.saveBlob(blob, filename);
@@ -719,7 +770,7 @@ export default class Actions
 
         // Create the ZIP.
         let zip = new CreateZIP(filenames, results);
-        let filename = downloadFilename({ mediaInfo, userName: userInfo.name, ext: "zip" });
+        let filename = downloadFilename({ mediaInfo, userName: userInfo?.name, ext: "zip" });
         helpers.saveBlob(zip, filename);
         ppixiv.downloadedWorks.record(mediaId, downloadType);
     }

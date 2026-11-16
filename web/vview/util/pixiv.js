@@ -158,6 +158,9 @@ export function makePixivLinksInternal(root)
 // Get the search tags from an "/en/tags/TAG" search URL.
 export function getSearchTagsFromUrl(url)
 {
+    if(ppixiv.site.getSearchTagsFromUrl)
+        return ppixiv.site.getSearchTagsFromUrl(url);
+
     url = new URL(url);
     return url.searchParams.get("q");
 }

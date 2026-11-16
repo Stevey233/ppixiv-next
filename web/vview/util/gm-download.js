@@ -72,21 +72,22 @@ function _downloadUsingServer(serverPort, { url, ...args })
 
 // Download url, returning the data.
 //
-// This is only used to download Pixiv images to save to disk.  Pixiv doesn't have CORS
+// This is only used to download images to save to disk.  Neither Pixiv nor Gelbooru has CORS
 // set up to give itself access to its own images, so we have to use GM.xmlHttpRequest to
-// do this.
+// do this.  The Referer and Origin are the site's.
 export async function downloadPixivImage(url)
 {
     let server = await _getDownloadServer();
     if(server == null)
         throw new Error("Downloading not available");
 
+    let referer = ppixiv.site.downloadReferer;
     return await _downloadUsingServer(server, {
         url,
         headers: {
             "Cache-Control": "max-age=360000",
-            Referer: "https://www.pixiv.net/",
-            Origin: "https://www.pixiv.net/",
+            Referer: referer,
+            Origin: referer,
         },
     });
 }

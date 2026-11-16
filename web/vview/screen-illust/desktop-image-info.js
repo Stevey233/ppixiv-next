@@ -85,15 +85,15 @@ export default class DesktopImageInfo extends Widget
             <div class=info-actions-more>
                 <vv-container class="button-like-container button-container"></vv-container>
 
-                <div class="n-action download-button download-image-button popup pixiv-only" data-download="image" data-popup="下载原图">
+                <div class="n-action download-button download-image-button popup needs-download" data-download="image" data-popup="下载原图">
                     ${ helpers.createIcon("mat:download") }<span class=n-label>下载</span>
                 </div>
 
-                <div class="n-action download-button download-manga-button popup pixiv-only" data-download="ZIP" data-popup="下载全部页面 (ZIP)">
+                <div class="n-action download-button download-manga-button popup needs-download" data-download="ZIP" data-popup="下载全部页面 (ZIP)">
                     ${ helpers.createIcon("mat:folder_zip") }<span class=n-label>下载全部</span>
                 </div>
 
-                <div class="n-action download-button download-video-button popup pixiv-only" data-download="MKV" data-popup="下载动图 (MKV)">
+                <div class="n-action download-button download-video-button popup needs-download" data-download="MKV" data-popup="下载动图 (MKV)">
                     ${ helpers.createIcon("mat:download") }<span class=n-label>下载 MKV</span>
                 </div>
 

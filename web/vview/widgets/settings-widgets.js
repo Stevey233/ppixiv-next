@@ -828,7 +828,8 @@ export class SettingsDialog extends DialogWidget
         if(!ppixiv.native)
         {
             this._createPageButton("tagMuting");
-            this._createPageButton("userMuting");
+            if(ppixiv.site.caps.users)
+                this._createPageButton("userMuting");
         }
 
         if(ppixiv.imageTranslations.supported)
@@ -965,8 +966,11 @@ export class SettingsDialog extends DialogWidget
         let pages = {
             general: () => {
                 settingsWidgets.theme();
-                settingsWidgets.tagLanguage();
-                settingsWidgets.disableTranslations();
+                if(ppixiv.site.caps.tagTranslations)
+                {
+                    settingsWidgets.tagLanguage();
+                    settingsWidgets.disableTranslations();
+                }
             },
             download: () => {
                 settingsWidgets.downloadFilename();
@@ -986,7 +990,8 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.hdThumbnails();
                     settingsWidgets.seenWorks();
                     settingsWidgets.clearSeenWorks();
-                    settingsWidgets.followingLastSeen();
+                    if(ppixiv.site.caps.users)
+                        settingsWidgets.followingLastSeen();
                 }
                 if(!ppixiv.mobile && !ppixiv.native)
                 {
@@ -1007,7 +1012,7 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.uiOnHover();
                 }
                 
-                if(!ppixiv.native)
+                if(!ppixiv.native && ppixiv.site.caps.mangaPages)
                     settingsWidgets.expandMangaPosts();
             },
             image: () => {
@@ -1015,7 +1020,7 @@ export class SettingsDialog extends DialogWidget
                 settingsWidgets.autoPanSpeed();
                 settingsWidgets.slideshowSpeed();
                 settingsWidgets.slideshowDefaultAnimation();
-                if(!ppixiv.native) // native mode doesn't support manga pages
+                if(!ppixiv.native && ppixiv.site.caps.mangaPages) // native mode doesn't support manga pages
                     settingsWidgets.slideshowSkipsManga();
 
                 if(ppixiv.mobile)
@@ -1026,7 +1031,8 @@ export class SettingsDialog extends DialogWidget
                 {
                     settingsWidgets.doubleClickFullscreen();
                     settingsWidgets.contextMenuStyle();
-                    settingsWidgets.infoPanelArtistWorks();
+                    if(ppixiv.site.caps.users)
+                        settingsWidgets.infoPanelArtistWorks();
                     settingsWidgets.invertScrolling();
                     settingsWidgets.noHideCursor();
                     settingsWidgets.showMangaPageIndicator();
@@ -1055,7 +1061,8 @@ export class SettingsDialog extends DialogWidget
                 if(ppixiv.native && !LocalAPI.localInfo.local)
                     settingsWidgets.nativeLogin();
 
-                settingsWidgets.disableTranslations();
+                if(ppixiv.site.caps.tagTranslations)
+                    settingsWidgets.disableTranslations();
 
                 if(!ppixiv.native && !ppixiv.mobile)
                     settingsWidgets.disabledByDefault();
@@ -1070,7 +1077,8 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.enableTransitions();
                 }
         
-                settingsWidgets.bookmarkPrivatelyByDefault();
+                if(ppixiv.site.caps.privateBookmarks)
+                    settingsWidgets.bookmarkPrivatelyByDefault();
 
                 if(!ppixiv.mobile)
                 {
@@ -1078,7 +1086,7 @@ export class SettingsDialog extends DialogWidget
                     settingsWidgets.debounceWheel();
                 }
         
-                if(!ppixiv.native)
+                if(!ppixiv.native && ppixiv.site.caps.mangaPages)
                     settingsWidgets.preloadManga();
 
                 settingsWidgets.hotkeyModifier();

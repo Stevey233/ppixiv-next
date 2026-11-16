@@ -1,12 +1,60 @@
 import { helpers } from '/vview/misc/helpers.js';
 
+// What a site supports.  Shared code that shows or uses a site-dependent feature checks
+// ppixiv.site.caps.<name>.  Each missing capability also sets body.no-<name> (kebab-case), for
+// elements that are hidden from CSS.  These defaults are Pixiv's.
+export const DEFAULT_CAPS = Object.freeze({
+    users: true,                // avatars, follows, user pages and mutes, user search
+    likes: true,
+    privateBookmarks: true,
+    bookmarkTags: true,
+    mangaPages: true,
+    tagTranslations: true,
+    recommendations: true,      // similar works and the recommendation lists
+    rankings: true,
+    imageTranslation: true,
+    series: true,
+    download: true,
+    tagSearch: true,            // the header search box
+});
+
 // Each site we support has a singleton Site class.  We currently only support
 // using a single site (the site we're on) and only create its singleton.
+//
+// A site can also define these hooks.  Shared code calls them when they exist and runs Pixiv's code
+// otherwise:
+//
+// - loadMediaInfo(mediaId), batchLoadMediaInfo(mediaIds): load media info that isn't cached
+// - bookmarkAdd(mediaId), bookmarkRemove(mediaId): add or remove a bookmark, returning true on success
+// - autocomplete(word, { signal }): tag completions, [{ tag, label, category, count }]
+// - getArgsForTagSearch(tags, url), getArgsForTagRefine(tag, url, { exclude }), getSearchTagsFromUrl(url)
+// - mainDestinations(), otherDestinations(): the navigation rail's lists
 export class Site
 {
     constructor()
     {
         this.dataSourcesByUrl = {};
+    }
+
+    get caps() { return DEFAULT_CAPS; }
+
+    // The site's name, for "回到 <name> 原页面".
+    get name() { return "Pixiv"; }
+
+    // The page icon, or null for ppixiv's default.
+    get iconUrl() { return null; }
+
+    // The Referer and Origin sent when downloading images.
+    get downloadReferer() { return "https://www.pixiv.net/"; }
+
+    // Set body.no-<cap> for each capability the site lacks.
+    applyCapClasses()
+    {
+        for(let [name, supported] of Object.entries(this.caps))
+        {
+            let className = "no-" + name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+            helpers.html.setClass(document.body, className, !supported);
+        }
     }
 
     // Run initial setup.  Return false if initialization failed and we should stop.

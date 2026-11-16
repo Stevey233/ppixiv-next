@@ -556,6 +556,9 @@ export class helpers
     // depending on the current page.
     static getArgsForTagSearch(tags, url)
     {
+        if(ppixiv.site.getArgsForTagSearch)
+            return ppixiv.site.getArgsForTagSearch(tags, url);
+
         url = helpers.pixiv.getUrlWithoutLanguage(url);
 
         let type = helpers.pixiv.getPageTypeFromUrl(url);
@@ -579,6 +582,9 @@ export class helpers
     // place instead of being added twice.  Return null if url isn't a tag search.
     static getArgsForTagRefine(tag, url, { exclude=false }={})
     {
+        if(ppixiv.site.getArgsForTagRefine)
+            return ppixiv.site.getArgsForTagRefine(tag, url, { exclude });
+
         url = helpers.pixiv.getUrlWithoutLanguage(url);
         let current = helpers.pixiv.getSearchTagsFromUrl(url);
         if(helpers.pixiv.getPageTypeFromUrl(url) != "search" || !current)
@@ -800,6 +806,8 @@ export class helpers
     {
         if(ppixiv.native || vview)
             helpers.setPageIcon(ppixiv.resources['resources/vview-icon.png']);
+        else if(ppixiv.site.iconUrl)
+            helpers.setPageIcon(ppixiv.site.iconUrl);
         else
             helpers.setPageIcon(ppixiv.resources['resources/regular-pixiv-icon.png']);
     }

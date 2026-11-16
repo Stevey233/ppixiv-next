@@ -66,7 +66,7 @@ export default class ImageTranslations extends EventTarget
     // Return true if image translation is supported.
     get supported()
     {
-        return !ppixiv.native && !ppixiv.ios;
+        return !ppixiv.native && !ppixiv.ios && ppixiv.site.caps.imageTranslation;
     }
 
     // Fire an event if translation URLs may have changed: we have a new translation, or settings

@@ -39,6 +39,16 @@ export default class NavRail extends Widget
             `,
         });
 
+        // The way back to the site's own page names the site.
+        let back = this.querySelector(".rail-pixiv");
+        if(ppixiv.site.name != "Pixiv")
+        {
+            let label = `回到 ${ppixiv.site.name} 原页面`;
+            back.dataset.popup = label;
+            back.setAttribute("aria-label", label);
+            back.querySelector(".font-icon").replaceWith(helpers.createIcon("mat:open_in_browser", { asElement: true }));
+        }
+
         let list = this.querySelector(".rail-destinations");
         this._links = [];
         for(let destination of mainDestinations())
@@ -66,6 +76,7 @@ export default class NavRail extends Widget
             new SettingsDialog({ showPage: "shortcuts" });
         }, this._signal);
 
+        this.querySelector(".rail-more").hidden = otherDestinations().length == 0;
         new DropdownMenuOpener({
             button: this.querySelector(".rail-more"),
             createDropdown: ({...options}) => {

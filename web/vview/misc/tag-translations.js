@@ -36,7 +36,7 @@ export default class TagTranslations
     // Return true if translations are enabled by the user.
     get enabled()
     {
-        return !ppixiv.settings.get("disable-translations");
+        return ppixiv.site.caps.tagTranslations && !ppixiv.settings.get("disable-translations");
     }
 
     // Store a list of tag translations.

@@ -768,6 +768,25 @@ class TagSearchDropdownWidget extends widget
             return;
         }
 
+        // A site with its own autocomplete answers in its own shape.  Store it in Pixiv's.
+        if(ppixiv.site.autocomplete)
+        {
+            let candidates;
+            try {
+                this._abortAutocomplete = new AbortController();
+                let results = await ppixiv.site.autocomplete(keyword, { signal: this._abortAutocomplete.signal });
+                candidates = results.map(({ tag, label, category, count }) => ({ tag_name: tag, access_count: count, label, category }));
+            } catch(e) {
+                console.info("Tag autocomplete error:", e);
+                return;
+            } finally {
+                this._abortAutocomplete = null;
+            }
+
+            this._autocompleteRequestFinished(tags, keyword, { candidates, text, wordStart, wordEnd });
+            return;
+        }
+
         // Run the search.
         let result = null;
         try {
@@ -851,6 +870,8 @@ class TagSearchDropdownWidget extends widget
                 tag: candidate.tag_name,
                 accessCount: candidate.access_count,
                 tagTranslation: candidate.tag_translation,
+                label: candidate.label,
+                category: candidate.category,
             });
         }
 
@@ -869,7 +890,7 @@ class TagSearchDropdownWidget extends widget
     //
     // tags is the tag list to display.  The entry will link to targetTags, or tags
     // if targetTags is null.
-    createEntry(tags, { classes, targetTags=null }={})
+    createEntry(tags, { classes, targetTags=null, label=null, count=null }={})
     {
         let entry = this.createTemplate({name: "tag-dropdown-entry", html: `
             <a class=entry href=#>
@@ -902,7 +923,7 @@ class TagSearchDropdownWidget extends widget
             entry.dataset.translatedTag = translatedTag;
 
         let tagContainer = entry.querySelector(".search");
-        for(let tag of helpers.pixiv.splitSearchTags(tags))
+        for(let tag of label != null? []:helpers.pixiv.splitSearchTags(tags))
         {
             if(tag == "")
                 continue;
@@ -939,6 +960,24 @@ class TagSearchDropdownWidget extends widget
             }
 
             tagContainer.appendChild(span);
+        }
+
+        // A label is one tag shown as one word, with spaces instead of underscores.
+        if(label != null)
+        {
+            let span = document.createElement("span");
+            span.classList.add("word", "tag");
+            span.dataset.tag = tags;
+            span.textContent = label;
+            tagContainer.appendChild(span);
+        }
+
+        if(count != null)
+        {
+            let countLabel = document.createElement("span");
+            countLabel.classList.add("tag-count");
+            countLabel.textContent = count.toLocaleString();
+            tagContainer.after(countLabel);
         }
 
         // Saved searches show only the translated names, so show the search as typed on hover.
@@ -1001,7 +1040,7 @@ class TagSearchDropdownWidget extends widget
             section.classList.add(name);
 
         let groupSuggestionsButton = section.querySelector(".group-suggestions-button");
-        groupSuggestionsButton.hidden = !isAutocompleteHeader;
+        groupSuggestionsButton.hidden = !isAutocompleteHeader || !ppixiv.site.caps.tagTranslations;
         groupSuggestionsButton.classList.toggle("selected", ppixiv.settings.get("collapse_autocomplete"));
 
         // On click, toggle collapse_autocomplete and repopulate.
@@ -1212,10 +1251,10 @@ class TagSearchDropdownWidget extends widget
         }
 
         // Group tags with the same translation together.
-        if(ppixiv.settings.get("collapse_autocomplete"))
+        if(ppixiv.settings.get("collapse_autocomplete") && ppixiv.site.caps.tagTranslations)
             autocompletedTags = helpers.pixiv.groupTagsByTranslation(autocompletedTags, translatedTags);
 
-        for(let { tag, forTag, tagList } of autocompletedTags)
+        for(let { tag, forTag, tagList, label, category, accessCount } of autocompletedTags)
         {
             // If the input has multiple tags, we're searching the tag the cursor was on.  Replace just
             // that word.
@@ -1225,9 +1264,13 @@ class TagSearchDropdownWidget extends widget
             if(tagList && tagList.length > 1)
                 tag = `${forTag} (${tagList.join(", ")})`;
 
+            // Site autocompletes (Gelbooru) show the tag's label, its category's color and its
+            // post count.
             let entry = this.createEntry(tag, {
-                classes: ["autocomplete"],
+                classes: category != null? ["autocomplete", `tag-category-${category}`]:["autocomplete"],
                 targetTags: search,
+                label: label != null? helpers.pixiv.splitTagPrefixes(tag)[0] + label:null,
+                count: category != null? accessCount:null,
             });
             this._inputDropdownContents.appendChild(entry);
         }

@@ -428,10 +428,13 @@ export default class MoreOptionsDropdown extends IllustWidget
         this._menuOptions = [];
         if(!ppixiv.native)
         {
-            this._menuOptions.push(menuOptions.similarIllustrations());
-            this._menuOptions.push(menuOptions.similarArtists());
-            if(this.showExtra)
-                this._menuOptions.push(menuOptions.similarBookmarks());
+            if(ppixiv.site.caps.recommendations)
+            {
+                this._menuOptions.push(menuOptions.similarIllustrations());
+                this._menuOptions.push(menuOptions.similarArtists());
+                if(this.showExtra)
+                    this._menuOptions.push(menuOptions.similarBookmarks());
+            }
             
             this._menuOptions.push(menuOptions.downloadImage());
             this._menuOptions.push(menuOptions.downloadManga());
@@ -492,8 +495,8 @@ export default class MoreOptionsDropdown extends IllustWidget
     {
         let rows = [
             ["editMutes", "编辑屏蔽"],
-            ["similarArtists", "相似画师"],
-            this.showExtra && ["similarBookmarks", "收藏了这张的人还收藏了"],
+            ppixiv.site.caps.recommendations && ["similarArtists", "相似画师"],
+            ppixiv.site.caps.recommendations && this.showExtra && ["similarBookmarks", "收藏了这张的人还收藏了"],
             ["downloadImage", "下载原图"],
             ["downloadManga", "下载 ZIP"],
             ["downloadVideo", "下载 MKV"],
@@ -505,7 +508,7 @@ export default class MoreOptionsDropdown extends IllustWidget
             screenName == "illust" && ["toggleLoop", "循环", { closes: true }],
             ["imageEditing", "图片编辑"],
             this.showExtra && ["refreshImage", "刷新图片"],
-            ["exit", "返回 Pixiv", { closes: true }],
+            ["exit", `返回 ${ppixiv.site.name}`, { closes: true }],
         ];
 
         this._menuOptions = [];

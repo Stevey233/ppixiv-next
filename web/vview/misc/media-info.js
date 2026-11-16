@@ -108,7 +108,20 @@ export default class MediaInfo
     // the info came from somewhere else.
     get userIllustCount() { return this._getInfo("userIllustCount", null); }
     get userIllustIds() { return this._getInfo("userIllustIds", null); }
-    
+
+    // Booru fields (sites/gelbooru/media.js).  Pixiv info doesn't have them and gets the defaults.
+    get score() { return this._getInfo("score", null); }
+    get rating() { return this._getInfo("rating", null); }
+    get source() { return this._getInfo("source", ""); }
+    get md5() { return this._getInfo("md5", null); }
+    get uploader() { return this._getInfo("uploader", ""); }
+    get parentId() { return this._getInfo("parentId", null); }
+    get hasChildren() { return this._getInfo("hasChildren", false); }
+
+    // A map from tag to category, or null until the categories are loaded.
+    get tagCategories() { return this._getInfo("tagCategories", null); }
+    set tagCategories(value) { this._setInfo("tagCategories", value); }
+
     // Local images:
     get localPath() { return this._getInfo("localPath"); }
 
@@ -291,6 +304,7 @@ let partialPixivKeys = new Set([
     "userId",
     "pageCount",
     "width", "height",
+    "score", "rating", "source", "md5", "uploader", "parentId", "hasChildren", "tagCategories",
 ]);
 
 function createPartialPixivMediaInfo(mediaInfo)

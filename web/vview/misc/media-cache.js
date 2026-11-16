@@ -206,6 +206,18 @@ export default class MediaCache extends EventTarget
         if(helpers.mediaId.isLocal(mediaId))
             return await this._loadLocalImageData(mediaId, { refreshFromDisk });
 
+        // A site with its own API loads it there.
+        if(ppixiv.site.loadMediaInfo)
+        {
+            let info = await ppixiv.site.loadMediaInfo(mediaId);
+            if(info == null)
+            {
+                this._nonexistantMediaIds[mediaId] = "Post doesn't exist";
+                this._loadFailedAt[mediaId] = Date.now();
+            }
+            return info;
+        }
+
         // console.log("Fetching", mediaId);
 
         let mangaPromise = null;
@@ -465,6 +477,22 @@ export default class MediaCache extends EventTarget
         if(mediaIds.length == 0)
             return;
 
+        if(ppixiv.site.batchLoadMediaInfo)
+            await ppixiv.site.batchLoadMediaInfo(mediaIds);
+        else
+            await this._doBatchGetPixivMediaInfo(mediaIds, { userId });
+
+        // Mark any media IDs that we asked for but didn't receive as not existing, so we won't
+        // keep trying to load them.
+        for(let mediaId of mediaIds)
+        {
+            if(this._mediaInfo[mediaId] == null && this._nonexistantMediaIds[mediaId] == null)
+                this._nonexistantMediaIds[mediaId] = "Illustration doesn't exist";
+        }
+    }
+
+    async _doBatchGetPixivMediaInfo(mediaIds, { userId })
+    {
         let illustIds = [];
         for(let mediaId of mediaIds)
         {
@@ -514,14 +542,6 @@ export default class MediaCache extends EventTarget
             });
 
             await this.addMediaInfosPartial(result, "illust_list");
-        }
-
-        // Mark any media IDs that we asked for but didn't receive as not existing, so we won't
-        // keep trying to load them.
-        for(let mediaId of mediaIds)
-        {
-            if(this._mediaInfo[mediaId] == null && this._nonexistantMediaIds[mediaId] == null)
-                this._nonexistantMediaIds[mediaId] = "Illustration doesn't exist";
         }
     }
 

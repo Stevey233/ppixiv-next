@@ -12,6 +12,9 @@
 // well set vertically.  The "more" menu uses the full name.
 export function mainDestinations()
 {
+    if(ppixiv.site.mainDestinations)
+        return ppixiv.site.mainDestinations();
+
     let userId = ppixiv.pixivInfo?.userId;
     return [
         {
@@ -45,6 +48,9 @@ export function mainDestinations()
 // The other lists, for the "more" menu.
 export function otherDestinations()
 {
+    if(ppixiv.site.otherDestinations)
+        return ppixiv.site.otherDestinations();
+
     let userId = ppixiv.pixivInfo?.userId;
     return [
         { label: "搜索作品", icon: "mat:search", url: "/search?s_mode=tag&type=artwork#ppixiv" },
