@@ -1,5 +1,9 @@
-// User lists (关注的用户, 推荐用户, 搜索用户) as one row per user: avatar, name, follow button,
+// User lists (关注的用户, 推荐画师, 搜索用户) as one row per user: avatar, name, follow button,
 // and the user's latest works.  See docs/design.md "用户列表".
+//
+// A row shows up to maxWorks works (3 unless the list says), as many as fit its width: the strip
+// wraps, and works on a second line are hidden.  On a phone the works go under the name, across
+// the whole width.
 //
 // A data source with userRows returns user:<id> media IDs and registers each user's row here.
 // SearchView gives each user a grid row of its own with a fixed size and builds it with
@@ -19,11 +23,15 @@ const rows = new Map();
 // Register a user's row.  mediaIds are the user's works, with their media info already
 // registered.  hiddenR18 counts works Pixiv masked for the account's R-18 setting.
 // isFollowed, if known, seeds the user cache, so the follow buttons need no request per row.
-export function registerUserRow({ userId, userName, profileImageUrl, comment="", mediaIds=[], hiddenR18=0, isFollowed=null })
+//
+// 推荐画师 also passes maxWorks, tags (the artist's frequent tags, [{ tag, label }]) and similar,
+// which adds a link to the artists similar to this one.
+export function registerUserRow({ userId, userName, profileImageUrl, comment="", mediaIds=[], hiddenR18=0, isFollowed=null,
+    maxWorks=WORKS_PER_ROW, tags=[], similar=false })
 {
     userId = String(userId);
     mediaIds = [...mediaIds].sort((lhs, rhs) => helpers.mediaId.parse(rhs).id - helpers.mediaId.parse(lhs).id);
-    rows.set(userId, { userId, userName, profileImageUrl, comment, mediaIds, hiddenR18 });
+    rows.set(userId, { userId, userName, profileImageUrl, comment, mediaIds, hiddenR18, maxWorks, tags, similar });
 
     if(isFollowed != null && ppixiv.userCache.getUserInfoSync(userId) == null)
     {
@@ -57,6 +65,10 @@ export function openWorkInArtistList(mediaId, args)
 }
 
 // The height of the works strip, and of a whole row (16px above and below, and the 1px rule).
+// On a phone the name block (MOBILE_INFO_HEIGHT and a 10px gap) is above the strip.
+const MOBILE_INFO_HEIGHT = 52;
+const mobileInfo = () => ppixiv.mobile? MOBILE_INFO_HEIGHT + 10:0;
+
 export function userRowStripHeight()
 {
     return window.innerWidth < 1400? 160:200;
@@ -64,12 +76,14 @@ export function userRowStripHeight()
 
 export function userRowHeight()
 {
-    return userRowStripHeight() + 33;
+    return userRowStripHeight() + 33 + mobileInfo();
 }
 
 // A row without works (none, all hidden, a muted user) is only as tall as its left block: the
-// name line and two lines of comment (no date line, since there are no works).
+// name line and two lines of comment (no date line, since there are no works).  On a phone, one
+// line of note under the name.
 const EMPTY_STRIP_HEIGHT = 72;
+const emptyStripHeight = () => ppixiv.mobile? 20:EMPTY_STRIP_HEIGHT;
 
 // "11/12" this year, "2024/3/5" before.
 function formatDate(date)
@@ -102,6 +116,7 @@ export function createUserRow({ userId, parent, createWork })
                     <a class=n-user-row-name></a>
                 </div>
                 <div class=n-user-row-comment></div>
+                <div class=n-user-row-tags></div>
                 <div class=n-user-row-date></div>
             </div>
         </div>
@@ -115,7 +130,21 @@ export function createUserRow({ userId, parent, createWork })
     }
     row.querySelector(".n-user-row-avatar img").src = data.profileImageUrl ?? helpers.other.blankImage;
     row.querySelector(".n-user-row-name").textContent = data.userName ?? "";
-    row.querySelector(".n-user-row-comment").textContent = data.comment ?? "";
+    let comment = row.querySelector(".n-user-row-comment");
+    comment.textContent = data.comment ?? "";
+    // The comment shows two lines; the rest is in the tooltip.
+    comment.title = data.comment ?? "";
+
+    // 推荐画师: what the artist draws most, each a link to the tag's search.
+    let tagLine = row.querySelector(".n-user-row-tags");
+    for(let { tag, label } of data.tags)
+    {
+        let link = document.createElement("a");
+        link.href = helpers.getArgsForTagSearch(tag, ppixiv.plocation);
+        link.textContent = label;
+        link.title = tag;
+        tagLine.append(link);
+    }
 
     // The follow button, with the same rule as the artist header and the info panel: "已关注"
     // opens the follow menu and never unfollows in one click.
@@ -149,7 +178,7 @@ export function createUserRow({ userId, parent, createWork })
 
     let empty = ppixiv.muting.isUserIdMuted(userId) || data.mediaIds.length == 0;
     if(empty)
-        row.style.setProperty("--n-strip-height", `${EMPTY_STRIP_HEIGHT}px`);
+        row.style.setProperty("--n-strip-height", `${emptyStripHeight()}px`);
 
     if(ppixiv.muting.isUserIdMuted(userId))
         note("已屏蔽的用户", { empty: true, icon: "mat:block" });
@@ -157,7 +186,7 @@ export function createUserRow({ userId, parent, createWork })
         note(data.hiddenR18? "作品都被隐藏（R-18）":"还没有公开作品", { empty: true });
     else
     {
-        for(let mediaId of data.mediaIds.slice(0, WORKS_PER_ROW))
+        for(let mediaId of data.mediaIds.slice(0, data.maxWorks))
         {
             let box = createWork(mediaId);
             let info = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
@@ -175,12 +204,21 @@ export function createUserRow({ userId, parent, createWork })
         let newest = ppixiv.mediaCache.getMediaInfoSync(data.mediaIds[0], { full: false });
         let date = newest?.createDate? formatDate(newest.createDate):null;
         if(date)
-            row.querySelector(".n-user-row-date").textContent = `最新 ${date}`;
+            row.querySelector(".n-user-row-date").append(`最新 ${date}`);
+    }
+
+    if(data.similar)
+    {
+        let similar = document.createElement("a");
+        similar.className = "n-user-row-similar";
+        similar.href = `/discovery/users#ppixiv?user_id=${userId}`;
+        similar.textContent = "相似画师";
+        row.querySelector(".n-user-row-date").append(similar);
     }
 
     row.userRow = {
         works,
-        height: empty? EMPTY_STRIP_HEIGHT + 33:userRowHeight(),
+        height: empty? emptyStripHeight() + 33 + mobileInfo():userRowHeight(),
         shutdown: () => followButton.shutdown(),
     };
     return row;

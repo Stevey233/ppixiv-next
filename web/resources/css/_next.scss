@@ -2801,7 +2801,7 @@ html:not(.mobile) .floating > .dialog > .header {
 
 // ------------------------------------------------------------------ user rows
 //
-// 关注的用户, 推荐用户 and 搜索用户: one row per user (web/vview/next/user-rows.js).  Each row is
+// 关注的用户, 推荐画师 and 搜索用户: one row per user (web/vview/next/user-rows.js).  Each row is
 // alone on a grid row, sized by search-view.js; the works in it are normal thumbnail boxes.
 
 .search-view .n-user-row {
@@ -2882,7 +2882,12 @@ html:not(.mobile) .floating > .dialog > .header {
         &:empty { display: none; }
     }
 
+    // The date and 相似画师 never break inside; at 1400px and narrower 相似画师 goes under the date.
     .n-user-row-date {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 12px;
+        white-space: nowrap;
         color: var(--n-pencil);
         font-family: var(--n-font-num);
         font-size: 13px;
@@ -2890,18 +2895,50 @@ html:not(.mobile) .floating > .dialog > .header {
         &:empty { display: none; }
     }
 
+    // 推荐画师: the artist's frequent tags, and the link to similar artists.
+    .n-user-row-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 10px;
+        max-height: 20px;
+        overflow: hidden;
+        font-size: 13px;
+        line-height: 20px;
+        &:empty { display: none; }
+        > a {
+            color: var(--n-text);
+            text-decoration: none;
+            white-space: nowrap;
+            &::before { content: "#"; margin-right: 1px; color: var(--n-pencil); }
+            &:hover { color: var(--n-blue); }
+        }
+    }
+    .n-user-row-similar {
+        font-family: var(--n-font);
+        color: var(--n-blue);
+        text-decoration: none;
+        &:hover { text-decoration: underline; }
+    }
+
+    // As many works as fit on one line; the rest wrap onto a line that's cut off.  Upstream's
+    // squeeze made five works into slivers.  One work takes at most 60% of the strip (cropped),
+    // so a wide one on a narrow strip doesn't push every work after it off the line; a work
+    // never gets narrower than 1:3.
     .n-user-row-works {
         display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
         align-items: flex-end;
-        gap: 8px;
+        gap: 0 8px;
         flex: 1;
         min-width: 0;
         height: var(--n-strip-height);
+        overflow: hidden;
 
-        // Wide works shrink to share the width; a work never gets narrower than 1:3.
         > .thumbnail-box {
             flex-shrink: 1;
             min-width: calc(var(--n-strip-height) / 3);
+            max-width: 60%;
         }
     }
 
@@ -2921,6 +2958,30 @@ html:not(.mobile) .floating > .dialog > .header {
         }
         .font-icon { font-size: 18px; }
     }
+}
+
+// On a phone the name block is above the works, which take the whole width; side by side, the
+// works were squeezed into slivers next to a block half the screen wide.  The block's height is
+// fixed (MOBILE_INFO_HEIGHT in user-rows.js): the name line, then the tags with the date after
+// them on one line.  The comment is left out.
+html.mobile .search-view .n-user-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+
+    .n-user-row-info { width: 100%; height: 52px; padding-right: 0; overflow: hidden; }
+    .n-user-row-avatar { width: 44px; height: 44px; }
+    .n-user-row-text {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 12px;
+        row-gap: 2px;
+        > .n-user-row-head { grid-column: 1 / -1; }
+    }
+    .n-user-row-comment { display: none; }
+    .n-user-row-date { justify-content: flex-end; }
+    .n-user-row-tags:empty + .n-user-row-date { grid-column: 1 / -1; justify-content: flex-start; }
+    .n-user-row-works { flex: none; width: 100%; }
 }
 
 // ------------------------------------------------------------------ tooltips

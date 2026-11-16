@@ -50,7 +50,7 @@ export function otherDestinations()
         { label: "搜索作品", icon: "mat:search", url: "/search?s_mode=tag&type=artwork#ppixiv" },
         { label: "最近看过", icon: "mat:history", url: "/#ppixiv/history" },
         { label: "关注的用户", icon: "mat:visibility", url: `/users/${userId}/following#ppixiv` },
-        { label: "推荐用户", icon: "ppixiv:suggestions", url: "/discovery/users#ppixiv" },
+        { label: "推荐画师", icon: "ppixiv:suggestions", url: "/discovery/users#ppixiv" },
         { label: "搜索用户", icon: "mat:person_search", url: "/search_user.php#ppixiv" },
         { label: "已完成的约稿", icon: "mat:request_page", url: "/request/complete/illust#ppixiv" },
     ];

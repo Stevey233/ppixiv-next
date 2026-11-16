@@ -9,6 +9,25 @@
 import DataSource from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { registerUserRow, openWorkInArtistList } from '/vview/next/user-rows.js';
+import { subjectTags } from '/vview/misc/seed-feed.js';
+
+// The most frequent subject tags of an artist's works shown under the name, and how many works
+// a row shows: all Pixiv sends (5), as many as fit.
+const FREQUENT_TAGS = 3;
+const WORKS_PER_ROW = 5;
+
+// The count tags of works most common first, ties in order of appearance, without the tags that
+// say little (seed-feed.js's subjectTags) and without ones on a single work when the artist has
+// more than one work.
+function frequentTags(works)
+{
+    let counts = new Map();
+    for(let work of works)
+        for(let tag of new Set(subjectTags(work.tagList)))
+            counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    let min = works.length > 1? 2:1;
+    return [...counts].filter(([, count]) => count >= min).sort((a, b) => b[1] - a[1]).slice(0, FREQUENT_TAGS).map(([tag]) => tag);
+}
 
 export default class DataSource_DiscoverUsers extends DataSource
 {
@@ -75,7 +94,7 @@ export default class DataSource_DiscoverUsers extends DataSource
             });
 
             // This one includes tag translations.
-            ppixiv.tagTranslations.addTranslationsDict(result.body.tagTranslation);
+            await ppixiv.tagTranslations.addTranslationsDict(result.body.tagTranslation);
         }
 
         if(result.error)
@@ -97,6 +116,15 @@ export default class DataSource_DiscoverUsers extends DataSource
         // ajax/user/#/recommends is body.recommendUsers and user.illustIds.
         // discovery/users is body.recommendedUsers and user.recentIllustIds.
         let recommendedUsers = result.body.recommendUsers || result.body.recommendedUsers;
+
+        // Each artist's frequent tags.  The response's tagTranslation covers most of them, so
+        // these ask Pixiv for no translations.
+        let worksOf = (user) => (user.illustIds || user.recentIllustIds)
+            .map((illustId) => ppixiv.mediaCache.getMediaInfoSync(helpers.mediaId.fromIllustId(illustId), { full: false }))
+            .filter((info) => info != null);
+        let tagsOf = new Map(recommendedUsers.map((user) => [user.userId, frequentTags(worksOf(user))]));
+        let translations = await ppixiv.tagTranslations.getTranslations([...new Set([...tagsOf.values()].flat())], "en", { lookups: 0 });
+
         let mediaIds = [];
         for(let user of recommendedUsers)
         {
@@ -118,6 +146,9 @@ export default class DataSource_DiscoverUsers extends DataSource
                 comment: userData?.comment,
                 mediaIds: illustIds.map((illustId) => helpers.mediaId.fromIllustId(illustId))
                     .filter((mediaId) => ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) != null),
+                maxWorks: WORKS_PER_ROW,
+                tags: tagsOf.get(user.userId).map((tag) => ({ tag, label: translations[tag] ?? tag })),
+                similar: true,
             });
             mediaIds.push("user:" + user.userId);
         }

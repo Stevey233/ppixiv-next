@@ -9,6 +9,15 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.6",
+        title: "推荐画师改版",
+        items: [
+            "推荐画师每人显示 5 件作品（以前 3 件），放得下几件显示几件，不再挤成细条。",
+            "名字下面显示这个画师最常画的标签，点了直接搜；日期后面有\"相似画师\"。",
+            "手机上作品放到名字下面，占满整行。",
+        ],
+    },
+    {
         id: "2026-11-16.5",
         title: "收藏相关：新旧收藏一起找，可以分组看",
         items: [

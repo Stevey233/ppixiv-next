@@ -75,7 +75,7 @@ const COMMON_TAGS = new Set([
     "オリジナル", "女の子", "創作", "イラスト", "落書き", "R-18", "R-18G", "AI生成", "AIイラスト",
     "少女", "男の子", "漫画", "マンガ", "pixiv", "ファンアート",
 ]);
-function subjectTags(tags)
+export function subjectTags(tags)
 {
     return (tags ?? []).filter((tag) => !COMMON_TAGS.has(tag) && !/users入り$/.test(tag));
 }
