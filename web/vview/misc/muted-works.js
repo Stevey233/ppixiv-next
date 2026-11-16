@@ -17,15 +17,17 @@
 import { filterListKey } from '/vview/misc/result-filters.js';
 import { helpers } from '/vview/misc/helpers.js';
 
-const LISTS_HIDING_MUTED_TAGS = new Set(["search", "discovery", "related-illusts", "from-bookmarks", "tag-feed"]);
+// gb-posts is Gelbooru's post search, which treats them as tag search does, and its user's own
+// favorites list as the user's own bookmarks.
+const LISTS_HIDING_MUTED_TAGS = new Set(["search", "discovery", "related-illusts", "from-bookmarks", "tag-feed", "gb-posts"]);
 
 // Return true if dataSource leaves out works with a muted tag.
 export function listHidesMutedTags(dataSource)
 {
-    if(dataSource == null || !LISTS_HIDING_MUTED_TAGS.has(dataSource.name))
+    if(dataSource == null || !LISTS_HIDING_MUTED_TAGS.has(dataSource.name) || listShowsMutedTags(dataSource))
         return false;
 
-    if(dataSource.name == "search")
+    if(dataSource.name == "search" || dataSource.name == "gb-posts")
     {
         let query = helpers.pixiv.getSearchTagsFromUrl(dataSource.url) ?? "";
         if(ppixiv.muting.anyTagMuted(query.split(" ").filter((tag) => tag)))
@@ -40,7 +42,7 @@ export function listHidesMutedTags(dataSource)
 // Return true if dataSource shows works with a muted tag as normal works.
 export function listShowsMutedTags(dataSource)
 {
-    return dataSource != null && filterListKey(dataSource.name, dataSource.url) == "bookmarks-own";
+    return dataSource != null && (filterListKey(dataSource.name, dataSource.url) == "bookmarks-own" || dataSource.isOwnFavorites == true);
 }
 
 // Return the muted tag that mutes info (media info) in dataSource, or null.

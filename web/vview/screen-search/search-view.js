@@ -732,6 +732,15 @@ export default class SearchView extends Widget
         let endNotice = this.root.querySelector(".list-end-notice");
         endNotice.hidden = stopped == null;
         endNotice.querySelector(".list-end-text").textContent = stopped ?? "";
+
+        // A list that ended where the site stops paging says so, without a way to go on.
+        let endText = stopped == null? this.dataSource?.listEndText:null;
+        if(endText != null)
+        {
+            endNotice.hidden = false;
+            endNotice.querySelector(".list-end-text").textContent = endText;
+        }
+        endNotice.querySelector("button").hidden = stopped == null;
     }
 
     // Return all media IDs currently loaded in the data source, and the page
@@ -1355,7 +1364,7 @@ export default class SearchView extends Widget
             // The image will be obscured, but we still shouldn't load the image the user blocked (which
             // is something Pixiv does wrong).  Load the user profile image instead.
             forgetThumb(thumb);
-            thumb.src = ppixiv.mediaCache.getProfilePictureUrl(info.userId);
+            thumb.src = ppixiv.site.caps.users? ppixiv.mediaCache.getProfilePictureUrl(info.userId):helpers.other.blankImage;
             element.classList.add("muted");
 
             let mutedLabel = element.querySelector(".muted-label");

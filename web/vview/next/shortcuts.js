@@ -4,7 +4,8 @@
 
 import Widget from '/vview/widgets/widget.js';
 
-// Groups of [keys, what it does].  Keys are separated by spaces, alternatives by " / ".
+// Groups of [keys, what it does, the site capability it needs (sites/site.js), if any].  Keys are
+// separated by spaces, alternatives by " / ".
 const SHORTCUTS = [
     {
         title: "通用",
@@ -18,8 +19,8 @@ const SHORTCUTS = [
         rows: [
             ["/", "聚焦搜索框"],                                    // screen-search.js handleKeydown
             ["Ctrl+滚轮", "调整缩略图大小"],                        // screen-search.js wheel
-            ["Esc", "在相似作品列表上返回打开它的作品或列表"],      // screen-search.js handleKeydown
-            ["按住右键+滚轮", "在多页作品的缩略图上翻页，这时点开的就是显示的那一页"],  // context-menu.js onwheel, next/thumb-pages.js
+            ["Esc", "在相似作品列表上返回打开它的作品或列表", "recommendations"],      // screen-search.js handleKeydown
+            ["按住右键+滚轮", "在多页作品的缩略图上翻页，这时点开的就是显示的那一页", "mangaPages"],  // context-menu.js onwheel, next/thumb-pages.js
         ],
     },
     {
@@ -27,7 +28,7 @@ const SHORTCUTS = [
         note: "鼠标停在没收藏的作品上时，左下角出现空心的心；收藏过的作品那里是实心的心。打开\"下载\"页的\"收藏时同时下载原图\"后，点空心的心也会下载。",
         rows: [                                                     // next/quick-bookmark.js
             ["点击空心的心", "收藏，公开还是非公开按设置里的默认值"],
-            ["Alt+点击空心的心", "非公开收藏"],
+            ["Alt+点击空心的心", "非公开收藏", "privateBookmarks"],
             ["Shift+点击空心的心", "收藏并下载"],
             ["点击实心的心", "取消收藏，提示里的\"撤销\"按原来的标签收藏回来"],
             ["Shift+点击实心的心", "只下载，不取消收藏"],
@@ -67,15 +68,15 @@ const SHORTCUTS = [
         note: "收藏、点赞和下载在看图时作用于正在看的作品，在列表里作用于鼠标所在的缩略图。关注只在看图时有效，关注的是作品的作者。",
         rows: [                                                     // context-menu.js _handleKeyEventForImage, _handleKeyEventForUser
             ["Ctrl+B", "收藏，公开还是非公开按设置里的默认值"],
-            ["Ctrl+Alt+B", "非公开收藏"],
+            ["Ctrl+Alt+B", "非公开收藏", "privateBookmarks"],
             ["Ctrl+Shift+B", "取消收藏"],
-            ["Ctrl+Alt+Shift+B", "给收藏加一个新标签"],
-            ["Ctrl+V", "点赞"],
+            ["Ctrl+Alt+Shift+B", "给收藏加一个新标签", "bookmarkTags"],
+            ["Ctrl+V", "点赞", "likes"],
             ["Ctrl+S", "下载：单页作品下载原图，动图下载 MKV"],
-            ["Ctrl+Alt+S", "多页作品下载 ZIP"],
-            ["Ctrl+F", "关注作者，公开还是非公开按设置里的默认值"],
-            ["Ctrl+Alt+F", "非公开关注"],
-            ["Ctrl+Shift+F", "取消关注"],
+            ["Ctrl+Alt+S", "多页作品下载 ZIP", "mangaPages"],
+            ["Ctrl+F", "关注作者，公开还是非公开按设置里的默认值", "users"],
+            ["Ctrl+Alt+F", "非公开关注", "users"],
+            ["Ctrl+Shift+F", "取消关注", "users"],
         ],
     },
     {
@@ -107,8 +108,11 @@ export class ShortcutsPage extends Widget
             }
 
             let list = section.appendChild(document.createElement("dl"));
-            for(let [keys, text] of rows)
+            for(let [keys, text, cap] of rows)
             {
+                if(cap != null && !ppixiv.site.caps[cap])
+                    continue;
+
                 let dt = list.appendChild(document.createElement("dt"));
                 for(let [idx, alternative] of keys.split(" / ").entries())
                 {

@@ -5,7 +5,7 @@ import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.j
 import { ConfirmPrompt, TextPrompt } from '/vview/widgets/prompts.js';
 import { TagDropdownWidget } from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
-import { parsePixivLink, looksLikePixivId, getArgsForPixivLink, getPixivLinkUrl } from '/vview/misc/pixiv-links.js';
+import { siteLinks } from '/vview/misc/pixiv-links.js';
 import { createRefineButtons, handleRefineClick } from '/vview/next/tag-refine.js';
 
 // Handle showing the search history and tag edit dropdowns.
@@ -134,7 +134,7 @@ export class TagSearchBoxWidget extends widget
     {
         let tags = this._inputElement.value.trim();
         let saved = SavedSearchTags.groupNameForTag(tags) != null;
-        helpers.html.setClass(this._saveButton, "disabled", tags == "" || parsePixivLink(tags) != null);
+        helpers.html.setClass(this._saveButton, "disabled", tags == "" || siteLinks().parseLink(tags) != null);
         helpers.html.setClass(this._saveButton, "saved", saved);
         this._saveButton.dataset.popup = saved? "取消保存":"保存标签";
     }
@@ -173,7 +173,7 @@ export class TagSearchBoxWidget extends widget
             return;
 
         // A work or user link opens what it names, and isn't a search to remember.
-        let link = parsePixivLink(tags);
+        let link = siteLinks().parseLink(tags);
 
         // Add this tag to the recent search list.
         if(link == null)
@@ -188,7 +188,7 @@ export class TagSearchBoxWidget extends widget
         }
         
         // Run the search.
-        let args = link? getArgsForPixivLink(link):helpers.getArgsForTagSearch(tags, ppixiv.plocation);
+        let args = link? siteLinks().getArgsForLink(link):helpers.getArgsForTagSearch(tags, ppixiv.plocation);
         helpers.navigate(args);
     }
 }
@@ -643,10 +643,8 @@ class TagSearchDropdownWidget extends widget
     _refreshOpenLinks()
     {
         let text = this._inputElement.value.trim();
-        let link = parsePixivLink(text);
-        let links = link? [link]:
-            looksLikePixivId(text)? [{ type: "illust", id: text }, { type: "user", id: text }]:
-            [];
+        let link = siteLinks().parseLink(text);
+        let links = link? [link]:siteLinks().idOffers(text);
 
         helpers.html.removeElements(this._openLinks);
         for(let link of links)
@@ -657,9 +655,9 @@ class TagSearchDropdownWidget extends widget
                     <span class=search><span class=word></span></span>
                 </a>
             `});
-            entry.querySelector(".word").textContent = `${link.type == "illust"? "打开作品":"打开用户"} ${link.id}`;
-            entry.dataset.tag = getPixivLinkUrl(link);
-            entry.href = getArgsForPixivLink(link).url.toString();
+            entry.querySelector(".word").textContent = siteLinks().linkLabel(link);
+            entry.dataset.tag = siteLinks().getLinkUrl(link);
+            entry.href = siteLinks().getArgsForLink(link).url.toString();
             this._openLinks.appendChild(entry);
         }
 
@@ -733,7 +731,7 @@ class TagSearchDropdownWidget extends widget
             return;
 
         // A work or user link opens on Enter, so there's nothing to complete.
-        if(parsePixivLink(tags) != null)
+        if(siteLinks().parseLink(tags) != null)
             keyword = "";
 
         // Stop if we're already up to date.

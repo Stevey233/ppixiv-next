@@ -1021,7 +1021,8 @@ export default class ContextMenu extends Widget
         if(!helpers.isCtrlPressed(e))
             return;
 
-        if(e.key.toUpperCase() == "F")
+        // Sites without users leave Ctrl+F to the browser.
+        if(e.key.toUpperCase() == "F" && ppixiv.site.caps.users)
         {
             (async() => {
                 if(userId == null)

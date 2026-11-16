@@ -959,6 +959,17 @@ export default class App
         node.addEventListener("click", function(e) {
             if(e.defaultPrevented)
                 return;
+
+            // A site with its own search URLs (Gelbooru) says what a link searches for.
+            if(ppixiv.site.searchToRemember)
+            {
+                let link = e.target.closest?.("a[href]");
+                let tags = link? ppixiv.site.searchToRemember(new URL(link.href)):null;
+                if(tags)
+                    SavedSearchTags.add(tags);
+                return;
+            }
+
             if(e.target.tagName != "A" || !e.target.hasAttribute("href"))
                 return;
 

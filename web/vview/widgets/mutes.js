@@ -393,7 +393,8 @@ export class MutedTagsForPostDialog extends DialogWidget
         let mutedList = this.root.querySelector(".post-mute-list");
         helpers.html.removeElements(mutedList);
 
-        // Add an entry for the user.
+        // Add an entry for the user, on sites that have users.
+        if(ppixiv.site.caps.users)
         {
             let isMuted = ppixiv.muting.isUserIdMuted(userId);
             let entry = createEntry(`User: ${username}`, isMuted);
@@ -427,7 +428,8 @@ export class MutedTagsForPostDialog extends DialogWidget
                 if(isMuted)
                 {
                     ppixiv.muting.removeExtraMute(tag, {type: "tag"});
-                    await ppixiv.muting.removePixivMute(tag, {type: "tag"});
+                    if(ppixiv.muting.pixivMutedTags.includes(tag))
+                        await ppixiv.muting.removePixivMute(tag, {type: "tag"});
                 } else {
                     await ppixiv.muting.addMute(tag, tag, {type: "tag"});
                 }

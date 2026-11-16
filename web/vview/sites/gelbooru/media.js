@@ -63,9 +63,32 @@ export function mediaInfoFromPost(post, { extraData={} }={})
     };
 }
 
+// The posts registered most recently, by post ID, so the viewer can store a copy of the one it
+// opens (see storePostCopy in data-sources/history.js).  The oldest are dropped past this many.
+const RECENT_POSTS = 5000;
+let recentPosts = new Map();
+
+// Return the API object of a post registered recently, or null.
+export function recentPost(postId)
+{
+    return recentPosts.get(String(postId)) ?? null;
+}
+
 // Register posts as full media info and return their media IDs in order.
 export async function registerPosts(posts)
 {
+    for(let post of posts)
+    {
+        recentPosts.delete(String(post.id));
+        recentPosts.set(String(post.id), post);
+    }
+    for(let postId of recentPosts.keys())
+    {
+        if(recentPosts.size <= RECENT_POSTS)
+            break;
+        recentPosts.delete(postId);
+    }
+
     let illustIds = posts.map((post) => String(post.id));
     let extraData = await ppixiv.extraImageData.batchLoadAllPagesForIllust(illustIds);
 

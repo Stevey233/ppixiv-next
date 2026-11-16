@@ -2,24 +2,45 @@
 //
 // Gelbooru's post search.  The tags parameter holds the whole query, tags and conditions (see
 // sites/gelbooru/query.js).  Each list page is one API request of 100 posts.
+//
+// The rail's 热门 and 随机 are queries of this list too, so the condition menus work on them:
+//
+// - 热门 is sort:score with #ppixiv?popular=day|week|month, which adds id:>N for posts of about
+//   that age (popular.js).
+// - Any sort:random query is random: every request is a new random set from the whole result, so
+//   posts already listed are dropped and the list goes on until it has listed them all.
+//
+// Gelbooru won't page past page 200 (pid 200).  In the default order the list continues with
+// id:<the lowest ID of the previous page and pid=0; sorted lists end there with a note.
 import DataSource from '/vview/sites/data-source.js';
 import Widget from '/vview/widgets/widget.js';
 import SavedSearchTags from '/vview/misc/saved-search-tags.js';
+import { helpers } from '/vview/misc/helpers.js';
 import * as api from '/vview/sites/gelbooru/api.js';
-import { parseQuery, buildQuery, favoritesUserId } from '/vview/sites/gelbooru/query.js';
+import { parseQuery, buildQuery, splitQuery, favoritesUserId } from '/vview/sites/gelbooru/query.js';
 import { registerPosts } from '/vview/sites/gelbooru/media.js';
-import { setFavorite } from '/vview/sites/gelbooru/favorites.js';
+import { noteFavorites } from '/vview/sites/gelbooru/favorites.js';
 import { createConditionsUi } from '/vview/sites/gelbooru/conditions-ui.js';
+import { PERIODS, periodKey, periodLabel, popularMinId } from '/vview/sites/gelbooru/popular.js';
 
 const PER_PAGE = 100;
 
-// Gelbooru refuses offsets past about 20000.
-const MAX_OFFSET = 20000;
+// Gelbooru answers "Too deep!" past pid 200, so pages 1 to 200 can be asked for by page.
+const MAX_PAGES = 200;
 
 export function queryFromUrl(url)
 {
     let tags = new URL(url).searchParams.get("tags") ?? "";
     return tags.trim() == "all"? "":tags.trim();
+}
+
+// The search a posts list URL adds to recent searches: its tags without conditions, or null for
+// the plain list and the favorites list.
+export function searchToRemember(url)
+{
+    let query = queryFromUrl(url);
+    let tags = buildQuery({ tags: parseQuery(query).tags });
+    return tags && favoritesUserId(query) == null? tags:null;
 }
 
 export default class DataSource_GelbooruPosts extends DataSource
@@ -34,11 +55,16 @@ export default class DataSource_GelbooruPosts extends DataSource
     {
         super(args);
 
-        // Remember the search, like a Pixiv tag search does, but not the plain list or the
-        // favorites list.
-        let tags = this._searchTags;
-        if(tags && favoritesUserId(tags) == null)
+        // Remember the search, like a Pixiv tag search does.
+        let tags = searchToRemember(this.url);
+        if(tags)
             SavedSearchTags.add(tags);
+
+        // The lowest post ID each page's response had, for continuing past page 200.
+        this._lowestIdByPage = new Map();
+
+        // The post IDs a random list has returned.
+        this._randomIds = new Set();
     }
 
     // The whole query.
@@ -50,38 +76,99 @@ export default class DataSource_GelbooruPosts extends DataSource
         return buildQuery({ tags: parseQuery(this.query).tags });
     }
 
+    // The user's own favorites, which show posts with a muted tag (misc/muted-works.js).
+    get isOwnFavorites() { return favoritesUserId(this.query) == api.userId(); }
+
+    // "day", "week" or "month" on 热门, otherwise null.
+    get popularPeriod()
+    {
+        let period = this.args.hash.get("popular");
+        return period == null? null:periodKey(period);
+    }
+
+    // Any sort, including one query.js doesn't know, like sort:id:asc.
+    get _sorted()
+    {
+        return splitQuery(this.query).some((token) => /^sort:/i.test(token));
+    }
+
+    get randomPages() { return parseQuery(this.query).conditions.sort == "random"; }
+
+    // A cold start past page 200 starts at page 200.
+    getStartPage(args)
+    {
+        return Math.min(super.getStartPage(args), MAX_PAGES);
+    }
+
     async loadPageInternal(page)
     {
-        let pid = page - 1;
-        if(pid * PER_PAGE >= MAX_OFFSET)
-            return;
-
         let query = this.query;
-        let { posts, count, tooDeep } = await api.searchPosts({ tags: query, pid, limit: PER_PAGE });
+        if(this.popularPeriod != null)
+        {
+            this._popularMinId ??= await popularMinId(this.popularPeriod);
+            query = `${query} id:>${this._popularMinId}`;
+        }
+
+        let pid = page - 1;
+        if(this.randomPages)
+        {
+            // Every request is a new random set, so always ask for the first page, and stop once
+            // every post in the result has been listed.
+            if(this.totalCount != null && this._randomIds.size >= this.totalCount)
+                return;
+            pid = 0;
+        }
+        else if(page > MAX_PAGES)
+        {
+            let lowest = this._lowestIdByPage.get(page - 1);
+            if(this._sorted || lowest == null)
+            {
+                this.reachedDepthLimit = this._sorted;
+                this.callUpdateListeners();
+                return;
+            }
+            query = `${query} id:<${lowest}`;
+            pid = 0;
+        }
+
+        let { posts, count, tooDeep } = await api.searchPosts({ tags: query.trim(), pid, limit: PER_PAGE });
         if(tooDeep)
         {
             console.log(`Gelbooru won't page past page ${page - 1}`);
             return;
         }
 
-        if(this.totalCount != count)
+        // Past page 200 the count is of what's left below the cursor, so keep the first one.
+        if(page <= MAX_PAGES && this.totalCount != count)
         {
             this.totalCount = count;
             this.callUpdateListeners();
         }
 
+        if(posts.length)
+            this._lowestIdByPage.set(page, Math.min(...posts.map((post) => post.id)));
+        for(let post of posts)
+            this._randomIds.add(post.id);
+
         // Every post on the user's own favorites list is a favorite.
-        if(favoritesUserId(query) == api.userId())
-        {
-            for(let post of posts)
-                setFavorite(post.id, true);
-        }
+        if(this.isOwnFavorites)
+            noteFavorites(posts.map((post) => post.id));
 
         return { mediaIds: await registerPosts(posts) };
     }
 
+    // Shown at the end of the list when a sorted list reached Gelbooru's limit.
+    get listEndText()
+    {
+        if(!this.reachedDepthLimit)
+            return null;
+        return "Gelbooru 最多只能翻到大约 2 万件（200 页），排序的列表到这里为止。想看更多可以加标签或条件，缩小搜索范围。";
+    }
+
     get pageTitle()
     {
+        if(this.popularPeriod != null)
+            return "热门 - Gelbooru";
         let tags = this._searchTags;
         return tags? `${tags} - Gelbooru`:"Gelbooru";
     }
@@ -90,10 +177,13 @@ export default class DataSource_GelbooruPosts extends DataSource
     {
         let title = document.createElement("vv-container");
         let tags = parseQuery(this.query).tags;
-        if(tags.length == 0)
+        if(this.popularPeriod != null || tags.length == 0)
         {
             let label = document.createElement("span");
-            label.textContent = "全部作品";
+            label.textContent =
+                this.popularPeriod != null? `热门 · ${periodLabel(this.popularPeriod)}`:
+                this.randomPages? "随机":
+                "全部作品";
             title.appendChild(label);
         }
 
@@ -105,7 +195,8 @@ export default class DataSource_GelbooruPosts extends DataSource
             title.appendChild(span);
         }
 
-        if(this.totalCount != null)
+        // A random list's count is the whole result's, which isn't what it lists.
+        if(this.totalCount != null && !this.randomPages)
         {
             let count = document.createElement("span");
             count.className = "gb-result-count";
@@ -116,16 +207,29 @@ export default class DataSource_GelbooruPosts extends DataSource
     }
 }
 
-// The list's option row.  The condition menus go in .gb-conditions.
+// The list's option row: 热门's periods, then the condition menus in .gb-conditions.
 class UI extends Widget
 {
     constructor({ dataSource, ...options })
     {
         super({ ...options, template: `
             <div class=gb-posts-ui>
+                <div class="box-button-row gb-popular-periods" hidden></div>
                 <vv-container class=gb-conditions></vv-container>
             </div>
         `});
+
+        if(dataSource.popularPeriod != null)
+        {
+            let row = this.querySelector(".gb-popular-periods");
+            row.hidden = false;
+            for(let [key, label] of PERIODS)
+            {
+                let link = helpers.createBoxLink({ label, popup: `${label}发的帖子里分数最高的`, dataType: key, asElement: true });
+                row.appendChild(link);
+                dataSource.setItem(row, { type: key, fields: { "#popular": key } });
+            }
+        }
 
         createConditionsUi({ dataSource, container: this.querySelector(".gb-conditions"), signal: this.shutdownSignal });
     }

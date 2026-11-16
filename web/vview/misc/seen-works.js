@@ -63,6 +63,9 @@ export default class SeenWorks extends EventTarget
         if(id == null || this.mode == "off")
             return;
 
+        // Gelbooru keeps a copy of the post for 最近看过.
+        ppixiv.site.workSeen?.(mediaId);
+
         let time = Date.now();
         return this._queueWrite(async () => {
             await this._dbOp("readwrite", (store) => store.put(time, id));

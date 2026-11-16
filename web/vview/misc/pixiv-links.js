@@ -54,3 +54,18 @@ export function getPixivLinkUrl({ type, id })
 {
     return type == "illust"? `https://www.pixiv.net/artworks/${id}`:`https://www.pixiv.net/users/${id}`;
 }
+
+// The link helpers of the site we're on.  A site with links of its own (Gelbooru) gives them as
+// ppixiv.site.links, with the same functions.
+const pixivLinks = {
+    parseLink: parsePixivLink,
+    idOffers: (text) => looksLikePixivId(text)? [{ type: "illust", id: text }, { type: "user", id: text }]:[],
+    getArgsForLink: getArgsForPixivLink,
+    getLinkUrl: getPixivLinkUrl,
+    linkLabel: ({ type, id }) => `${type == "illust"? "打开作品":"打开用户"} ${id}`,
+};
+
+export function siteLinks()
+{
+    return ppixiv.site.links ?? pixivLinks;
+}

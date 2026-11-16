@@ -42,15 +42,20 @@ export default class DataSources_History extends DataSource
         if(illustIds.length == 0)
             return;
 
+        // If every work on the page was deleted, add the page empty, so the list continues instead
+        // of ending here.
+        let mediaIds = await this.loadWorks(illustIds);
+        return { mediaIds, allowEmpty: true };
+    }
+
+    // Load the media info of illustIds and return the media IDs of the ones that still exist.
+    async loadWorks(illustIds)
+    {
         // Any user ID works here, and this API includes the AI flag and bookmark data, unlike the
         // fallback without one.  Works deleted since they were seen are left out of the response.
         let mediaIds = illustIds.map((illustId) => helpers.mediaId.fromIllustId(illustId));
         await ppixiv.mediaCache.batchGetMediaInfoPartial(mediaIds, { userId: ppixiv.pixivInfo.userId });
-        mediaIds = mediaIds.filter((mediaId) => ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) != null);
-
-        // If every work on the page was deleted, add the page empty, so the list continues instead
-        // of ending here.
-        return { mediaIds, allowEmpty: true };
+        return mediaIds.filter((mediaId) => ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false }) != null);
     }
 }
 

@@ -5,15 +5,18 @@
 //
 //   /index.php?page=post&s=list&tags=<query>#ppixiv     gb-posts
 //   /index.php?page=post&s=view&id=<n>#ppixiv           gb-post
+//   /index.php#ppixiv/history                           gb-history (最近看过)
 import { helpers } from '/vview/misc/helpers.js';
 import * as Site from '/vview/sites/site.js';
 import * as api from '/vview/sites/gelbooru/api.js';
 import { searchFromList, refineQuery, favoritesUserId, parseQuery, buildQuery } from '/vview/sites/gelbooru/query.js';
 import { registerPosts } from '/vview/sites/gelbooru/media.js';
-import { setFavorite } from '/vview/sites/gelbooru/favorites.js';
+import { setFavorite, syncFavorites } from '/vview/sites/gelbooru/favorites.js';
 import { rememberCategories } from '/vview/sites/gelbooru/tag-categories.js';
-import Posts, { queryFromUrl } from '/vview/sites/gelbooru/data-sources/posts.js';
+import * as links from '/vview/sites/gelbooru/links.js';
+import Posts, { queryFromUrl, searchToRemember } from '/vview/sites/gelbooru/data-sources/posts.js';
 import Post from '/vview/sites/gelbooru/data-sources/post.js';
+import History, { storePostCopy } from '/vview/sites/gelbooru/data-sources/history.js';
 
 const CAPS = Object.freeze({
     ...Site.DEFAULT_CAPS,
@@ -63,6 +66,9 @@ export default class SiteGelbooru extends Site.Site
             pixivTests: {},
             recaptchaKey: null,
         };
+
+        // Read or check the favorites in the background.  The first list doesn't wait for it.
+        syncFavorites(credentials.userId);
         return true;
     }
 
@@ -124,11 +130,28 @@ export default class SiteGelbooru extends Site.Site
             return null;
 
         let page = args.query.get("page"), s = args.query.get("s");
+        if(page == null && args.hashPath == "/history")
+            return History;
         if(page == "post" && s == "list")
             return Posts;
         if(page == "post" && s == "view" && args.query.get("id"))
             return Post;
         return null;
+    }
+
+    // The viewer opened a post: keep a copy of it for 最近看过.
+    workSeen(mediaId)
+    {
+        storePostCopy(mediaId);
+    }
+
+    // The search box's link handling, see misc/pixiv-links.js.
+    get links() { return links; }
+
+    // The search a clicked link adds to recent searches, or null.
+    searchToRemember(url)
+    {
+        return this.getDataSourceForUrl(url) == Posts? searchToRemember(url):null;
     }
 
     // Media info for posts that no list registered, like a reloaded viewer URL.  One request
@@ -217,20 +240,38 @@ export default class SiteGelbooru extends Site.Site
         return buildQuery({ tags: parseQuery(queryFromUrl(url)).tags });
     }
 
-    // The rail.  Piece C adds 热门, 随机 and 最近看过.
+    // The rail.  最新, 随机 and 热门 are the posts list without tags, so the condition menus work on
+    // them too; 热门 is marked by its period in the hash (data-sources/posts.js).
     mainDestinations()
     {
         let userId = api.userId();
+        let plain = (ds, sort) => ds?.name == "gb-posts" && ds.popularPeriod == null &&
+            parseQuery(ds.query).tags.length == 0 && parseQuery(ds.query).conditions.sort == sort;
         return [
             {
                 key: "new", label: "最新", icon: "mat:schedule",
                 url: "/index.php?page=post&s=list#ppixiv",
-                matches: (ds) => ds?.name == "gb-posts" && ds.query == "",
+                matches: (ds) => plain(ds, null),
+            },
+            {
+                key: "popular", label: "热门", icon: "mat:local_fire_department",
+                url: "/index.php?page=post&s=list&tags=sort%3Ascore#ppixiv?popular=week",
+                matches: (ds) => ds?.name == "gb-posts" && ds.popularPeriod != null,
+            },
+            {
+                key: "random", label: "随机", icon: "mat:shuffle",
+                url: "/index.php?page=post&s=list&tags=sort%3Arandom#ppixiv",
+                matches: (ds) => plain(ds, "random"),
             },
             {
                 key: "favorites", label: "收藏", icon: "mat:favorite",
                 url: `/index.php?page=post&s=list&tags=fav%3A${userId}#ppixiv`,
                 matches: (ds) => ds?.name == "gb-posts" && favoritesUserId(ds.query) == userId,
+            },
+            {
+                key: "history", label: "看过", icon: "mat:history",
+                url: "/index.php#ppixiv/history",
+                matches: (ds) => ds?.name == "gb-history",
             },
         ];
     }
