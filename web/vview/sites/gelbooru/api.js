@@ -100,6 +100,20 @@ export async function readCredentials()
     return credentials;
 }
 
+// After a 401 with staleKey: the credentials read again, once for every request refused together
+// (the favorites check and the first list start at the same time), or the ones another request
+// already read.
+let rereading = null;
+async function rereadCredentials(staleKey)
+{
+    let stored = storedCredentials();
+    if(stored != null && stored.apiKey != staleKey)
+        return stored;
+
+    rereading ??= readCredentials().finally(() => rereading = null);
+    return await rereading;
+}
+
 // Return the credentials, reading them from the options page if they aren't stored yet.
 export async function getCredentials()
 {
@@ -117,9 +131,10 @@ export function userId()
 // is stale: read it again once and retry.
 async function dapi(params, { signal=null }={})
 {
+    let credentials = null;
     for(let attempt = 0; ; attempt++)
     {
-        let credentials = attempt == 0? await getCredentials():await readCredentials();
+        credentials = attempt == 0? await getCredentials():await rereadCredentials(credentials.apiKey);
         if(credentials == null)
             throw new LoggedOutError("Not logged in to Gelbooru");
 
