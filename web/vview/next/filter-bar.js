@@ -58,8 +58,12 @@ export default class FilterBar extends Widget
             groups.appendChild(group);
         };
 
+        // The type (插画, 漫画, 动图) and page count filters are about Pixiv's manga posts.
         for(let group of FILTER_GROUPS)
-            addGroup(group.key, group.options);
+        {
+            if(group.key == "shape" || ppixiv.site.caps.mangaPages)
+                addGroup(group.key, group.options);
+        }
         addGroup("hide", HIDE_FILTERS);
 
         // Replace the history entry rather than adding one for each toggle, so Back leaves the list

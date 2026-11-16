@@ -64,7 +64,7 @@ export function filterLabel(value)
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",
     "series", "related-illusts", "edited", "completed-requests", "history", "from-bookmarks",
-    "tag-feed",
+    "tag-feed", "gb-posts",
 ]);
 
 export function dataSourceSupportsFilters(dataSource)
@@ -73,12 +73,21 @@ export function dataSourceSupportsFilters(dataSource)
 }
 
 // The key a list's filters are remembered under: the data source name, with the user's own
-// bookmarks separate from other people's, since 隐藏已收藏 means nothing on your own.
+// bookmarks (or Gelbooru favorites) separate from other lists, since 隐藏已收藏 would empty them.
 export function filterListKey(name, url)
 {
     if(name == "bookmarks" && isOwnBookmarks(url))
         return "bookmarks-own";
+    if(name == "gb-posts" && isOwnGelbooruFavorites(url))
+        return "gb-posts-favorites-own";
     return name;
+}
+
+// The Gelbooru posts list with fav:<your user ID> in its query is your favorites.
+function isOwnGelbooruFavorites(url)
+{
+    let query = new URL(url).searchParams.get("tags") ?? "";
+    return query.split(/\s+/).includes(`fav:${ppixiv.pixivInfo?.userId}`);
 }
 
 function isOwnBookmarks(url)
@@ -90,6 +99,13 @@ function isOwnBookmarks(url)
 // Return whether a filter is offered on a list.
 export function filterAvailable(listKey, value)
 {
+    // Gelbooru posts are one page each and have no manga or ugoira type.  Its posts list asks
+    // Gelbooru to leave out AI works with a search condition (sites/gelbooru/conditions-ui.js).
+    if(listKey.startsWith("gb-") && (TYPE_VALUES.includes(value) || value == "single" || value == "multi"))
+        return false;
+    if(listKey.startsWith("gb-posts") && value == "hide-ai")
+        return false;
+
     // Measured on pixiv.net on 2026-11-12: 1 of 400 new works was an animation, so 动图 on the new
     // works list would pause after four empty pages nearly every time.
     if(listKey == "new_illust" && value == "ugoira")
@@ -103,7 +119,7 @@ export function filterAvailable(listKey, value)
     // Every work on 最近看过 has been seen, so 隐藏看过的 would empty it.
     if(listKey == "history" && value == "hide-seen")
         return false;
-    return !(listKey == "bookmarks-own" && value == "hide-bookmarked");
+    return !((listKey == "bookmarks-own" || listKey == "gb-posts-favorites-own") && value == "hide-bookmarked");
 }
 
 // The type a list shows when no type filter is on, if its API can't list every type at once.
