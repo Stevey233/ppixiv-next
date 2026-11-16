@@ -3261,7 +3261,8 @@ html:not(.mobile) .floating > .dialog > .header {
 // The dropdown under the search box: saved and recent searches, autocomplete, and the edit mode.
 // Saved and recent searches are chips that wrap, several to a line; upstream gave each search a
 // full-width row.  Autocomplete stays one row per tag, since each row has the translation and the
-// Japanese tag.  Edit mode goes back to rows, since dragging a saved search moves it up or down.
+// Japanese tag.  Edit mode keeps the chips, with the buttons inside them, and a saved search is
+// dragged to its place among them.
 
 // DropdownBoxOpener places a dropdown 4px left of its button; the margin lines it up with the box.
 // border-box keeps a phone-wide dropdown inside the window.
@@ -3328,7 +3329,7 @@ html.mobile .input-dropdown.search-history { width: var(--box-width); }
     .entry.autocomplete { flex: 0 0 100%; }
 
     // Saved and recent searches are chips.
-    &:not(.editing) .entry.saved, &:not(.editing) .entry.recent {
+    .entry.saved, .entry.recent {
         flex: 0 1 auto;
         max-width: 100%;
         padding: 5px 12px;
@@ -3345,7 +3346,7 @@ html.mobile .input-dropdown.search-history { width: var(--box-width); }
     }
 
     // Recent searches are lighter than saved ones, and the last section, so they read as history.
-    &:not(.editing) .entry.recent {
+    .entry.recent {
         background: none;
         box-shadow: inset 0 0 0 1px var(--n-rule);
         color: var(--n-pencil);
@@ -3400,13 +3401,22 @@ html.mobile .input-dropdown.search-history { width: var(--box-width); }
     .open-links { display: flex; flex-direction: column; }
     .open-links:has(.entry) { margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--n-rule); }
 
-    // Edit mode: one row per search, with the handle, edit and X.
-    &.editing .entry {
-        flex: 0 0 100%;
-        padding: 3px 4px;
-        // Line recent searches up with saved ones, which have a drag handle first.
-        &.recent { color: var(--n-pencil); padding-left: calc(4px + 26px + 0.5em); }
+    // Edit mode: the same chips, with the handle, edit and X inside, smaller than elsewhere so a
+    // chip grows only a little.  A desktop drags a saved chip from anywhere but its buttons.
+    &.editing .entry.saved, &.editing .entry.recent {
+        gap: 0;
+        padding: 2px 4px 2px 10px;
+        cursor: default;
+        .search { margin-right: 4px; }
+        .edit-button {
+            width: 22px;
+            height: 22px;
+            .font-icon { font-size: 15px; }
+        }
+        .drag-handle { margin-left: -6px; }
     }
+    @media(hover: hover) { html:not(.mobile) &.editing .entry.saved { cursor: grab; } }
+    .entry.dragging { opacity: 0.5; box-shadow: inset 0 0 0 1px var(--n-blue); }
     &.editing .tag-section { padding-top: 12px; }
 
     // The edit toggle and "新建分组", at the bottom.

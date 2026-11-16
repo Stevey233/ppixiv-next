@@ -271,7 +271,10 @@ class TagSearchDropdownWidget extends widget
             parent: this,
             name: "search-dragger",
             element: this.root,
-            confirmDrag: ({event}) => event.target.closest(".drag-handle") != null,
+            // A saved search is dragged by its handle, or on a desktop by anywhere on the chip but
+            // its buttons.  A phone needs the handle, so a swipe over the chips still scrolls.
+            confirmDrag: ({event}) => this.editing && (event.target.closest(".drag-handle") != null ||
+                (!ppixiv.mobile && event.target.closest(".entry.saved") != null && event.target.closest(".edit-button") == null)),
             ondragstart: (args) => this._ondragstart(args),
             ondrag: (args) => this._ondrag(args),
             ondragend: (args) => this._ondragend(args),
@@ -313,101 +316,48 @@ class TagSearchDropdownWidget extends widget
     _ondragstart({event})
     {
         // Remember the tag we're dragging.
-        let dragHandle = event.target.closest(".drag-handle");
-        let entry = dragHandle.closest(".entry");
+        let entry = event.target.closest(".entry");
         this.draggingTag = entry.dataset.tag;
+        entry.classList.add("dragging");
         return true;
     }
 
+    // Edit mode shows saved searches as chips that wrap, so the pointer picks the place in two
+    // dimensions: over a chip, before it on the chip's left half and after it on the right half;
+    // over a group's header, first in that group.  Collapsed groups take nothing.  Upstream had
+    // one row per search and only compared the pointer's Y with the rows above and below.
     _ondrag({event})
     {
-        // Scan backwards or forwards to find the next valid place where entry can be placed
-        // after.
-        // Find the next and previous entry that we can drag to.
-        function findSibling(entry, next)
+        let target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".entry.saved, .tag-section");
+        if(target == null || !this._inputDropdown.contains(target) || target.dataset.tag == this.draggingTag)
+            return;
+
+        let toIdx;
+        if(target.classList.contains("tag-section"))
         {
-            let sibling = entry;
-            while(sibling)
-            {
-                if(next)
-                    sibling = sibling.nextElementSibling;
-                else
-                    sibling = sibling.previousElementSibling;
-
-                if(sibling == null)
-                    return null;
-
-                // If this is an uncollapsed tag or group, return it.
-                if(!sibling.classList.contains("collapsed"))
-                    return sibling;
-            }
-            return null;
-        }
-
-        let entry = this._findTagEntry(this.draggingTag);
-
-        // Check downwards first, then upwards.
-        let entryRect = entry.getBoundingClientRect();
-        for(let down = 0; down <= 1; down++)
-        {
-            let entryToCheck = findSibling(entry, down == 1);
-            if(entryToCheck == null)
-                continue;
-
-            if(!entryToCheck.classList.contains("saved") && !entryToCheck.classList.contains("tag-section"))
-                continue;
-
-            // When moving up, find the next entry where the entry above it is uncollapsed.
-            // For tags this is always true (visible tags are always inside a visible group),
-            // but if we're dragging above a group header, this makes sure we drag into an
-            // uncollapsed group.
-            //
-            // To see if we should move up, compare the Y position to the center of the combination
-            // of the element and the element above it.  threshold is how far over the boundary
-            // we need to go before moving.
-            let neighborRect = entryToCheck.getBoundingClientRect();
-            let threshold = 5;
-            if(down)
-            {
-                let y = (neighborRect.bottom + entryRect.top) / 2;
-                if(event.clientY - threshold < y)
-                    continue;
-            }
-            else
-            {
-                let y = (entryRect.bottom + neighborRect.top) / 2;
-                if(event.clientY + threshold > y)
-                    continue;
-            }
-
-            // We want to drag in this direction.  If we're dragging downwards, we'll place the item
-            // after entryToCheck.  If we're dragging upwards, find the next uncollapsed entry before
-            // it to place it after.
-            let entryToPlaceAfter = entryToCheck;
-            if(!down)
-                entryToPlaceAfter = findSibling(entryToCheck, false);
-            if(entryToPlaceAfter == null)
-                continue;
-
-            // Find its index in the list.
-            let moveAfterIdx = -1;
-            if(entryToPlaceAfter.groupName)
-                moveAfterIdx = SavedSearchTags.findIndex({group: entryToPlaceAfter.groupName});
-            else if(entryToPlaceAfter.dataset.tag)
-                moveAfterIdx = SavedSearchTags.findIndex({tag: entryToPlaceAfter.dataset.tag});
-
-            if(moveAfterIdx != -1)
-            {
-                // Move the tag after moveAfterIdx.
-                SavedSearchTags.move(this.draggingTag, moveAfterIdx+1);
+            if(target.groupName == null || target.classList.contains("collapsed"))
                 return;
-            }
+            toIdx = SavedSearchTags.findIndex({group: target.groupName}) + 1;
         }
-    };
+        else
+        {
+            let rect = target.getBoundingClientRect();
+            let after = event.clientX > rect.left + rect.width/2;
+            toIdx = SavedSearchTags.findIndex({tag: target.dataset.tag}) + (after? 1:0);
+        }
+
+        // Landing just before or after itself moves nothing, so don't redraw the list.
+        let idx = SavedSearchTags.findIndex({tag: this.draggingTag});
+        if(idx == -1 || toIdx == idx || toIdx == idx + 1)
+            return;
+        SavedSearchTags.move(this.draggingTag, toIdx);
+    }
 
     _ondragend({event})
     {
         this.draggingTag = null;
+        for(let entry of this._inputDropdown.querySelectorAll(".entry.dragging"))
+            entry.classList.remove("dragging");
     }
 
     // Return the tag-section for the given group.
@@ -924,7 +874,7 @@ class TagSearchDropdownWidget extends widget
         let entry = this.createTemplate({name: "tag-dropdown-entry", html: `
             <a class=entry href=#>
                 <div class="edit-button drag-handle" data-shown-in="saved">
-                    ${ helpers.createIcon("mat:drag_handle") }
+                    ${ helpers.createIcon("mat:drag_indicator") }
                 </div>
 
                 <span class=search></span>
@@ -940,6 +890,12 @@ class TagSearchDropdownWidget extends widget
 
         for(let name of classes)
             entry.classList.add(name);
+
+        // The list is redrawn after every move, so mark the dragged search on the new entry too.
+        // A link dragged natively would take the pointer away from the drag.
+        entry.draggable = false;
+        if(targetTags == this.draggingTag)
+            entry.classList.add("dragging");
 
         let translatedTag = this.translatedTags[tags];
         if(translatedTag)

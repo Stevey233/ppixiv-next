@@ -9,6 +9,13 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.4",
+        title: "编辑保存的标签也是块状",
+        items: [
+            "搜索框下拉框的编辑模式不再一行一条，保存的标签还是一个个块，铅笔和 × 在块里面。拖到别的块左边或右边就放到它前面或后面。",
+        ],
+    },
+    {
         id: "2026-11-16.3",
         title: "新搜索的默认条件，插画筛掉漫画标签",
         items: [
