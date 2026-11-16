@@ -200,7 +200,7 @@ let loadedSiteThumbs = new Map(); // preview URL -> the larger URL, once it has 
 
 function setSiteThumbnail(img, url, mediaId)
 {
-    let large = thumbsEnabled()? ppixiv.site.hdThumbnailUrl(mediaId):null;
+    let large = thumbsEnabled()? window.ppixiv.site.hdThumbnailUrl(mediaId):null;
     if(large == null || large == url)
     {
         img.src = url;
