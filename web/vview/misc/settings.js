@@ -87,6 +87,10 @@ export default class Settings extends EventTarget
         this.configure("search_default_order", { defaultValue: "keep" }); // see misc/result-filters.js
         this.configure("search_default_bookmarks", { defaultValue: "keep" });
         this.configure("search_default_type", { defaultValue: "keep" });
+        this.configure("gelbooru_default_sort", { defaultValue: "newest" }); // see sites/gelbooru/search-defaults.js
+        this.configure("gelbooru_default_score", { defaultValue: "0" });
+        this.configure("gelbooru_default_ratings", { defaultValue: "all" });
+        this.configure("gelbooru_default_hide_ai", { defaultValue: false });
         this.configure("changelog_last_viewed", { defaultValue: "" }); // see widgets/whats-new.js
 
         // Upstream's default thumbnail size fits one column on a phone.  Two to three columns

@@ -996,9 +996,12 @@ export class SettingsDialog extends DialogWidget
                 if(!ppixiv.mobile && !ppixiv.native)
                 {
                     settingsWidgets.hoverPreload();
-                    settingsWidgets.searchRelatedTags();
+                    if(!ppixiv.site.createSearchSettings)
+                        settingsWidgets.searchRelatedTags();
                 }
-                if(!ppixiv.native)
+                if(ppixiv.site.createSearchSettings)
+                    ppixiv.site.createSearchSettings(globalOptions);
+                else if(!ppixiv.native)
                 {
                     settingsWidgets.searchDefaultOrder();
                     settingsWidgets.searchDefaultBookmarks();
