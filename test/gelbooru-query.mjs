@@ -1,7 +1,7 @@
 // The Gelbooru query parser and builder (web/vview/sites/gelbooru/query.js): every row of the
 // condition table in .work/gelbooru/DESIGN.md round-trips, and tokens it doesn't know stay as tags.
 import assert from 'node:assert/strict';
-import { parseQuery, buildQuery, setConditions, searchFromList, refineQuery, splitQuery, favoritesUserId, EMPTY } from '../web/vview/sites/gelbooru/query.js';
+import { parseQuery, buildQuery, setConditions, searchFromList, refineQuery, splitQuery, favoritesUserId, clearConditions, hasConditions, EMPTY } from '../web/vview/sites/gelbooru/query.js';
 
 let log = console.log;
 let check = (name, func) => { func(); log(`ok   ${name}`); };
@@ -46,9 +46,11 @@ check('type round-trips', () => {
     roundTrip('-animated -video', { type: 'image' }, { built: '-video -animated' });
     roundTrip('animated -video', { type: 'animated' });
     roundTrip('video', { type: 'video' });
-    // A lone exclusion isn't one of the menu's types, so it stays a tag.
-    roundTrip('-video', {}, { tags: ['-video'] });
-    roundTrip('animated', {}, { tags: ['animated'] });
+    // A lone exclusion isn't one of the menu's types, so it's a type written by hand.
+    assert.deepEqual(parseQuery('-video').raw, { type: ['-video'] });
+    assert.deepEqual(parseQuery('animated').raw, { type: ['animated'] });
+    roundTrip('-video', {}, {});
+    roundTrip('animated', {}, {});
 });
 
 check('size round-trips', () => {
@@ -109,4 +111,48 @@ check('refine adds, excludes and flips a tag in place', () => {
     assert.equal(refineQuery('blue_sky sort:score', 'red_sky'), 'blue_sky red_sky sort:score');
     assert.equal(refineQuery('blue_sky sort:score', 'red_sky', { exclude: true }), 'blue_sky -red_sky sort:score');
     assert.equal(refineQuery('blue_sky -red_sky', 'red_sky'), 'blue_sky red_sky');
+});
+
+check('conditions written by hand stay as written, per kind', () => {
+    let query = 'blue_sky score:>5 sort:score:asc width:1920';
+    let { tags, conditions, raw } = parseQuery(query);
+    assert.deepEqual(tags, ['blue_sky']);
+    assert.deepEqual(conditions, EMPTY);
+    assert.deepEqual(raw, { score: ['score:>5'], sort: ['sort:score:asc'], size: ['width:1920'] });
+    assert.equal(buildQuery({ tags, conditions, raw }), 'blue_sky sort:score:asc score:>5 width:1920');
+
+    // A kind with any token the menus can't express is kept whole.
+    assert.deepEqual(parseQuery('score:>=10 score:<100').raw, { score: ['score:>=10', 'score:<100'] });
+    assert.deepEqual(parseQuery('rating:general rating:explicit').raw, { rating: ['rating:general', 'rating:explicit'] });
+    assert.deepEqual(parseQuery('rating:general -rating:explicit').raw, { rating: ['rating:general', '-rating:explicit'] });
+    assert.deepEqual(parseQuery('rating:safe').raw, { rating: ['rating:safe'] });
+    assert.deepEqual(parseQuery('width:>=1920 width:>=2000').raw, { size: ['width:>=1920', 'width:>=2000'] });
+    assert.deepEqual(parseQuery('Sort:Score').conditions.sort, 'score');
+});
+
+check('changing another kind keeps hand-written conditions; changing their kind replaces them', () => {
+    let query = 'blue_sky score:>5 sort:score:asc width:1920';
+    assert.equal(setConditions(query, { ratings: ['general'] }), 'blue_sky sort:score:asc score:>5 rating:general width:1920');
+    assert.equal(setConditions(query, { sort: null }), 'blue_sky score:>5 width:1920');
+    assert.equal(setConditions(query, { minScore: 100 }), 'blue_sky sort:score:asc score:>=100 width:1920');
+    assert.equal(setConditions(query, { minWidth: 2560, minHeight: null }), 'blue_sky sort:score:asc score:>5 width:>=2560');
+    assert.equal(refineQuery(query, 'red_sky'), 'blue_sky red_sky sort:score:asc score:>5 width:1920');
+});
+
+check('clearConditions and hasConditions', () => {
+    assert.equal(clearConditions('blue_sky sort:score score:>5 -rating:explicit fav:1'), 'blue_sky fav:1');
+    assert.equal(hasConditions('blue_sky fav:1'), false);
+    assert.equal(hasConditions('blue_sky score:>5'), true);
+    assert.equal(hasConditions('-ai-generated'), true);
+});
+
+check('a new search takes each kind it doesn\'t set from the list, written by hand or not', () => {
+    assert.equal(searchFromList('red_sky', 'blue_sky score:>5 sort:score'), 'red_sky sort:score score:>5');
+    assert.equal(searchFromList('red_sky score:>=10', 'blue_sky score:>5 sort:score'), 'red_sky sort:score score:>=10');
+    // Size is one kind: a new width replaces the list's width and height.
+    assert.equal(searchFromList('red_sky width:>=100', 'height:>=200'), 'red_sky width:>=100');
+    // Defaults are applied the same way, after the list's conditions.
+    let defaults = 'sort:score score:>=100';
+    assert.equal(searchFromList(searchFromList('red_sky', 'blue_sky score:>=10'), defaults), 'red_sky sort:score score:>=10');
+    assert.equal(searchFromList(searchFromList('red_sky sort:score:asc', ''), defaults), 'red_sky sort:score:asc score:>=100');
 });
