@@ -3,13 +3,15 @@
 // the rail all read and rewrite it through this module.  See .work/gelbooru/DESIGN.md, "The query
 // is the state".
 //
-// parseQuery(query) returns { tags, conditions }:
+// parseQuery(query) returns { tags, conditions, raw }:
 //
-//   tags        every token that isn't a recognized condition, in query order.  This includes
-//               {a ~ b} groups, fav:, parent:, user:, source:, md5: and anything else.
+//   tags        every token that isn't a condition, in query order.  This includes {a ~ b}
+//               groups, fav:, parent:, user:, source:, md5: and anything else.
 //   conditions  { sort, minScore, ratings, type, minWidth, minHeight, hideAi }, see EMPTY.
+//   raw         { kind: [tokens] } for each kind of condition (see KINDS) written in a way the
+//               menus can't express, like score:>5 or width:1920, kept as written.
 //
-// buildQuery({ tags, conditions }) turns them back into a query: the tags in order, then the
+// buildQuery({ tags, conditions, raw }) turns them back into a query: the tags in order, then the
 // conditions in a fixed order.  setConditions(query, changes) does both, changing some conditions
 // and keeping the rest of the query.
 //
@@ -31,7 +33,7 @@ export const EMPTY = Object.freeze({
 });
 
 // The tokens each type writes.  A type is recognized only when the query has exactly these
-// type tokens, so "-video" alone stays an ordinary tag.
+// type tokens.  Others, like "-video" alone, are a type written by hand (see raw).
 const TYPE_TOKENS = {
     image: ["-video", "-animated"],
     animated: ["animated", "-video"],
@@ -74,128 +76,238 @@ export function splitQuery(query)
     return tokens;
 }
 
+// The kinds of condition, in the order buildQuery writes them, with the keys of conditions each
+// one sets.  A menu changes one kind at a time.
+export const KINDS = {
+    sort: ["sort"],
+    score: ["minScore"],
+    rating: ["ratings"],
+    type: ["type"],
+    size: ["minWidth", "minHeight"],
+    ai: ["hideAi"],
+};
+
+// The kind of condition a token (lowercased) belongs to, or null for an ordinary tag.
+function tokenKind(token)
+{
+    if(token.startsWith("sort:"))
+        return "sort";
+    if(token.startsWith("score:"))
+        return "score";
+    if(/^-?rating:/.test(token))
+        return "rating";
+    if(/^(width|height):/.test(token))
+        return "size";
+    if(ALL_TYPE_TOKENS.has(token))
+        return "type";
+    if(token == "-ai-generated")
+        return "ai";
+    return null;
+}
+
+// Read the tokens (lowercased) of one kind into conditions, or return null if the menus can't
+// express them.
+const KIND_PARSERS = {
+    sort(tokens)
+    {
+        let match = tokens.length == 1 && /^sort:(score|random|updated)(:desc)?$/.exec(tokens[0]);
+        return match? { sort: match[1] }:null;
+    },
+
+    score(tokens)
+    {
+        let match = tokens.length == 1 && /^score:>=(\d+)$/.exec(tokens[0]);
+        return match? { minScore: parseInt(match[1]) }:null;
+    },
+
+    // One rating:<r>, or one to four distinct -rating:<r>.
+    rating(tokens)
+    {
+        let match = tokens.length == 1 && /^rating:(\w+)$/.exec(tokens[0]);
+        if(match)
+            return RATINGS.includes(match[1])? { ratings: [match[1]] }:null;
+
+        let excluded = tokens.map((token) => /^-rating:(\w+)$/.exec(token)?.[1]);
+        if(!excluded.every((rating) => RATINGS.includes(rating)) || new Set(excluded).size != excluded.length)
+            return null;
+        return { ratings: RATINGS.filter((rating) => !excluded.includes(rating)) };
+    },
+
+    // Exactly the tokens of one of TYPE_TOKENS.
+    type(tokens)
+    {
+        for(let [type, wanted] of Object.entries(TYPE_TOKENS))
+        {
+            if(tokens.length == wanted.length && wanted.every((token) => tokens.includes(token)))
+                return { type };
+        }
+        return null;
+    },
+
+    // At most one width:>=N and one height:>=N.
+    size(tokens)
+    {
+        let result = {};
+        for(let token of tokens)
+        {
+            let match = /^(width|height):>=(\d+)$/.exec(token);
+            let key = match?.[1] == "width"? "minWidth":"minHeight";
+            if(match == null || key in result)
+                return null;
+            result[key] = parseInt(match[2]);
+        }
+        return result;
+    },
+
+    ai() { return { hideAi: true }; },
+};
+
+// Parse a query into { tags, conditions, raw }.  A kind whose tokens the menus can't express, like
+// score:>5, sort:score:asc or two rating: tokens, is left out of conditions and kept as written in
+// raw[kind], so it stays in the query untouched until that kind is changed.
 export function parseQuery(query)
 {
     let tokens = splitQuery(query);
     let conditions = { ...EMPTY };
-    let consumed = new Set();
+    let raw = {};
 
-    let excludedRatings = new Set();
-    for(let [idx, token] of tokens.entries())
+    let byKind = {};
+    let tags = [];
+    for(let token of tokens)
     {
-        let lower = token.toLowerCase();
-        let match;
-        if((match = /^sort:(score|random|updated)(:desc)?$/.exec(lower)))
-            conditions.sort = match[1];
-        else if((match = /^score:>=(\d+)$/.exec(lower)))
-            conditions.minScore = parseInt(match[1]);
-        else if((match = /^width:>=(\d+)$/.exec(lower)))
-            conditions.minWidth = parseInt(match[1]);
-        else if((match = /^height:>=(\d+)$/.exec(lower)))
-            conditions.minHeight = parseInt(match[1]);
-        else if(lower == "-ai-generated")
-            conditions.hideAi = true;
-        else if((match = /^rating:(\w+)$/.exec(lower)) && RATINGS.includes(match[1]) && conditions.ratings == null && excludedRatings.size == 0)
-            conditions.ratings = [match[1]];
-        else if((match = /^-rating:(\w+)$/.exec(lower)) && RATINGS.includes(match[1]) && conditions.ratings == null)
-            excludedRatings.add(match[1]);
+        let kind = tokenKind(token.toLowerCase());
+        if(kind == null)
+            tags.push(token);
         else
-            continue;
-        consumed.add(idx);
+            (byKind[kind] ??= []).push(token);
     }
 
-    if(excludedRatings.size)
-        conditions.ratings = RATINGS.filter((rating) => !excludedRatings.has(rating));
-
-    // The type is a combination of tokens, so it's recognized from the set of them.
-    let typeIndexes = [...tokens.keys()].filter((idx) => ALL_TYPE_TOKENS.has(tokens[idx].toLowerCase()));
-    let typeTokens = new Set(typeIndexes.map((idx) => tokens[idx].toLowerCase()));
-    for(let [type, wanted] of Object.entries(TYPE_TOKENS))
+    for(let [kind, kindTokens] of Object.entries(byKind))
     {
-        if(typeTokens.size == wanted.length && wanted.every((token) => typeTokens.has(token)))
-        {
-            conditions.type = type;
-            for(let idx of typeIndexes)
-                consumed.add(idx);
-        }
+        let parsed = KIND_PARSERS[kind](kindTokens.map((token) => token.toLowerCase()));
+        if(parsed)
+            Object.assign(conditions, parsed);
+        else
+            raw[kind] = kindTokens;
     }
 
-    let tags = tokens.filter((token, idx) => !consumed.has(idx));
-    return { tags, conditions };
+    return { tags, conditions, raw };
+}
+
+// The tokens conditions write for one kind.
+function kindTokens(kind, c)
+{
+    switch(kind)
+    {
+    case "sort": return c.sort != null? [`sort:${c.sort}`]:[];
+    case "score": return c.minScore != null? [`score:>=${c.minScore}`]:[];
+    case "rating":
+    {
+        let ratings = c.ratings == null? RATINGS:RATINGS.filter((rating) => c.ratings.includes(rating));
+        if(ratings.length == 1)
+            return [`rating:${ratings[0]}`];
+        return RATINGS.filter((rating) => !ratings.includes(rating)).map((rating) => `-rating:${rating}`);
+    }
+    case "type": return c.type != null? TYPE_TOKENS[c.type]:[];
+    case "size":
+    {
+        let tokens = [];
+        if(c.minWidth != null)
+            tokens.push(`width:>=${c.minWidth}`);
+        if(c.minHeight != null)
+            tokens.push(`height:>=${c.minHeight}`);
+        return tokens;
+    }
+    case "ai": return c.hideAi? ["-ai-generated"]:[];
+    }
 }
 
 // Return the condition tokens for conditions, in a fixed order.
 export function conditionTokens(conditions)
 {
     let c = { ...EMPTY, ...conditions };
-    let tokens = [];
-    if(c.sort != null)
-        tokens.push(`sort:${c.sort}`);
-    if(c.minScore != null)
-        tokens.push(`score:>=${c.minScore}`);
-
-    let ratings = c.ratings == null? RATINGS:RATINGS.filter((rating) => c.ratings.includes(rating));
-    if(ratings.length == 1)
-        tokens.push(`rating:${ratings[0]}`);
-    else if(ratings.length < RATINGS.length)
-    {
-        for(let rating of RATINGS)
-            if(!ratings.includes(rating))
-                tokens.push(`-rating:${rating}`);
-    }
-
-    if(c.type != null)
-        tokens.push(...TYPE_TOKENS[c.type]);
-    if(c.minWidth != null)
-        tokens.push(`width:>=${c.minWidth}`);
-    if(c.minHeight != null)
-        tokens.push(`height:>=${c.minHeight}`);
-    if(c.hideAi)
-        tokens.push("-ai-generated");
-    return tokens;
+    return Object.keys(KINDS).flatMap((kind) => kindTokens(kind, c));
 }
 
-export function buildQuery({ tags=[], conditions=EMPTY }={})
+// Build a query from tags, conditions and raw condition tokens: the tags in order, then each kind
+// of condition in KINDS order.
+export function buildQuery({ tags=[], conditions=EMPTY, raw={} }={})
 {
-    return [...tags, ...conditionTokens(conditions)].join(" ");
+    let c = { ...EMPTY, ...conditions };
+    let tokens = [...tags];
+    for(let kind of Object.keys(KINDS))
+        tokens.push(...kindTokens(kind, c), ...(raw[kind] ?? []));
+    return tokens.join(" ");
+}
+
+// Return whether a parsed query sets a kind of condition, from a menu or written by hand.
+export function hasKind({ conditions, raw }, kind)
+{
+    return raw[kind] != null || KINDS[kind].some((key) => conditions[key] != EMPTY[key]);
+}
+
+// Return whether a query has any condition.
+export function hasConditions(query)
+{
+    let parsed = parseQuery(query);
+    return Object.keys(KINDS).some((kind) => hasKind(parsed, kind));
 }
 
 // Return query with some conditions changed, keeping its tags and the other conditions.  A
-// condition set to null (or false for hideAi) is removed.
+// condition set to null (or false for hideAi) is removed.  Changing a kind replaces any tokens of
+// that kind written by hand.
 export function setConditions(query, changes)
 {
-    let { tags, conditions } = parseQuery(query);
-    return buildQuery({ tags, conditions: { ...conditions, ...changes } });
+    let { tags, conditions, raw } = parseQuery(query);
+    raw = { ...raw };
+    for(let [kind, keys] of Object.entries(KINDS))
+    {
+        if(keys.some((key) => key in changes))
+            delete raw[kind];
+    }
+    return buildQuery({ tags, conditions: { ...conditions, ...changes }, raw });
+}
+
+// Return query without any condition.
+export function clearConditions(query)
+{
+    return buildQuery({ tags: parseQuery(query).tags });
 }
 
 // Return the query for searching newTags (a query typed in the search box or a saved search) from
-// the list currentQuery: the new tags, with the conditions of the current list unless the new
-// query sets the same kind of condition itself.
+// the list currentQuery: the new tags, with the conditions of the current list for each kind the
+// new query doesn't set itself.  The tags of currentQuery are dropped.  This also applies default
+// conditions: searchFromList(query, defaultsQuery).
 export function searchFromList(newTags, currentQuery)
 {
     let current = parseQuery(currentQuery);
     let next = parseQuery(newTags);
-    let conditions = { ...current.conditions };
-    for(let [key, value] of Object.entries(next.conditions))
+    let conditions = { ...next.conditions };
+    let raw = { ...next.raw };
+    for(let [kind, keys] of Object.entries(KINDS))
     {
-        if(value != EMPTY[key])
-            conditions[key] = value;
+        if(hasKind(next, kind))
+            continue;
+        for(let key of keys)
+            conditions[key] = current.conditions[key];
+        if(current.raw[kind])
+            raw[kind] = current.raw[kind];
     }
-    return buildQuery({ tags: next.tags, conditions });
+    return buildQuery({ tags: next.tags, conditions, raw });
 }
 
 // Return the query with tag added at the end, or excluded ("-tag") if exclude is true.  A tag
 // already in the query, included or excluded, changes in place instead of being added twice.
 export function refineQuery(query, tag, { exclude=false }={})
 {
-    let { tags, conditions } = parseQuery(query);
+    let { tags, conditions, raw } = parseQuery(query);
     let word = exclude? `-${tag}`:tag;
     let index = tags.findIndex((t) => t == tag || t == `-${tag}`);
     if(index == -1)
         tags.push(word);
     else
         tags[index] = word;
-    return buildQuery({ tags, conditions });
+    return buildQuery({ tags, conditions, raw });
 }
 
 // Return the user ID of a fav:<id> token in the query, or null.

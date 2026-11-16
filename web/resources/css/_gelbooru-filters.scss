@@ -1,1 +1,114 @@
-// Gelbooru: filters.  See _gelbooru.scss.
+// Gelbooru: the posts list's condition menus, the related tags row's category colors and the note
+// at the end of a list with conditions.  See _gelbooru.scss and sites/gelbooru/conditions-ui.js.
+
+// The condition menus are a row of box links like the Pixiv search options (_next.scss "list
+// options"): a set condition shows its value, underlined.
+.gb-posts-ui > .gb-conditions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    // 隐藏 AI is a toggle, set off from the menus by the same rule as between filter groups.
+    > .box-link.gb-cond-ai {
+        position: relative;
+        margin-left: 10px;
+        &::before {
+            content: "";
+            position: absolute;
+            left: -6px;
+            top: 8px;
+            bottom: 8px;
+            border-left: 1px solid var(--n-rule);
+        }
+    }
+
+    > .box-link.gb-cond-clear {
+        color: var(--n-pencil);
+        &:hover { color: var(--n-blue); }
+    }
+}
+
+.popup-menu-box.gb-cond-menu {
+    min-width: 140px;
+
+    // The hand-written condition this menu replaces.
+    > .gb-cond-raw-current {
+        padding: 6px 12px 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--n-rule);
+        color: var(--n-pencil);
+        font-family: var(--n-font-num);
+        font-size: 13px;
+        white-space: nowrap;
+
+        &::before {
+            content: "手写：";
+            font-family: var(--n-font);
+        }
+    }
+
+    // The ratings can be picked together, so each has a check box.
+    > .box-link.gb-rating-option .label-box::before {
+        content: "";
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 8px;
+        vertical-align: -1px;
+        box-sizing: border-box;
+        border: 1px solid var(--n-pencil);
+        border-radius: 3px;
+    }
+
+    > .box-link.gb-rating-option.selected .label-box::before {
+        border-color: var(--n-blue);
+        background: var(--n-blue);
+        box-shadow: inset 0 0 0 2px var(--n-surface);
+    }
+}
+
+// Related tags in their category's color, once it's known.
+.n-related-chip > .n-related-tag[class*="tag-category-"] {
+    color: var(--gb-cat);
+}
+
+// Under 没有结果 or the end of the list: the conditions and a link to search without them.
+.search-view > .list-end-note {
+    display: flex;
+    justify-content: center;
+    padding: 16px 16px 40px;
+
+    &[hidden] { display: none; }
+
+    > .gb-conditions-note {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px 16px;
+        color: var(--n-pencil);
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .gb-conditions-note-clear {
+        color: var(--n-blue);
+        text-decoration: none;
+        &:hover { text-decoration: underline; }
+    }
+}
+
+// The related tags of a posts list take a line of their own under the options, since there are
+// up to 20 of them.
+body.gelbooru .thumbnail-ui-box > .n-related-tags {
+    flex-basis: 100%;
+
+    // No rule before a line of its own.
+    &::before { display: none; }
+}
+
+// Under 没有结果, the note lines up with it.
+.search-view:has(> .no-results:not([hidden])) > .list-end-note {
+    justify-content: flex-start;
+    padding: 4px 0 40px;
+}

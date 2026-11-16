@@ -228,6 +228,8 @@ export default class SearchView extends Widget
                     <span class=list-end-text></span>
                     <button type=button class=n-text-button>继续查找</button>
                 </div>
+
+                <div class=list-end-note hidden></div>
             </div>
         `});
 
@@ -559,8 +561,9 @@ export default class SearchView extends Widget
 
         signal.throwIfAborted();
 
-        // If we have no IDs and nothing is loading, the data source is empty (no results).
-        if(this.dataSource?.hasNoResults)
+        // If we have no IDs and nothing is loading, the data source is empty (no results).  At the
+        // end of the list, show the data source's note, if any.
+        if(this.dataSource?.hasNoResults || this.dataSource?.loadedAllPages)
             this._refreshNoResults();
 
         // A page that failed to load isn't loaded, so the check below would pick it again and,
@@ -741,6 +744,13 @@ export default class SearchView extends Widget
             endNotice.querySelector(".list-end-text").textContent = endText;
         }
         endNotice.querySelector("button").hidden = stopped == null;
+
+        // A note the data source adds once the whole list is loaded, like the Gelbooru posts
+        // list's conditions with a link to search without them.
+        let note = this.dataSource?.loadedAllPages && !this.dataSource.isAnyPageLoading? this.dataSource.createListEndNote?.():null;
+        let endNote = this.root.querySelector(".list-end-note");
+        endNote.replaceChildren(...(note? [note]:[]));
+        endNote.hidden = note == null;
     }
 
     // Return all media IDs currently loaded in the data source, and the page

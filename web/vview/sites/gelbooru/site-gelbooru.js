@@ -17,6 +17,7 @@ import * as links from '/vview/sites/gelbooru/links.js';
 import Posts, { queryFromUrl, searchToRemember } from '/vview/sites/gelbooru/data-sources/posts.js';
 import Post from '/vview/sites/gelbooru/data-sources/post.js';
 import History, { storePostCopy } from '/vview/sites/gelbooru/data-sources/history.js';
+import { defaultConditions, createSearchSettings } from '/vview/sites/gelbooru/search-defaults.js';
 
 const CAPS = Object.freeze({
     ...Site.DEFAULT_CAPS,
@@ -209,11 +210,14 @@ export default class SiteGelbooru extends Site.Site
     }
 
     // The search helpers in misc/helpers.js and util/pixiv.js ask these.
+    //
+    // A new search takes each kind of condition it doesn't set itself from the posts list it's
+    // started from, and then from the default conditions in settings.
     getArgsForTagSearch(tags, url)
     {
         let current = this.getDataSourceForUrl(url) == Posts? queryFromUrl(url):"";
         let args = new helpers.args("/index.php?page=post&s=list#ppixiv");
-        let query = searchFromList(tags, current);
+        let query = searchFromList(searchFromList(tags, current), buildQuery({ conditions: defaultConditions() }));
         if(query)
             args.query.set("tags", query);
         return args;
@@ -230,6 +234,11 @@ export default class SiteGelbooru extends Site.Site
         args.hash.delete("illust_id");
         args.hash.delete("view");
         return args;
+    }
+
+    createSearchSettings(globalOptions)
+    {
+        createSearchSettings(globalOptions);
     }
 
     // The tags of a posts list without its conditions, or null for other URLs.
