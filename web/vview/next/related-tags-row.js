@@ -1,11 +1,13 @@
 // The related tags Pixiv sends with a tag search, as one line of chips in the desktop header.
 // A click adds the tag to the search, Shift+click searches it alone, and the − on hover excludes
-// it.  The line takes the space left after the filter bar, or a line of its own when too little
+// it.  Right-click saves the tag as a saved search, or unsaves it, and saved tags are drawn as
+// filled pills.  The line takes the space left after the filter bar, or a line of its own when too little
 // is left, and shows only the chips that fit.  See docs/design.md "搜索".
 
 import Widget from '/vview/widgets/widget.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { createRefineButtons } from '/vview/next/tag-refine.js';
+import SavedSearchTags from '/vview/misc/saved-search-tags.js';
 
 const MAX_CHIPS = 12;
 
@@ -21,6 +23,28 @@ export default class RelatedTagsRow extends Widget
         this.dataSource.addEventListener("updated", () => this.refresh(), this._signal);
         ppixiv.settings.addEventListener("search_related_tags", () => this.refresh(), this._signal);
         window.addEventListener("tag-translations-changed", () => { this._shownKey = null; this.refresh(); }, this._signal);
+        window.addEventListener("recent-tag-searches-changed", () => this._markSaved(), this._signal);
+
+        // Right-click toggles the tag as a saved search, like the search box's pin.  The header
+        // has ppixiv's own menu off, so this only replaces the browser's menu.
+        this.root.addEventListener("contextmenu", (e) => {
+            let link = e.target.closest(".n-related-tag");
+            if(link == null)
+                return;
+
+            e.preventDefault();
+            let tag = link.dataset.tag;
+            if(SavedSearchTags.groupNameForTag(tag) != null)
+            {
+                SavedSearchTags.remove(tag);
+                ppixiv.message.show(`已取消保存「${link.textContent}」`);
+            }
+            else
+            {
+                let group = SavedSearchTags.save(tag);
+                ppixiv.message.show(`已保存「${link.textContent}」到「${group == "Saved tags"? "已保存的标签":group}」`);
+            }
+        });
 
         this.root.addEventListener("click", (e) => {
             let link = e.target.closest(".n-related-tag");
@@ -83,7 +107,6 @@ export default class RelatedTagsRow extends Widget
             link.href = helpers.getArgsForTagRefine(tag, this.dataSource.url);
             link.dataset.tag = tag;
             link.textContent = translations[tag] ?? tag;
-            link.title = tag;
 
             // Only the − here: the chip itself is the +.
             let refine = createRefineButtons(tag);
@@ -93,6 +116,17 @@ export default class RelatedTagsRow extends Widget
         }
 
         this.root.hidden = tags.length == 0;
+        this._markSaved();
+    }
+
+    _markSaved()
+    {
+        for(let link of this.root.querySelectorAll(".n-related-tag"))
+        {
+            let saved = SavedSearchTags.groupNameForTag(link.dataset.tag) != null;
+            link.classList.toggle("saved", saved);
+            link.title = `${link.dataset.tag}\n右键${saved? "取消保存":"保存"}`;
+        }
         this._fitLine();
     }
 

@@ -9,6 +9,13 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.2",
+        title: "右键保存相关标签",
+        items: [
+            "搜索结果上方的相关标签可以右键直接存进已保存的标签，再右键一次取消保存。已经保存的标签显示成实心块，一眼就能看出来。",
+        ],
+    },
+    {
         id: "2026-11-16",
         title: "搜索下拉框重做，标签都显示中文",
         items: [

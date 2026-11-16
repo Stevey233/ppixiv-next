@@ -3199,6 +3199,16 @@ html:not(.mobile) .floating > .dialog > .header {
         &:hover { color: var(--n-blue); }
     }
 
+    // A saved search is a filled pill, like the saved chips in the search box's dropdown.
+    > .n-related-tag.saved {
+        margin-left: 4px;
+        padding: 0 10px;
+        line-height: 24px;
+        border-radius: 12px;
+        background: var(--n-surface-2);
+        color: var(--n-text);
+    }
+
     // The − keeps its space while hidden, so nothing moves on hover.
     .n-tag-refine-button {
         width: 20px;
