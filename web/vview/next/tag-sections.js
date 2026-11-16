@@ -47,6 +47,50 @@ export function createTagSectionHeader({ tag, translation, mediaIds, mode })
     return header;
 }
 
+// The sections of a list in sections (常看标签, and 收藏相关 in its 分组 view) as shown: each
+// section's works that the filter bar kept on the pages loaded so far, without empty ones.
+// sections is [{ mediaIds, lastPage, ... }], where lastPage is the page with the section's last
+// work, or null if it's all on page 1.  complete says whether that page has loaded.  Kept on the
+// data source until the shown works change.
+export function shownSectionsOf(dataSource, sections)
+{
+    let pages = dataSource.idList.mediaIdsByPage;
+    if(sections == null || pages.size == 0)
+        return [];
+
+    let key = `${pages.size}:${[...pages.values()].reduce((count, ids) => count + ids.length, 0)}`;
+    if(dataSource._shownSectionsFor !== sections || dataSource._shownSectionsKey != key)
+    {
+        dataSource._shownSectionsFor = sections;
+        dataSource._shownSectionsKey = key;
+        let shownSet = new Set([...pages.values()].flat());
+        dataSource._shownSections = sections
+            .map((section) => ({
+                ...section,
+                mediaIds: section.mediaIds.filter((mediaId) => shownSet.has(mediaId)),
+                complete: pages.has(section.lastPage ?? 1),
+            }))
+            .filter((section) => section.mediaIds.length > 0);
+    }
+    return dataSource._shownSections;
+}
+
+// For the search view, which calls a list's sectionAt for each thumbnail it creates: return
+// { header, end } for a work that starts or ends a section, where header is createHeader(section)
+// for the first work, or null for any other work.  A section isn't ended until its last page has
+// loaded, so its last row keeps scaling up while more of it may come.
+export function sectionAtOf(sections, mediaId, createHeader)
+{
+    for(let section of sections)
+    {
+        let start = section.mediaIds[0] == mediaId;
+        let end = section.complete && section.mediaIds.at(-1) == mediaId;
+        if(start || end)
+            return { header: start? createHeader(section):null, end };
+    }
+    return null;
+}
+
 // The list's option row.  On the desktop it also adds the line of tags after the filter bar.
 export class TagFeedUI extends RecommendOptions
 {

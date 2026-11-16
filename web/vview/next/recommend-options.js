@@ -12,7 +12,7 @@ import { helpers } from '/vview/misc/helpers.js';
 
 const SOURCES = [
     ["discovery", "Pixiv 推荐", "Pixiv 自己的推荐", (query) => `/discovery${query}#ppixiv`],
-    ["from-bookmarks", "收藏相关", "按最近 10 件收藏找相关作品，几件收藏都指向的排在前面", (query) => `/#ppixiv/from-bookmarks${query}`],
+    ["from-bookmarks", "收藏相关", "按 10 件收藏找相关作品（最近的 5 件和更早的 5 件），几件收藏都指向的排在前面", (query) => `/#ppixiv/from-bookmarks${query}`],
     ["tag-feed", "常看标签", "Pixiv 首页按你常看的标签推荐的作品，按标签分组", (query) => `/#ppixiv/tag-feed${query}`],
 ];
 
@@ -64,5 +64,20 @@ export default class RecommendOptions extends Widget
             this.root.querySelector("[data-type='all']").remove();
         for(let type of dataSource.name == "tag-feed"? ["safe", "r18"]:["all", "safe", "r18"])
             dataSource.setItem(this.root, { type, fields: {[key]: type}, defaults: {[key]: defaultMode} });
+
+        // 收藏相关's 分组 switch, remembered as a setting.  The list is built again from the cache,
+        // without requests.
+        if(dataSource.name == "from-bookmarks")
+        {
+            let group = helpers.createBoxLink({ label: "分组", popup: "按收藏分段：有共同标签的收藏一段，其余每件收藏一段", asElement: true });
+            group.classList.add("n-seed-group-toggle");
+            helpers.html.setClass(group, "selected", ppixiv.settings.get("from_bookmarks_grouped"));
+            group.addEventListener("click", (e) => {
+                e.preventDefault();
+                ppixiv.settings.set("from_bookmarks_grouped", !ppixiv.settings.get("from_bookmarks_grouped"));
+                ppixiv.app.setCurrentDataSource({ refresh: true, startAtBeginning: true });
+            });
+            this.root.querySelector(".box-button-row").append(group);
+        }
     }
 }

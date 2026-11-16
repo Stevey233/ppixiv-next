@@ -9,6 +9,14 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.5",
+        title: "收藏相关：新旧收藏一起找，可以分组看",
+        items: [
+            "收藏相关不再只看最近 10 件收藏：最近的挑 5 件互不相像的（连收一个系列只算一件），再从更早的收藏里随机抽 5 件，点\"重新查找\"换一批旧收藏。",
+            "选项行多了\"分组\"开关：有共同标签的收藏一段，其余每件收藏一段（\"因为收藏了…\"），几组都推荐的作品排在最前面。",
+        ],
+    },
+    {
         id: "2026-11-16.4",
         title: "编辑保存的标签也是块状",
         items: [

@@ -1,13 +1,15 @@
-// 收藏相关: related works of the user's most recent public bookmarks, see docs/design.md.
+// 收藏相关: related works of the user's public bookmarks, see docs/design.md.
 //
-// A build reads the newest page of public bookmarks, takes the first SEED_COUNT real works as
-// seeds, and loads each seed's related works with Pixiv's recommend/init endpoint (the set Pixiv
-// shows under a work, about 150 to 175 works in one request).  Works that several seeds point at
-// come first.
+// A build reads the newest page of public bookmarks and picks RECENT_SEEDS seeds from it that
+// differ from each other (pickDiverse), so a run of bookmarks from one series or artist gives one
+// seed, not ten.  OLD_SEEDS more come from OLD_PAGES random pages of older bookmarks, to bring
+// back older tastes.  Each seed's related works come from Pixiv's recommend/init endpoint (the
+// set Pixiv shows under a work, about 150 to 175 works in one request).  Works that several
+// seeds point at come first.
 //
-// Requests are spaced REQUEST_SPACING apart and cached in IndexedDB: the seed list for
-// SEEDS_FRESH, each seed's related works for RELATED_FRESH.  Nothing is requested unless the
-// list is opened.
+// Requests are spaced REQUEST_SPACING apart and cached in IndexedDB: the newest page for
+// SEEDS_FRESH, the old seeds for OLD_FRESH (until 重新查找 draws new ones), each seed's related
+// works for RELATED_FRESH.  Nothing is requested unless the list is opened.
 //
 // Cached records say whether a work was bookmarked when they were fetched.  Works bookmarked
 // since then are left out with the bookmarks page, the media cache, and the IDs this script saw
@@ -16,12 +18,16 @@
 import { helpers } from '/vview/misc/helpers.js';
 
 export const SEED_COUNT = 10;
+const RECENT_SEEDS = 5;
+const OLD_SEEDS = SEED_COUNT - RECENT_SEEDS;
+const OLD_PAGES = 2;
 const SEED_PAGE_SIZE = 48;
 const RELATED_LIMIT = 180;
 // A little over the 1.2 seconds the budget states: a timer can fire a millisecond early.
 const REQUEST_SPACING = 1250;
 const SEEDS_FRESH = 10*60*1000;
 const RELATED_FRESH = 24*60*60*1000;
+const OLD_FRESH = RELATED_FRESH;
 const FAILED_FRESH = 10*60*1000; // retry a seed that failed after this
 const BOOKMARKED_KEEP = RELATED_FRESH + 60*60*1000;
 
@@ -34,6 +40,13 @@ const STORE = "entries";
 // seed's tail, and then the newest seed.  Each ID appears once.
 export function rankRelated(lists)
 {
+    return rankRelatedEntries(lists).map((entry) => entry.id);
+}
+
+// rankRelated with each work's entry: { id, count, seed, seeds }, where seed is the index of the
+// list it ranks best in and seeds holds the indexes of every list that has it.
+export function rankRelatedEntries(lists)
+{
     let entries = new Map();
     lists.forEach((ids, seed) => {
         let unique = [...new Set(ids)];
@@ -41,8 +54,9 @@ export function rankRelated(lists)
             let position = rank / unique.length;
             let entry = entries.get(id);
             if(entry == null)
-                entries.set(id, entry = { id, count: 0, position, seed });
+                entries.set(id, entry = { id, count: 0, position, seed, seeds: [] });
             entry.count++;
+            entry.seeds.push(seed);
             if(position < entry.position)
             {
                 entry.position = position;
@@ -52,8 +66,76 @@ export function rankRelated(lists)
     });
 
     return [...entries.values()]
-        .sort((a, b) => b.count - a.count || a.position - b.position || a.seed - b.seed)
-        .map((entry) => entry.id);
+        .sort((a, b) => b.count - a.count || a.position - b.position || a.seed - b.seed);
+}
+
+// Tags that say little about a work's subject, so sharing them doesn't make two works alike.
+// Pixiv's popularity tags ("オリジナル1000users入り") are left out too.
+const COMMON_TAGS = new Set([
+    "オリジナル", "女の子", "創作", "イラスト", "落書き", "R-18", "R-18G", "AI生成", "AIイラスト",
+    "少女", "男の子", "漫画", "マンガ", "pixiv", "ファンアート",
+]);
+function subjectTags(tags)
+{
+    return (tags ?? []).filter((tag) => !COMMON_TAGS.has(tag) && !/users入り$/.test(tag));
+}
+
+// Whether two bookmarks { userId, tags } are alike: the same artist, or a third or more of
+// their subject tags shared.
+export function similarWorks(a, b)
+{
+    if(a.userId != null && a.userId == b.userId)
+        return true;
+    let tagsA = new Set(subjectTags(a.tags)), tagsB = subjectTags(b.tags);
+    let shared = tagsB.filter((tag) => tagsA.has(tag)).length;
+    let union = tagsA.size + tagsB.length - shared;
+    return union > 0 && shared / union >= 1/3;
+}
+
+// Pick count works in order, skipping any alike (similarWorks) to one picked already or to one
+// in taken.  If too few differ, fill up with the skipped ones in order.
+export function pickDiverse(works, count, { taken=[] }={})
+{
+    let picked = [];
+    for(let work of works)
+    {
+        if(picked.length == count)
+            break;
+        if(![...taken, ...picked].some((other) => similarWorks(other, work)))
+            picked.push(work);
+    }
+    for(let work of works)
+    {
+        if(picked.length >= count)
+            break;
+        if(!picked.includes(work))
+            picked.push(work);
+    }
+    return picked;
+}
+
+// Group seeds that share a subject tag, for 收藏相关's 分组 view.  seeds is [{ id, tags }] in
+// seed order.  Repeatedly take the subject tag most unplaced seeds have, if two or more do, and
+// group those seeds under it; seeds left over are a group each.  Return [{ tag, seeds }], where
+// tag is null for a single seed, groups of several first, then by their first seed.
+export function groupSeeds(seeds)
+{
+    let groups = [], left = [...seeds];
+    while(true)
+    {
+        let counts = new Map();
+        for(let seed of left)
+            for(let tag of new Set(subjectTags(seed.tags)))
+                counts.set(tag, (counts.get(tag) ?? 0) + 1);
+        let [tag, count] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
+        if(!(count >= 2))
+            break;
+        groups.push({ tag, seeds: left.filter((seed) => seed.tags.includes(tag)) });
+        left = left.filter((seed) => !seed.tags.includes(tag));
+    }
+    let index = (seed) => seeds.indexOf(seed);
+    groups.sort((a, b) => index(a.seeds[0]) - index(b.seeds[0]));
+    return [...groups, ...left.map((seed) => ({ tag: null, seeds: [seed] }))];
 }
 
 // Return ids reordered so no more than max works by one artist are among any window consecutive
@@ -91,6 +173,18 @@ export function spreadArtists(ids, artistOf, { max=3, window=30 }={})
             place(waiting.shift());
     }
     return result;
+}
+
+// Deleted and hidden works stay in the bookmarks list.
+function realWorks(works)
+{
+    return works.filter((work) => !work.isMasked && work.isBookmarkable !== false);
+}
+
+// What the 分组 view shows about a seed.  old: drawn from the older bookmarks.
+function seedInfo(work, old)
+{
+    return { title: work.title, userName: work.userName, tags: work.tags ?? [], old };
 }
 
 export class SeedFeed extends EventTarget
@@ -146,23 +240,35 @@ export class SeedFeed extends EventTarget
     async _build(refresh)
     {
         let stored = await this._get("seeds");
-        let seedList = !refresh && stored != null && Date.now() - stored.time < SEEDS_FRESH? stored:null;
+        let seedList = !refresh && stored?.info != null && Date.now() - stored.time < SEEDS_FRESH? stored:null;
         if(seedList == null)
         {
-            let userId = ppixiv.pixivInfo.userId;
-            let result = await this._request(`/ajax/user/${userId}/illusts/bookmarks`, {
-                tag: "", offset: 0, limit: SEED_PAGE_SIZE, rest: "show",
-            });
+            let result = await this._bookmarksPage(0);
             if(result.error)
                 return { status: "bookmarks-failed" };
 
-            // Deleted and hidden works stay in the bookmarks list.
+            // The old seeds stay a day, until 重新查找 draws new ones, so they don't bring 5 new
+            // seeds' requests every 10 minutes.  They're drawn after the new ones, to differ
+            // from them.
             let works = result.body.works;
-            let real = works.filter((work) => !work.isMasked && work.isBookmarkable !== false);
+            let recent = pickDiverse(realWorks(works), RECENT_SEEDS);
+            let old = !refresh && stored?.old != null && Date.now() - stored.old.time < OLD_FRESH?
+                stored.old:await this._pickOldSeeds(result.body.total ?? 0, recent);
+
+            // With few old bookmarks, more of the newest ones make up the count.
+            let more = pickDiverse(realWorks(works).filter((work) => !recent.includes(work)), SEED_COUNT - recent.length - old.seeds.length, { taken: recent });
+            let info = {};
+            for(let work of [...recent, ...more])
+                info[work.id] = seedInfo(work, false);
+
+            // Old seeds kept from yesterday may have moved into the newest page since.
+            let newIds = [...recent, ...more].map((work) => String(work.id));
             seedList = {
                 time: Date.now(),
-                seeds: real.slice(0, SEED_COUNT).map((work) => String(work.id)),
-                bookmarked: works.map((work) => String(work.id)),
+                seeds: newIds.concat(old.seeds.filter((id) => !newIds.includes(id))),
+                info: { ...info, ...old.info },
+                bookmarked: [...works.map((work) => String(work.id)), ...old.bookmarked],
+                old,
             };
             await this._put("seeds", seedList);
         }
@@ -189,6 +295,7 @@ export class SeedFeed extends EventTarget
 
         await this._forgetOtherSeeds(seeds);
 
+        let listSeeds = seeds.filter((seed, index) => entries[index].works != null);
         let lists = entries.filter((entry) => entry.works != null).map((entry) => entry.works);
         if(lists.length == 0)
             return { status: "related-failed" };
@@ -199,14 +306,68 @@ export class SeedFeed extends EventTarget
                 works.set(String(work.id), work);
 
         let bookmarkedHere = Object.keys(await this._get("bookmarked") ?? {});
+        let ranked = rankRelatedEntries(lists.map((list) => list.map((work) => String(work.id))));
         return {
             status: "ok",
             seeds,
             used: lists.length,
-            order: rankRelated(lists.map((list) => list.map((work) => String(work.id)))),
+            usedOld: listSeeds.filter((seed) => seedList.info[seed]?.old).length,
+            order: ranked.map((entry) => entry.id),
+            // For the 分组 view: each work's seeds, as IDs, and what's known about each seed.
+            seedsOf: new Map(ranked.map((entry) => [entry.id, { best: listSeeds[entry.seed], all: entry.seeds.map((index) => listSeeds[index]) }])),
+            seedInfo: seedList.info,
+            listSeeds,
             works,
             excluded: new Set([...seeds, ...seedList.bookmarked, ...bookmarkedHere]),
         };
+    }
+
+    _bookmarksPage(offset)
+    {
+        return this._request(`/ajax/user/${ppixiv.pixivInfo.userId}/illusts/bookmarks`, {
+            tag: "", offset, limit: SEED_PAGE_SIZE, rest: "show",
+        });
+    }
+
+    // Draw OLD_SEEDS seeds from OLD_PAGES random pages of the bookmarks after the newest page,
+    // one page from each part of that range, unlike the new seeds in recent and each other.  A
+    // page that fails is skipped.  Return { time, seeds, info, bookmarked }.
+    async _pickOldSeeds(total, recent)
+    {
+        let old = { time: Date.now(), seeds: [], info: {}, bookmarked: [] };
+        let range = total - SEED_PAGE_SIZE;
+        if(range <= 0)
+            return old;
+
+        let candidates = [];
+        let pages = Math.min(OLD_PAGES, Math.ceil(range / SEED_PAGE_SIZE));
+        for(let page = 0; page < pages; page++)
+        {
+            let start = SEED_PAGE_SIZE + Math.floor(range * page / pages);
+            let size = Math.floor(range / pages);
+            let offset = start + Math.floor(Math.random() * Math.max(1, size - SEED_PAGE_SIZE + 1));
+            let result = await this._bookmarksPage(offset);
+            if(result.error)
+                continue;
+            old.bookmarked.push(...result.body.works.map((work) => String(work.id)));
+            candidates.push(...realWorks(result.body.works));
+        }
+
+        // Pages of a short range can overlap.
+        candidates = [...new Map(candidates.map((work) => [String(work.id), work])).values()];
+
+        // Shuffle, so the picks aren't the newest of each page.
+        for(let i = candidates.length - 1; i > 0; i--)
+        {
+            let j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        for(let work of pickDiverse(candidates, OLD_SEEDS, { taken: recent }))
+        {
+            old.seeds.push(String(work.id));
+            old.info[work.id] = seedInfo(work, true);
+        }
+        return old;
     }
 
     _setProgress(progress)

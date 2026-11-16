@@ -13,7 +13,7 @@
 import DataSource from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
 import { loadTagFeed, tagFeedLoading } from '/vview/misc/tag-feed.js';
-import { TagFeedUI, createTagSectionHeader } from '/vview/next/tag-sections.js';
+import { TagFeedUI, createTagSectionHeader, shownSectionsOf, sectionAtOf } from '/vview/next/tag-sections.js';
 
 // Set by 换一批, so the data source created by it sends a new request.
 let refreshRequested = false;
@@ -136,36 +136,10 @@ export default class DataSources_TagFeed extends DataSource
 
     // Return the sections as shown, after the filter bar: [{ tag, translation, mediaIds }], with
     // empty ones left out.
-    get shownSections()
-    {
-        let shown = this.idList.mediaIdsByPage.get(1);
-        if(shown == null || this.sections == null)
-            return [];
+    get shownSections() { return shownSectionsOf(this, this.sections); }
 
-        if(this._shownFor !== shown || this._shownLength != shown.length)
-        {
-            this._shownFor = shown;
-            this._shownLength = shown.length;
-            let shownSet = new Set(shown);
-            this._shownSections = this.sections
-                .map((section) => ({ ...section, mediaIds: section.mediaIds.filter((mediaId) => shownSet.has(mediaId)) }))
-                .filter((section) => section.mediaIds.length > 0);
-        }
-        return this._shownSections;
-    }
-
-    // The search view calls this for each thumbnail it creates.  Return { header, end } for a work
-    // that starts or ends a section, where header is the element to show before the work, or null
-    // for any other work.
     sectionAt(mediaId)
     {
-        for(let section of this.shownSections)
-        {
-            let start = section.mediaIds[0] == mediaId;
-            let end = section.mediaIds.at(-1) == mediaId;
-            if(start || end)
-                return { header: start? createTagSectionHeader({ ...section, mode: this.args.hash.get("mode") }):null, end };
-        }
-        return null;
+        return sectionAtOf(this.shownSections, mediaId, (section) => createTagSectionHeader({ ...section, mode: this.args.hash.get("mode") }));
     }
 }

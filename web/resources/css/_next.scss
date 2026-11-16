@@ -544,6 +544,20 @@ html:not(.macos) {
     }
 }
 
+// 收藏相关's 分组 switch, after the age modes, with the same rule before it.
+.box-button-row > .box-link.n-seed-group-toggle {
+    position: relative;
+    margin-left: 10px;
+    &::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 8px;
+        bottom: 8px;
+        border-left: 1px solid var(--n-rule);
+    }
+}
+
 .search-title {
     .n-seed-feed-status {
         margin-left: 12px;

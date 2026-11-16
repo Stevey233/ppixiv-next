@@ -83,6 +83,7 @@ export default class Settings extends EventTarget
         this.configure("info_panel_artist_works", { defaultValue: true });
         this.configure("result_filters_remembered", { defaultValue: {} }); // see misc/result-filters.js
         this.configure("search_related_tags", { defaultValue: true }); // see next/related-tags-row.js
+        this.configure("from_bookmarks_grouped", { defaultValue: false }); // see data-sources/from-bookmarks.js
         this.configure("search_default_order", { defaultValue: "keep" }); // see misc/result-filters.js
         this.configure("search_default_bookmarks", { defaultValue: "keep" });
         this.configure("search_default_type", { defaultValue: "keep" });
