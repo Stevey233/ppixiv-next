@@ -36,6 +36,8 @@ import { DropdownBoxOpener, DropdownMenuOpener } from '/vview/widgets/dropdown.j
 import { helpers } from '/vview/misc/helpers.js';
 import { searchApiArgs, rememberAgeMode } from '/vview/misc/result-filters.js';
 import RelatedTagsRow from '/vview/next/related-tags-row.js';
+import { BOOKMARK_COUNTS, bookmarkCountLabel } from '/vview/next/bookmark-count.js';
+import { promptBookmarkCount } from '/vview/widgets/prompts.js';
 
 export default class DataSource_Search extends DataSource
 {
@@ -313,14 +315,23 @@ const ASPECT = [{
 
 // The Pixiv search form shows 300-499, 500-999 and 1000-.  That's not
 // really useful and the query parameters let us filter differently, so we
-// replace it with a more useful "minimum bookmarks" filter.
-const BOOKMARK_COUNT = [{
-    createOptions: { label: "全部",               dataset: { default: true } },
-    setupOptions: { fields: {blt: null, bgt: null} },
-}, ...[100, 250, 500, 1000, 2500, 5000].map((count) => ({
-    createOptions: { label: `${count}+` },
-    setupOptions: { fields: {blt: count, bgt: null} },
-}))];
+// replace it with a more useful "minimum bookmarks" filter.  A count set with 自定义… is listed
+// too while the URL has it, so it shows as selected.
+function bookmarkCountItems(url)
+{
+    let counts = BOOKMARK_COUNTS;
+    let current = parseInt(url.searchParams.get("blt"));
+    if(current > 0 && url.searchParams.get("bgt") == null && !counts.includes(current))
+        counts = [...counts, current].sort((a, b) => a - b);
+
+    return [{
+        createOptions: { label: "全部",               dataset: { default: true } },
+        setupOptions: { fields: {blt: null, bgt: null} },
+    }, ...counts.map((count) => ({
+        createOptions: { label: bookmarkCountLabel(count) },
+        setupOptions: { fields: {blt: count, bgt: null} },
+    }))];
+}
 
 const BOOKMARKED = [{
     createOptions: { label: "全部",               dataset: { default: true } },
@@ -419,7 +430,7 @@ class UI extends Widget
         // the 更多条件 panel (see docs/design.md).  Mobile shows every option in its sheet.
         let outside = [
             { button: ".sort-button", items: SORT },
-            { button: ".bookmark-count-button", items: BOOKMARK_COUNT },
+            { button: ".bookmark-count-button", items: bookmarkCountItems(new URL(dataSource.url)) },
         ];
         let folded = [
             // 标签 and 标签完全一致 don't count as set: a tag click opens 标签完全一致.  A chip's ×
@@ -470,6 +481,8 @@ class UI extends Widget
         {
             if(button == ".time-ago-button")
                 this._setupTimeDropdown(this.querySelector(button), items);
+            else if(button == ".bookmark-count-button")
+                this._setupBookmarkCountDropdown(this.querySelector(button), items);
             else
                 dataSource.setupDropdown(this.querySelector(button), items);
         }
@@ -568,6 +581,36 @@ class UI extends Widget
         url.searchParams.set("s_mode", mode);
         url.searchParams.set("type", "artwork");
         return url.toString();
+    }
+
+    // The 收藏数 dropdown: the counts, then 自定义…, which asks for a count and searches with it.
+    _setupBookmarkCountDropdown(button, items)
+    {
+        button.classList.add("n-dropdown");
+        new DropdownMenuOpener({
+            button,
+            createDropdown: ({...options}) => {
+                let dropdown = new Widget({
+                    ...options,
+                    template: `<div class=vertical-list></div>`,
+                });
+
+                this.dataSource.createDropdownItems(dropdown.root, items);
+
+                let custom = helpers.createBoxLink({ label: "自定义…", classes: ["n-bookmark-count-custom"], asElement: true });
+                custom.addEventListener("click", async () => {
+                    let current = parseInt(new URL(this.dataSource.url).searchParams.get("blt"));
+                    let count = await promptBookmarkCount(current > 0? current:null);
+                    if(count == null)
+                        return;
+
+                    let { args } = this.dataSource.setItemInUrl(new helpers.args(this.dataSource.url), { fields: {blt: count, bgt: null} });
+                    helpers.navigate(args);
+                });
+                dropdown.root.appendChild(custom);
+                return dropdown;
+            },
+        });
     }
 
     // The 时间 dropdown: the ranges in a list, then the years in a row.

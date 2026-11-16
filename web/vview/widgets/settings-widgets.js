@@ -12,8 +12,9 @@ import { helpers } from '/vview/misc/helpers.js';
 import { importAllData, exportAllData } from '/vview/misc/data-export.js';
 import WhatsNew from '/vview/widgets/whats-new.js';
 import { ShortcutsPage } from '/vview/next/shortcuts.js';
-import { ConfirmPrompt } from '/vview/widgets/prompts.js';
+import { ConfirmPrompt, promptBookmarkCount } from '/vview/widgets/prompts.js';
 import LocalAPI from '/vview/misc/local-api.js';
+import { BOOKMARK_COUNTS, bookmarkCountLabel } from '/vview/next/bookmark-count.js';
 
 function createSettingsWidget({ globalOptions })
 {
@@ -584,15 +585,31 @@ function createSettingsWidget({ globalOptions })
                 ...globalOptions,
                 setting: "search_default_bookmarks",
                 label: "新搜索的收藏数",
-                values: {
-                    keep: "沿用当前搜索",
-                    all: "全部",
-                    // "100+" rather than "100": an object puts integer keys before the others.
-                    ...Object.fromEntries([100, 250, 500, 1000, 2500, 5000].map((count) => [`${count}+`, `${count}+`])),
+                // "100+" rather than "100": an object puts integer keys before the others.  A count
+                // set with 自定义… is listed too.
+                values: () => {
+                    let counts = BOOKMARK_COUNTS;
+                    let current = parseInt(ppixiv.settings.get("search_default_bookmarks"));
+                    if(current > 0 && !counts.includes(current))
+                        counts = [...counts, current].sort((a, b) => a - b);
+                    return {
+                        keep: "沿用当前搜索",
+                        all: "全部",
+                        ...Object.fromEntries(counts.map((count) => [`${count}+`, bookmarkCountLabel(count)])),
+                        custom: "自定义…",
+                    };
+                },
+                choose: async (value) => {
+                    if(value != "custom")
+                        return value;
+                    let current = parseInt(ppixiv.settings.get("search_default_bookmarks"));
+                    let count = await promptBookmarkCount(current > 0? current:null);
+                    return count == null? null:`${count}+`;
                 },
                 explanation: (value) => value == "keep"?
                     "搜新标签时沿用正在看的搜索的收藏数条件。":
-                    "搜新标签时只看收藏数到这个数的作品（会员功能）。给当前搜索加减标签不受影响。",
+                    value == "all"? "搜新标签时不限收藏数。给当前搜索加减标签不受影响。":
+                    `搜新标签时只看收藏数 ${bookmarkCountLabel(parseInt(value))} 的作品（会员功能）。给当前搜索加减标签不受影响。`,
             });
         },
 

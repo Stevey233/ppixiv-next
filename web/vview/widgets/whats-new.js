@@ -9,6 +9,13 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.8",
+        title: "收藏数可以选 1万+、2万+ 和自定义",
+        items: [
+            "搜索的\"收藏数\"和设置里的\"新搜索的收藏数\"多了 1万+、2万+，还有\"自定义…\"：输入几 k（3 就是 3000，也可以写 2w）。",
+        ],
+    },
+    {
         id: "2026-11-16.7",
         title: "收藏相关：种子加到 20 件",
         items: [

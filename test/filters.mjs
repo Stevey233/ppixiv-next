@@ -297,3 +297,18 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.equal(dataSource.filteredStopPage, 5);
     log('ok   Pages with only duplicates count towards the pause');
 }
+
+// Bookmark counts typed into 自定义… (next/bookmark-count.js): thousands by default.
+{
+    let { parseBookmarkCount, bookmarkCountLabel } = await import('/vview/next/bookmark-count.js');
+    assert.equal(parseBookmarkCount('3'), 3000);
+    assert.equal(parseBookmarkCount(' 1.5k '), 1500);
+    assert.equal(parseBookmarkCount('2w'), 20000);
+    assert.equal(parseBookmarkCount('3万'), 30000);
+    assert.equal(parseBookmarkCount('0'), null);
+    assert.equal(parseBookmarkCount('abc'), null);
+    assert.equal(bookmarkCountLabel(10000), '1万+');
+    assert.equal(bookmarkCountLabel(15000), '15000+');
+    assert.equal(bookmarkCountLabel(5000), '5000+');
+    log('ok   Custom bookmark counts');
+}

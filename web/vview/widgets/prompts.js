@@ -1,6 +1,7 @@
 // A popup for inputting text.
 import DialogWidget from '/vview/widgets/dialog.js';
 import { helpers } from '/vview/misc/helpers.js';
+import { parseBookmarkCount } from '/vview/next/bookmark-count.js';
 
 export class TextPrompt extends DialogWidget
 {
@@ -168,4 +169,13 @@ export class ConfirmPrompt extends DialogWidget
 
         this.visible = false;
     }
+}
+
+// Ask for a minimum bookmark count in thousands, for 自定义… (next/bookmark-count.js).  current is
+// the count to start from, or null.  Return the count, or null if cancelled or not a count.
+export async function promptBookmarkCount(current)
+{
+    let value = current? String(current / 1000):"";
+    let text = await TextPrompt.prompt({ title: "收藏数至少多少 k（3 = 3000，也可以写 2w）", value });
+    return text == null? null:parseBookmarkCount(text);
 }

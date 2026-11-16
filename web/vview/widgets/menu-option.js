@@ -398,9 +398,12 @@ export class MenuOptionSliderSetting extends MenuOptionSlider
 // make more sense as a dropdown, but for now it uses a slider.
 export class MenuOptionOptionsSetting extends MenuOptionButton
 {
+    // values is { value: label }, or a function returning it when the dropdown opens.  If
+    // choose(value) is given, a pick sets the value it returns, or nothing if it returns null.
     constructor({setting,
         label,
         values,
+        choose=null,
         explanation,
         settings=null,
         ...options})
@@ -432,14 +435,16 @@ export class MenuOptionOptionsSetting extends MenuOptionButton
                 });
 
                 let currentValue = this.value;
-                for(let [value, label] of Object.entries(values))
+                for(let [value, label] of Object.entries(typeof values == "function"? values():values))
                 {
                     let link = helpers.createBoxLink({ label, asElement: true });
                     helpers.html.setClass(link, "selected", value == currentValue);
 
                     dropdown.root.appendChild(link);
-                    link.addEventListener("click", () => {
-                        this.value = value;
+                    link.addEventListener("click", async () => {
+                        let picked = choose? await choose(value):value;
+                        if(picked != null)
+                            this.value = picked;
                     });
                 }
 
