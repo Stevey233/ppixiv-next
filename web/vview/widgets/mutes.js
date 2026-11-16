@@ -344,8 +344,9 @@ export class MutedTagsForPostDialog extends DialogWidget
 
         });
 
-        // Hide the warning for non-premium users if the user does have premium.
-        this.root.querySelector(".non-premium-mute-warning").hidden = ppixiv.pixivInfo.premium;
+        // Hide the warning for non-premium users if the user does have premium.  Gelbooru has no
+        // account mutes to save to.
+        this.root.querySelector(".non-premium-mute-warning").hidden = ppixiv.pixivInfo.premium || !ppixiv.site.caps.users;
 
         this.refresh();
     }
@@ -393,7 +394,8 @@ export class MutedTagsForPostDialog extends DialogWidget
         let mutedList = this.root.querySelector(".post-mute-list");
         helpers.html.removeElements(mutedList);
 
-        // Add an entry for the user.
+        // Add an entry for the user.  Gelbooru has no users.
+        if(ppixiv.site.caps.users)
         {
             let isMuted = ppixiv.muting.isUserIdMuted(userId);
             let entry = createEntry(`User: ${username}`, isMuted);

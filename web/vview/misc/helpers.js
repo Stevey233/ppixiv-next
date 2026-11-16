@@ -526,9 +526,11 @@ export class helpers
         return url1.toString() == url2.toString();
     }
 
-    static setPageTitle(title)
+    // translate is false for titles that are user content, like a work's title.
+    static setPageTitle(title, { translate=true }={})
     {
-        title = translateTitle(title);
+        if(translate)
+            title = translateTitle(title);
         let title_element = document.querySelector("title");
         if(title_element.textContent == title)
             return;
@@ -779,7 +781,10 @@ export class helpers
             if(mediaInfo.bookmarkData)
                 pageTitle += "★";
 
-            pageTitle += mediaInfo.userName + " - " + mediaInfo.illustTitle;
+            // Gelbooru posts have no user name until their artist tags are known.
+            if(mediaInfo.userName != "")
+                pageTitle += mediaInfo.userName + " - ";
+            pageTitle += mediaInfo.illustTitle;
             return pageTitle;
         }
         else
@@ -798,8 +803,8 @@ export class helpers
 
     static setTitle(mediaInfo)
     {
-        let pageTitle = helpers.getTitleForIllust(mediaInfo) ?? "Loading...";
-        helpers.setPageTitle(pageTitle);
+        let pageTitle = helpers.getTitleForIllust(mediaInfo);
+        helpers.setPageTitle(pageTitle ?? "Loading...", { translate: pageTitle == null });
     }
 
     static setIcon({vview=false}={})

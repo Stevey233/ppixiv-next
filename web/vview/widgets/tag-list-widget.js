@@ -75,8 +75,8 @@ export default class TagListWidget extends Widget
                 tags.push({tag});
         }
 
-        // Add "AI" to the list.
-        let showAI = this.mediaInfo.aiType == 2;
+        // Add "AI" to the list, unless the work has an ai-generated tag of its own (Gelbooru).
+        let showAI = this.mediaInfo.aiType == 2 && !this.mediaInfo.tagList.includes("ai-generated");
         if(showAI)
             tags.splice(0, 0, {ai: true});
         
@@ -88,8 +88,12 @@ export default class TagListWidget extends Widget
         // The links keep the current search's conditions, so they change with the list too.
         let list = helpers.getCanonicalUrl(ppixiv.plocation).url.toString();
 
+        // Gelbooru's tags have categories once they're loaded, and are shown grouped by them.
+        let categories = this.mediaInfo.tagCategories;
+
         // Short circuit if the tag list isn't changing, since IndexedDB is really slow.
-        if(this._currentTags != null && JSON.stringify(this._currentTags) == JSON.stringify(tags) && this._currentList == list)
+        if(this._currentTags != null && JSON.stringify(this._currentTags) == JSON.stringify(tags) && this._currentList == list &&
+            this._currentCategories == categories)
             return;
 
         // Look up tag translations.
@@ -102,9 +106,11 @@ export default class TagListWidget extends Widget
 
         this._currentTags = tags;
         this._currentList = list;
+        this._currentCategories = categories;
 
         // Remove any old tag list and create a new one.
         helpers.html.removeElements(this.root);
+        let groups = categories? this._createGroups():null;
 
         for(let {tag, ai} of tagList)
         {
@@ -127,6 +133,10 @@ export default class TagListWidget extends Widget
             });
 
             a.dataset.tag = tag;
+            let category = categories?.[tag];
+            if(category)
+                a.classList.add(`tag-category-${category}`);
+            let container = groups?.[category] ?? this.root;
 
             // On a tag search, a pill also has + and − to add or exclude the tag.  Not for the
             // R-18 and AI pills.
@@ -137,10 +147,45 @@ export default class TagListWidget extends Widget
                 let pill = document.createElement("span");
                 pill.className = "n-tag-pill";
                 pill.append(a, refine);
-                this.root.appendChild(pill);
+                container.appendChild(pill);
             }
             else
-                this.root.appendChild(a);
+                container.appendChild(a);
         }
+
+        for(let group of Object.values(groups ?? {}))
+            group.parentNode.hidden = group.childElementCount == 0;
+    }
+
+    // Create one labeled row per tag category, in TAG_GROUPS order, and return the element each
+    // category's pills go in.
+    _createGroups()
+    {
+        let groups = {};
+        for(let [category, label] of TAG_GROUPS)
+        {
+            let row = document.createElement("div");
+            row.className = `tag-group tag-category-${category}`;
+            row.dataset.category = category;
+
+            let labelElement = document.createElement("span");
+            labelElement.className = "tag-group-label";
+            labelElement.textContent = label;
+
+            let pills = document.createElement("div");
+            pills.className = "tag-group-tags";
+            row.append(labelElement, pills);
+            this.root.appendChild(row);
+            groups[category] = pills;
+        }
+        return groups;
     }
 }
+
+const TAG_GROUPS = [
+    ["artist", "画师"],
+    ["character", "角色"],
+    ["copyright", "作品"],
+    ["general", "普通"],
+    ["metadata", "元数据"],
+];

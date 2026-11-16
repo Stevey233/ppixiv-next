@@ -49,6 +49,7 @@ async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData 
         matchMedia: () => ({ matches: zoom, addEventListener() {} }),
         ppixiv: {
             app: { currentDataSource: { name: dataSource } },
+            site: {},
             settings: { get: (key) => key == "hd_thumbnails" ? storage.get("ppx-zh-thumb-quality") : settings?.[key] },
             mediaCache: { getMediaInfoSync: () => ({ width: 2000, height: 1000 }), getImageDimensions: (info) => info },
             extraCache: { registerLoadingThumbnail: (mediaId, img) => { registered.push({ mediaId, src: img.src }); return Promise.resolve(); } },

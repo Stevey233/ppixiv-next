@@ -164,6 +164,16 @@ export async function getPost(postId)
     return posts[0] ?? null;
 }
 
+// Look up tags by name, at most 100 per call.  Return [{ name, type }], where type is Gelbooru's
+// category ID (0 general, 1 artist, 3 copyright, 4 character, 5 metadata).  Names Gelbooru
+// doesn't know are left out.
+export async function getTags(names)
+{
+    console.assert(names.length <= 100);
+    let result = await dapi({ s: "tag", q: "index", limit: "100", names: names.join(" ") });
+    return result.tag ?? [];
+}
+
 // Tag autocomplete, which needs no key.  Return [{ tag, label, category, count }].  category is
 // Gelbooru's: tag (general), artist, character, copyright or metadata.
 export async function autocomplete(term, { signal=null }={})
