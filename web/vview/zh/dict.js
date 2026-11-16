@@ -539,7 +539,7 @@ export const SKIP_SELECTOR = [
     "textarea", "[contenteditable]", "script", "style", "[translate=no]",
     ".description", ".title", ".author", ".folder-text", ".tag", ".tag-entry", ".tag-name",
     ".tag-list", ".search-tags", ".word", ".user-name", ".username",
-    ".thumbnail-label", ".whats-new-dialog", ".follow-tag", ".utags_ul", ".avatar-widget",
+    ".thumbnail-label", ".whats-new-dialog", ".follow-tag", ".utags_ul", ".avatar-widget", ".n-related-tag",
     // User names and tags that ppixiv shows outside the containers above.
     ".thumbnail-box .muted-label", ".follow-widget .view-posts .label",
     // ppixiv copies the hovered element's data-popup here, and that is already translated

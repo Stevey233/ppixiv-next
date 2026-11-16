@@ -195,6 +195,8 @@ html:not(.mobile) .floating > .dialog.gb-taglib {
         &[hidden] { display: none; }
 
         .gb-taglib-retry {
+            flex: none;
+            white-space: nowrap;
             padding: 3px 12px;
             border: 1px solid var(--n-rule);
             border-radius: var(--n-radius);
