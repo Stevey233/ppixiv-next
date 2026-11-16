@@ -71,6 +71,7 @@ export default class Settings extends EventTarget
         this.configure("theme", { defaultValue: "auto" }); // "dark", "light" or "auto"
         this.configure("tag_language", { defaultValue: "zh" }); // "zh" or "en"
         this.configure("hd_thumbnails", { defaultValue: "auto" }); // "auto" or "off"
+        this.configure("gelbooru_upvote_on_favorite", { defaultValue: false });
         this.configure("hover_preload", { defaultValue: true });
         this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
         this.configure("following_last_seen_marker", { defaultValue: true });

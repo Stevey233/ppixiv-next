@@ -501,6 +501,8 @@ function createSettingsWidget({ globalOptions })
         },
 
         hdThumbnails: () => {
+            // Gelbooru has one larger size, its 850 px sample (sites/gelbooru/site-gelbooru.js).
+            let site = ppixiv.site.hdThumbnailUrl != null;
             return new MenuOptionOptionsSetting({
                 ...globalOptions,
                 setting: "hd_thumbnails",
@@ -509,7 +511,9 @@ function createSettingsWidget({ globalOptions })
                     auto: "自动",
                     off: "关闭",
                 },
-                explanation: (value) => value == "off"?
+                explanation: (value) => site?
+                    (value == "off"? "使用 Gelbooru 最大 350 像素的缩略图。":"图片缩略图出现在屏幕上时换成 850 像素的样图。视频和 GIF 不换。"):
+                    value == "off"?
                     "使用 Pixiv 的 540 像素缩略图。":
                     "按屏幕上的实际像素和网速选择 WebP 尺寸。",
             });
@@ -820,6 +824,9 @@ export class SettingsDialog extends DialogWidget
 
     addPages()
     {
+        // The site's own page (Gelbooru's account), titled with its name.
+        if(ppixiv.site.fillSettingsPage)
+            this._createPageButton("site");
         if(!ppixiv.native)
             this._createPageButton("general");
         this._createPageButton("thumbnail");
@@ -850,7 +857,7 @@ export class SettingsDialog extends DialogWidget
     {
         let pageButton = this.createTemplate({
             html: helpers.createBoxLink({
-                label: pageTitles[name],
+                label: pageTitles[name] ?? ppixiv.site.name,
                 classes: ["settings-page-button"],
             }),
         });
@@ -895,7 +902,7 @@ export class SettingsDialog extends DialogWidget
         this._pageWidget = this._createPage(settingsPage);
         helpers.html.setClass(this._pageButtons[settingsPage], "selected", true);
         if(!this.phone)
-            this.header = pageTitles[settingsPage];
+            this.header = pageTitles[settingsPage] ?? ppixiv.site.name;
 
         this._pageWidget.shutdownSignal.addEventListener("abort", () => {
             this._pageWidget = null;
@@ -1112,6 +1119,10 @@ export class SettingsDialog extends DialogWidget
                 settingsWidgets.shortcuts();
             },
 
+            site: () => {
+                ppixiv.site.fillSettingsPage(globalOptions);
+            },
+
             whatsNew: () => {
                 settingsWidgets.whatsNew();
             },
@@ -1141,7 +1152,7 @@ export class SettingsPageDialog extends DialogWidget
         ...options}={})
     {
         super({
-            header: pageTitles[settingsPage],
+            header: pageTitles[settingsPage] ?? ppixiv.site.name,
 
             ...options,
             dialogClass: "settings-dialog-page",

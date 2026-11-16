@@ -60,13 +60,13 @@ export default class MediaInfo
 
     // 0 or 1: illust, 2: animation (ugoira), "video": local video
     get illustType() { return this._getInfo("illustType"); }
-    get illustTitle() { return this._getInfo("illustTitle"); }
+    get illustTitle() { return this._getInfo("illustTitle"); }      set illustTitle(value) { this._setInfo("illustTitle", value); }
 
     // Manga pages.  This is 1 for videos and local images and any other sources that
     // don't have pages.
     get pageCount() { return this._getInfo("pageCount"); }
     get userId() { return this._getInfo("userId", null); }
-    get userName() { return this._getInfo("userName"); }
+    get userName() { return this._getInfo("userName"); }            set userName(value) { this._setInfo("userName", value); }
 
     // mangaPages[0].width and mangaPages[0].height.  This doesn't give the resolution for manga
     // pages, but is always available.

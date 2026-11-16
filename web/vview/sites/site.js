@@ -29,6 +29,14 @@ export const DEFAULT_CAPS = Object.freeze({
 // - autocomplete(word, { signal }): tag completions, [{ tag, label, category, count }]
 // - getArgsForTagSearch(tags, url), getArgsForTagRefine(tag, url, { exclude }), getSearchTagsFromUrl(url)
 // - mainDestinations(), otherDestinations(): the navigation rail's lists
+// - loadMediaDetails(mediaId): load what showing or saving a work needs beyond its media info
+//   (Gelbooru's tag categories).  The viewer calls it for the work it shows, and downloads wait
+//   for it.
+// - fillPostDetails(container, mediaInfo), originalPostUrl(mediaId): the info panel's site lines and
+//   the link to the work's page on the site
+// - fillSettingsPage(globalOptions): the settings dialog's page for the site, titled with its name
+// - hdThumbnailUrl(mediaId): a larger image for the thumbnail, used when 高清缩略图 is on (Pixiv's
+//   own sizes are chosen in misc/hd-thumbnails.js)
 export class Site
 {
     constructor()
