@@ -158,6 +158,22 @@ async function dapi(params, { signal=null }={})
     }
 }
 
+// Gelbooru's JSON holds its text HTML-escaped: the tag jack-o'-lantern arrives as
+// jack-o&#039;-lantern and an & in a source URL as &amp;.  Searches and tag lookups take the
+// plain text, so decode once here.
+const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+export function decodeEntities(text)
+{
+    if(typeof text != "string" || !text.includes("&"))
+        return text;
+
+    return text.replace(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/gi, (match, decimal, hex, name) => {
+        if(name)
+            return ENTITIES[name.toLowerCase()];
+        return String.fromCodePoint(decimal? parseInt(decimal):parseInt(hex, 16));
+    });
+}
+
 // Search posts.  pid is the 0-based page of limit posts.  Return { count, posts, tooDeep }.
 export async function searchPosts({ tags="", pid=0, limit=100, signal=null }={})
 {
@@ -167,7 +183,13 @@ export async function searchPosts({ tags="", pid=0, limit=100, signal=null }={})
 
     return {
         count: result["@attributes"]?.count ?? 0,
-        posts: result.post ?? [],
+        posts: (result.post ?? []).map((post) => ({
+            ...post,
+            tags: decodeEntities(post.tags),
+            title: decodeEntities(post.title),
+            source: decodeEntities(post.source),
+            owner: decodeEntities(post.owner),
+        })),
         tooDeep: false,
     };
 }
@@ -186,7 +208,7 @@ export async function getTags(names)
 {
     console.assert(names.length <= 100);
     let result = await dapi({ s: "tag", q: "index", limit: "100", names: names.join(" ") });
-    return result.tag ?? [];
+    return (result.tag ?? []).map((tag) => ({ ...tag, name: decodeEntities(tag.name) }));
 }
 
 // Tag autocomplete, which needs no key.  Return [{ tag, label, category, count }].  category is
@@ -216,11 +238,12 @@ export async function addFavorite(postId)
     return response.ok && (text == "3" || text == "1");
 }
 
-// Remove a favorite.  The page redirects to the favorites list, so a 200 is success.
+// Remove a favorite.  The page redirects to the favorites list.  Logged out, it redirects to the
+// login page instead, which is also a 200.
 export async function removeFavorite(postId)
 {
     let response = await spacing.run(() => fetchSite(`/index.php?page=favorites&s=delete&id=${encodeURIComponent(postId)}`));
-    return response.ok;
+    return response.ok && new URL(response.url).searchParams.get("page") == "favorites";
 }
 
 // Upvote a post, as Gelbooru's own favorite button does.  Only sent when the setting
