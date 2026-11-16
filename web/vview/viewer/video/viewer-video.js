@@ -277,7 +277,20 @@ export default class ViewerVideo extends ViewerVideoBase
 
         let active = this.wantPlaying && !this.seeking && this._active;
         if(active)
-            this.video.play(); 
+        {
+            this.video.play().catch((e) => {
+                // Without a user gesture, as on a cold load of a video URL, the browser may refuse
+                // to play.  Stay paused on the poster, so one click starts it.
+                if(e.name == "NotAllowedError")
+                {
+                    this.wantPlaying = false;
+                    this.refreshFocus();
+                }
+                // A pause() before playback started rejects play() too, which needs nothing.
+                else if(e.name != "AbortError")
+                    throw e;
+            });
+        }
         else
             this.video.pause(); 
     };
