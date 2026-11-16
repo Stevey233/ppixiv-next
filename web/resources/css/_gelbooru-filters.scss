@@ -110,5 +110,5 @@ body.gelbooru .thumbnail-ui-box > .n-related-tags {
 // Under 没有结果, the note lines up with it.
 .search-view:has(> .no-results:not([hidden])) > .list-end-note {
     justify-content: flex-start;
-    padding-top: 4px;
+    padding: 4px 0 40px;
 }
