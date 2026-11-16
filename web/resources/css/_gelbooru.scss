@@ -29,12 +29,33 @@ body.gelbooru .button-bookmark .count {
     font-variant-numeric: tabular-nums;
 }
 
+// Tag category colors, for every place a Gelbooru tag is shown (autocomplete, tag pills, the
+// related tags row, the tag library).  General tags keep the text color.  Red stays reserved for
+// favorites (--n-heart), so artists are amber, not the red boorus use.
+html, html.mobile {
+    --gb-cat-general: var(--n-text);
+    --gb-cat-artist: #E8A45C;
+    --gb-cat-character: #7FCB8A;
+    --gb-cat-copyright: #C49BE8;
+    --gb-cat-metadata: var(--n-pencil);
+}
+
+html[data-theme="light"], html.mobile[data-theme="light"] {
+    --gb-cat-artist: #A85B12;
+    --gb-cat-character: #23803F;
+    --gb-cat-copyright: #7445B5;
+}
+
+// Any element with .tag-category-<category> can take its color from --gb-cat.
+.tag-category-general, .tag-category-tag { --gb-cat: var(--gb-cat-general); }
+.tag-category-artist { --gb-cat: var(--gb-cat-artist); }
+.tag-category-character { --gb-cat: var(--gb-cat-character); }
+.tag-category-copyright { --gb-cat: var(--gb-cat-copyright); }
+.tag-category-metadata { --gb-cat: var(--gb-cat-metadata); }
+
 // Autocomplete entries: the tag's category color and its post count.
 .search-history .entry {
-    &.tag-category-artist .word { color: #e06c75; }
-    &.tag-category-character .word { color: #6cc070; }
-    &.tag-category-copyright .word { color: #c678dd; }
-    &.tag-category-metadata .word { color: #e5a84b; }
+    &[class*="tag-category-"] .word { color: var(--gb-cat); }
 
     .tag-count {
         margin-left: auto;
