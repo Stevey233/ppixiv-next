@@ -1,7 +1,7 @@
 // https://www.pixiv.net/#ppixiv/from-bookmarks
 //
-// 收藏相关: related works of 10 public bookmarks (5 recent, 5 older), the works several bookmarks
-// point at first.  misc/seed-feed.js loads and caches the data and ranks it; this lists the
+// 收藏相关: related works of 20 public bookmarks (10 of the newest 50, 10 older), the works
+// several bookmarks point at first.  misc/seed-feed.js loads and caches the data and ranks it; this lists the
 // result 60 at a time without further requests.  Like 最近看过, the URL is under the top page's
 // hash, since Pixiv has no page for this list.  The mode (#mode=safe, r18) filters locally by the
 // works' age rating.
@@ -14,7 +14,7 @@ import DataSource from '/vview/sites/data-source.js';
 import { helpers } from '/vview/misc/helpers.js';
 import RecommendOptions from '/vview/next/recommend-options.js';
 import { TagFeedUI, shownSectionsOf, sectionAtOf } from '/vview/next/tag-sections.js';
-import { SeedFeed, SEED_COUNT, spreadArtists, groupSeeds } from '/vview/misc/seed-feed.js';
+import { SeedFeed, SEED_COUNT, SEED_PAGE_SIZE, OLD_SEEDS, spreadArtists, groupSeeds } from '/vview/misc/seed-feed.js';
 
 const seedFeed = new SeedFeed();
 seedFeed.watchBookmarks();
@@ -86,7 +86,7 @@ export default class DataSources_FromBookmarks extends DataSource
             // The phone's title bar has room for the count only.
             let count = `共 ${this.mediaIds.length} 件`;
             let { used, usedOld } = this.feed;
-            let seeds = usedOld? `按 ${used} 件收藏（最近 ${used - usedOld} 件，更早 ${usedOld} 件）`:`按最近 ${used} 件收藏`;
+            let seeds = usedOld? `按 ${used} 件收藏（最近 ${SEED_PAGE_SIZE} 件里 ${used - usedOld} 件，更早 ${usedOld} 件）`:`按最近 ${used} 件收藏`;
             status.textContent = ppixiv.mobile? count:`${seeds} · ${count}`;
             fragment.append(status);
         }
@@ -95,7 +95,7 @@ export default class DataSources_FromBookmarks extends DataSource
         refresh.type = "button";
         refresh.className = "n-seed-feed-refresh";
         refresh.textContent = "重新查找";
-        refresh.title = "不用缓存，重新从 Pixiv 读取收藏和相关作品，更早的 5 件收藏重新抽";
+        refresh.title = `不用缓存，重新从 Pixiv 读取收藏和相关作品，更早的 ${OLD_SEEDS} 件收藏重新抽`;
         refresh.addEventListener("click", () => {
             refreshRequested = true;
             ppixiv.app.setCurrentDataSource({ refresh: true, startAtBeginning: true });

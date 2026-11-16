@@ -1,9 +1,10 @@
 // 收藏相关: related works of the user's public bookmarks, see docs/design.md.
 //
-// A build reads the newest page of public bookmarks and picks RECENT_SEEDS seeds from it that
-// differ from each other (pickDiverse), so a run of bookmarks from one series or artist gives one
-// seed, not ten.  OLD_SEEDS more come from OLD_PAGES random pages of older bookmarks, to bring
-// back older tastes.  Each seed's related works come from Pixiv's recommend/init endpoint (the
+// A build reads the newest SEED_PAGE_SIZE public bookmarks and picks RECENT_SEEDS seeds from them
+// that differ from each other (pickDiverse), so a run of bookmarks from one series or artist gives
+// one seed, not ten.  OLD_SEEDS more come from OLD_PAGES random pages of older bookmarks, to bring
+// back older tastes.  Pixiv's bookmarks list has no bookmark time, so "recent" is the newest page,
+// not a span of days.  Each seed's related works come from Pixiv's recommend/init endpoint (the
 // set Pixiv shows under a work, about 150 to 175 works in one request).  Works that several
 // seeds point at come first.
 //
@@ -17,11 +18,14 @@
 
 import { helpers } from '/vview/misc/helpers.js';
 
-export const SEED_COUNT = 10;
-const RECENT_SEEDS = 5;
-const OLD_SEEDS = SEED_COUNT - RECENT_SEEDS;
+export const RECENT_SEEDS = 10;
+export const OLD_SEEDS = 10;
+export const SEED_COUNT = RECENT_SEEDS + OLD_SEEDS;
+export const SEED_PAGE_SIZE = 50;
 const OLD_PAGES = 2;
-const SEED_PAGE_SIZE = 48;
+// Bumped when the seed counts change, so a stored seed list picked under the old counts is
+// picked again instead of kept for a day.
+const SEEDS_VERSION = 2;
 const RELATED_LIMIT = 180;
 // A little over the 1.2 seconds the budget states: a timer can fire a millisecond early.
 const REQUEST_SPACING = 1250;
@@ -240,6 +244,8 @@ export class SeedFeed extends EventTarget
     async _build(refresh)
     {
         let stored = await this._get("seeds");
+        if(stored?.version != SEEDS_VERSION)
+            stored = null;
         let seedList = !refresh && stored?.info != null && Date.now() - stored.time < SEEDS_FRESH? stored:null;
         if(seedList == null)
         {
@@ -247,7 +253,7 @@ export class SeedFeed extends EventTarget
             if(result.error)
                 return { status: "bookmarks-failed" };
 
-            // The old seeds stay a day, until 重新查找 draws new ones, so they don't bring 5 new
+            // The old seeds stay a day, until 重新查找 draws new ones, so they don't bring 10 new
             // seeds' requests every 10 minutes.  They're drawn after the new ones, to differ
             // from them.
             let works = result.body.works;
@@ -264,6 +270,7 @@ export class SeedFeed extends EventTarget
             // Old seeds kept from yesterday may have moved into the newest page since.
             let newIds = [...recent, ...more].map((work) => String(work.id));
             seedList = {
+                version: SEEDS_VERSION,
                 time: Date.now(),
                 seeds: newIds.concat(old.seeds.filter((id) => !newIds.includes(id))),
                 info: { ...info, ...old.info },
