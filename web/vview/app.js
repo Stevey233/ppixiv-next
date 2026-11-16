@@ -24,6 +24,7 @@ import PointerListener from '/vview/actors/pointer-listener.js';
 import VirtualHistory from '/vview/util/virtual-history.js';
 import SiteNative from '/vview/sites/native/site-native.js';
 import SitePixiv from '/vview/sites/pixiv/site-pixiv.js';
+import SiteGelbooru from '/vview/sites/gelbooru/site-gelbooru.js';
 import { getResources } from '/vview/app-resources.js';
 import { startTranslating } from '/vview/zh/i18n.js';
 import SeenWorks from '/vview/misc/seen-works.js';
@@ -105,10 +106,13 @@ export default class App
         {
             if(ppixiv.native)
                 ppixiv.site = new SiteNative();
+            else if(ppixiv.siteId == "gelbooru")
+                ppixiv.site = new SiteGelbooru();
             else
                 ppixiv.site = new SitePixiv();
         }
 
+        ppixiv.site.applyCapClasses();
         if(!await ppixiv.site.init())
             return;
 

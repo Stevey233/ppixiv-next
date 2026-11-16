@@ -73,8 +73,12 @@ class AppStartup
 
     async initialSetup()
     {
-        let native = location.hostname != "pixiv.net" && location.hostname != "www.pixiv.net";
-        if(native)
+        // Pick the site by hostname.  Any other host is a vview server.
+        let siteId =
+            location.hostname == "pixiv.net" || location.hostname == "www.pixiv.net"? "pixiv":
+            location.hostname == "gelbooru.com" || location.hostname == "www.gelbooru.com"? "gelbooru":
+            null;
+        if(siteId == null)
         {
             new AppStartupNative();
             return;
@@ -105,6 +109,7 @@ class AppStartup
         // Set up the global object.
         window.ppixiv = {
             native: false,
+            siteId,
             ...mobileFlags(),
         };
     
@@ -281,8 +286,9 @@ class AppStartup
         }
         else
         {
-            // This should be synced with MainController.setup.
-            disabledUi.querySelector("a").href = "/ranking.php?mode=daily#ppixiv";
+            // This should be synced with the site's setInitialUrl.
+            disabledUi.querySelector("a").href = ppixiv.siteId == "gelbooru"?
+                "/index.php?page=post&s=list#ppixiv":"/ranking.php?mode=daily#ppixiv";
         }
     }
 
@@ -356,6 +362,9 @@ class AppStartup
 
         // Activate by default on the top page, even though it's not a real data source.  We'll
         // redirect to a supported page.
+        if(ppixiv.siteId == "gelbooru")
+            return this._gelbooruUrlSupported(window.location);
+
         let pathname = this._getPathWithoutLanguage(window.location.pathname);
         if(pathname == "/")
             return true;
@@ -381,6 +390,8 @@ class AppStartup
     {
         if(ppixiv.native)
             return true;
+        if(ppixiv.siteId == "gelbooru")
+            return this._gelbooruUrlSupported(url);
 
         url = new URL(url);
         let pathname = this._getPathWithoutLanguage(url.pathname);
@@ -423,6 +434,21 @@ class AppStartup
             return true; // tag-feed
         else
             return false;
+    }
+
+    // Gelbooru's pages that ppixiv shows: the top page and a bare /index.php (which go to the
+    // posts list), the posts list, a post, and a favorites list.  Account, wiki, forum, pools and
+    // the rest stay Gelbooru's.  This matches SiteGelbooru.setInitialUrl.
+    _gelbooruUrlSupported(url)
+    {
+        url = new URL(url);
+        if(url.pathname != "/" && url.pathname != "/index.php")
+            return false;
+
+        let page = url.searchParams.get("page"), s = url.searchParams.get("s");
+        return page == null ||
+            page == "post" && (s == "list" || s == "view") ||
+            page == "favorites" && s == "view";
     }
 
     // Try to stop the underlying page from doing things (it just creates unnecessary network

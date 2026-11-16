@@ -68,7 +68,7 @@ async function Bootstrap({bundle}={})
             // Check the hostnames we give access to in case the script manager isn't.
             url = new URL(url);
             let allowedHosts = [
-                "i.pximg.net", "i-cf.pximg.net", "cotrans.touhou.ai"
+                "i.pximg.net", "i-cf.pximg.net", "cotrans.touhou.ai", "gelbooru.com"
             ];
             let anyMatches = false;
             for(let host of allowedHosts)

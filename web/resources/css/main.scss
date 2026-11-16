@@ -4136,3 +4136,6 @@ svg.heart-image .delete {
 
 // The redesigned interface.  It comes last so it overrides the styles above.
 @import "next";
+
+// Gelbooru, see sites/gelbooru/.  Comes after the redesign so it can override it.
+@import "gelbooru";

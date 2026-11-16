@@ -1,0 +1,50 @@
+// Gelbooru (sites/gelbooru/).  Imported after _next.scss.  Each piece of the Gelbooru work keeps
+// its styles in its own partial, imported here.
+
+// Elements a site without the capability hides.  Each missing capability sets body.no-<cap>
+// (Site.applyCapClasses).  Pixiv sets none of these.
+body.no-tag-search .needs-tag-search,
+body.no-download .needs-download,
+body.no-likes .button-like-container,
+body.no-private-bookmarks [data-bookmark-type=private],
+body.no-bookmark-tags .button-bookmark-tags,
+body.no-recommendations .popup-context-menu .button-similar,
+body.no-recommendations .image-ui .info-links,
+body.no-manga-pages .image-ui .view-manga-button,
+body.no-manga-pages .popup-context-menu .button-view-manga,
+body.no-users .popup-context-menu .avatar-widget-container {
+    display: none !important;
+}
+
+// Gelbooru's API has no favorite count.
+body.gelbooru .button-bookmark .count {
+    display: none;
+}
+
+// The posts list's header: the tags, then the result count.
+.gb-result-count {
+    margin-left: 0.6em;
+    font-size: 0.7em;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+// Autocomplete entries: the tag's category color and its post count.
+.search-history .entry {
+    &.tag-category-artist .word { color: #e06c75; }
+    &.tag-category-character .word { color: #6cc070; }
+    &.tag-category-copyright .word { color: #c678dd; }
+    &.tag-category-metadata .word { color: #e5a84b; }
+
+    .tag-count {
+        margin-left: auto;
+        padding: 0 0.6em;
+        opacity: 0.55;
+        font-size: 0.85em;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@import "gelbooru-filters";
+@import "gelbooru-viewer";
+@import "gelbooru-lists";
