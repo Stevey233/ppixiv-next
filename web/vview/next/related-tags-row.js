@@ -1,7 +1,8 @@
 // The related tags Pixiv sends with a tag search, as one line of chips in the desktop header.
 // A click adds the tag to the search, Shift+click searches it alone, and the − on hover excludes
 // it.  Right-click saves the tag as a saved search, or unsaves it, and saved tags are drawn as
-// filled pills.  The line takes the space left after the filter bar, or a line of its own when too little
+// filled pills.  A data source can give each tag a class with relatedTagClass(tag), like the
+// Gelbooru posts list's tag categories.  The line takes the space left after the filter bar, or a line of its own when too little
 // is left, and shows only the chips that fit.  See docs/design.md "搜索".
 
 import Widget from '/vview/widgets/widget.js';
@@ -13,13 +14,14 @@ const MAX_CHIPS = 12;
 
 export default class RelatedTagsRow extends Widget
 {
-    constructor({ dataSource, ...options })
+    constructor({ dataSource, maxChips=MAX_CHIPS, ...options })
     {
         super({ ...options, template: `
             <div class=n-related-tags role=group aria-label="相关标签" hidden></div>
         `});
 
         this.dataSource = dataSource;
+        this.maxChips = maxChips;
         this.dataSource.addEventListener("updated", () => this.refresh(), this._signal);
         ppixiv.settings.addEventListener("search_related_tags", () => this.refresh(), this._signal);
         window.addEventListener("tag-translations-changed", () => { this._shownKey = null; this.refresh(); }, this._signal);
@@ -72,12 +74,13 @@ export default class RelatedTagsRow extends Widget
         if(!ppixiv.settings.get("search_related_tags"))
             candidates = [];
 
-        let key = JSON.stringify(candidates);
+        let classes = candidates.map((tag) => this.dataSource.relatedTagClass?.(tag) ?? null);
+        let key = JSON.stringify([candidates, classes]);
         if(key == this._shownKey)
             return;
         this._shownKey = key;
 
-        let translations = await ppixiv.tagTranslations.getTranslations([...candidates, ...search], "en", { lookups: MAX_CHIPS });
+        let translations = await ppixiv.tagTranslations.getTranslations([...candidates, ...search], "en", { lookups: this.maxChips });
         if(key != this._shownKey)
             return;
 
@@ -92,7 +95,7 @@ export default class RelatedTagsRow extends Widget
                 continue;
             names.add(nameOf(tag));
             tags.push(tag);
-            if(tags.length == MAX_CHIPS)
+            if(tags.length == this.maxChips)
                 break;
         }
 
@@ -104,6 +107,9 @@ export default class RelatedTagsRow extends Widget
 
             let link = document.createElement("a");
             link.className = "n-related-tag";
+            let tagClass = classes[candidates.indexOf(tag)];
+            if(tagClass)
+                link.classList.add(tagClass);
             link.href = helpers.getArgsForTagRefine(tag, this.dataSource.url);
             link.dataset.tag = tag;
             link.textContent = translations[tag] ?? tag;
