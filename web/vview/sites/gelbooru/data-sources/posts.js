@@ -119,10 +119,15 @@ export default class DataSource_GelbooruPosts extends DataSource
     }
 
     // The category of each related tag, once tag-categories.js knows it, as a class name for the
-    // related tags row.  Ask again on each update until it answers.
+    // related tags row.  Ask again on each update until it answers, one question at a time.
     async _loadRelatedTagCategories()
     {
+        if(this._loadingRelatedTagCategories)
+            return;
+
+        this._loadingRelatedTagCategories = true;
         let categories = await categoriesForTags(this.relatedTags);
+        this._loadingRelatedTagCategories = false;
         if(categories == null)
             return;
 
