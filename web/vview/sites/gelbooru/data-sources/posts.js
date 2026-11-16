@@ -22,6 +22,7 @@ import { registerPosts } from '/vview/sites/gelbooru/media.js';
 import { noteFavorites } from '/vview/sites/gelbooru/favorites.js';
 import { createConditionsUi, createConditionsNote } from '/vview/sites/gelbooru/conditions-ui.js';
 import { categoriesForTags } from '/vview/sites/gelbooru/tag-categories.js';
+import { tokenLabel } from '/vview/sites/gelbooru/tag-names.js';
 import RelatedTagsRow from '/vview/next/related-tags-row.js';
 import { PERIODS, periodKey, periodLabel, popularMinId } from '/vview/sites/gelbooru/popular.js';
 
@@ -71,6 +72,21 @@ export default class DataSource_GelbooruPosts extends DataSource
         // The post IDs a random list has returned.
         this._randomIds = new Set();
     }
+
+    // Redraw the title when Chinese tag names arrive or are turned on or off.
+    startup()
+    {
+        super.startup();
+        window.addEventListener("tag-translations-changed", this._tagNamesChanged);
+    }
+
+    shutdown()
+    {
+        super.shutdown();
+        window.removeEventListener("tag-translations-changed", this._tagNamesChanged);
+    }
+
+    _tagNamesChanged = () => this.callUpdateListeners();
 
     // The whole query.
     get query() { return queryFromUrl(this.url); }
@@ -238,7 +254,7 @@ export default class DataSource_GelbooruPosts extends DataSource
     {
         if(this.popularPeriod != null)
             return "热门 - Gelbooru";
-        let tags = this._searchTags;
+        let tags = parseQuery(this.query).tags.map(tokenLabel).join(" ");
         return tags? `${tags} - Gelbooru`:"Gelbooru";
     }
 
@@ -256,11 +272,14 @@ export default class DataSource_GelbooruPosts extends DataSource
             title.appendChild(label);
         }
 
+        // Tags with a Chinese name show it, with the tag on hover.
         for(let tag of tags)
         {
             let span = document.createElement("span");
             span.className = "word tag";
-            span.textContent = tag;
+            span.textContent = tokenLabel(tag);
+            if(span.textContent != tag)
+                span.title = tag;
             title.appendChild(span);
         }
 

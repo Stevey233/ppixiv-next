@@ -133,6 +133,11 @@ export default class TagListWidget extends Widget
             });
 
             a.dataset.tag = tag;
+
+            // A site's own tag names (Gelbooru's Chinese names) show the tag itself on hover.
+            if(translatedTag != tag && ppixiv.site.tagNames)
+                a.title = tag;
+
             let category = categories?.[tag];
             if(category)
                 a.classList.add(`tag-category-${category}`);

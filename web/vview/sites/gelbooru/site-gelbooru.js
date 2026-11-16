@@ -12,6 +12,8 @@ import * as api from '/vview/sites/gelbooru/api.js';
 import { searchFromList, refineQuery, favoritesUserId, parseQuery, buildQuery } from '/vview/sites/gelbooru/query.js';
 import { registerPosts, loadPostCategories } from '/vview/sites/gelbooru/media.js';
 import TagLibrary from '/vview/sites/gelbooru/tag-library.js';
+import { chineseNames, watchTagNames } from '/vview/sites/gelbooru/tag-names.js';
+import { openTagLibrary } from '/vview/sites/gelbooru/tag-library-dialog.js';
 import { fillPostDetails, originalPostUrl } from '/vview/sites/gelbooru/post-details.js';
 import { fillSettingsPage } from '/vview/sites/gelbooru/settings.js';
 import { setFavorite, syncFavorites } from '/vview/sites/gelbooru/favorites.js';
@@ -21,6 +23,11 @@ import Posts, { queryFromUrl, searchToRemember } from '/vview/sites/gelbooru/dat
 import Post from '/vview/sites/gelbooru/data-sources/post.js';
 import History, { storePostCopy } from '/vview/sites/gelbooru/data-sources/history.js';
 import { defaultConditions, createSearchSettings } from '/vview/sites/gelbooru/search-defaults.js';
+
+// Autocomplete shows this many tags from the tag library for text that isn't sent to Gelbooru,
+// and at most AUTOCOMPLETE_LIBRARY_EXTRA after Gelbooru's own suggestions.
+const AUTOCOMPLETE_LIBRARY_LIMIT = 10;
+const AUTOCOMPLETE_LIBRARY_EXTRA = 5;
 
 const CAPS = Object.freeze({
     ...Site.DEFAULT_CAPS,
@@ -77,6 +84,7 @@ export default class SiteGelbooru extends Site.Site
         // The tag library gives categories (and later Chinese names) without requests.  Nothing
         // waits for it, and without it tags are looked up with the tag API.
         this.tagLibrary = new TagLibrary();
+        watchTagNames(this.tagLibrary);
         this.tagLibrary.load().catch((error) => console.log("Tag library not loaded:", error.message));
         return true;
     }
@@ -244,15 +252,46 @@ export default class SiteGelbooru extends Site.Site
     }
 
     // Tag autocomplete for the word being typed.  A leading - (exclude) is kept on the results.
+    //
+    // Text with Latin letters or digits asks Gelbooru, and tags from the tag library that
+    // Gelbooru didn't suggest come after its own.  Other text, like Chinese, is only looked up in
+    // the library (names, Chinese names and aliases), without a request.  Either way the results
+    // are real tags, so picking one puts the tag itself in the search box.
     async autocomplete(word, { signal }={})
     {
         let [, prefix, text] = /^(-?)(.*)$/.exec(word);
         if(text == "")
             return [];
 
-        let results = await api.autocomplete(text, { signal });
-        rememberCategories(results);
-        return results.map((result) => ({ ...result, tag: prefix + result.tag }));
+        let library = this.tagLibrary.search(text, { limit: AUTOCOMPLETE_LIBRARY_LIMIT }).results.map((entry) => ({
+            tag: entry.tag,
+            label: entry.tag.replaceAll("_", " "),
+            category: entry.category,
+            count: entry.count,
+        }));
+
+        let results = [];
+        if(/[a-z0-9]/i.test(text.normalize("NFKC")))
+        {
+            results = await api.autocomplete(text, { signal });
+            rememberCategories(results);
+            let suggested = new Set(results.map((result) => result.tag));
+            library = library.filter((entry) => !suggested.has(entry.tag)).slice(0, AUTOCOMPLETE_LIBRARY_EXTRA);
+        }
+
+        return [...results, ...library].map((result) => ({ ...result, tag: prefix + result.tag }));
+    }
+
+    // Chinese tag names, see tag-names.js.
+    tagNames(tags)
+    {
+        return chineseNames(tags);
+    }
+
+    // The 标签库 screen, see tag-library-dialog.js.
+    openTagLibrary()
+    {
+        openTagLibrary();
     }
 
     // The search helpers in misc/helpers.js and util/pixiv.js ask these.
@@ -327,6 +366,12 @@ export default class SiteGelbooru extends Site.Site
                 key: "history", label: "看过", icon: "mat:history",
                 url: "/index.php#ppixiv/history",
                 matches: (ds) => ds?.name == "gb-history",
+            },
+            {
+                // Not a list: the tag library opens over the current one.
+                key: "tag-library", label: "标签库", icon: "mat:sell",
+                onclick: () => openTagLibrary(),
+                matches: () => false,
             },
         ];
     }

@@ -1,5 +1,5 @@
 // The Gelbooru page of the settings dialog: the account the API key belongs to, reading the key
-// again, and voting with favorites.  The key itself is never shown.
+// again, voting with favorites, and Chinese tag names.  The key itself is never shown.
 import { MenuOptionButton, MenuOptionToggleSetting } from '/vview/widgets/menu-option.js';
 import * as api from '/vview/sites/gelbooru/api.js';
 
@@ -28,5 +28,13 @@ export function fillSettingsPage(globalOptions)
         setting: "gelbooru_upvote_on_favorite",
         explanationEnabled: "收藏时也给作品点赞（分数加 1），和 Gelbooru 自己的收藏按钮一样。取消收藏不会撤销点赞。",
         explanationDisabled: "只收藏，不点赞。",
+    });
+
+    new MenuOptionToggleSetting({
+        ...globalOptions,
+        label: "标签显示中文名",
+        setting: "gelbooru_tag_chinese_names",
+        explanationEnabled: "标签库里有中文名的标签显示中文，鼠标停在上面能看到原标签。搜索和链接仍用原标签。",
+        explanationDisabled: "标签按 Gelbooru 的原样显示。",
     });
 }

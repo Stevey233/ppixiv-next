@@ -1,0 +1,298 @@
+// Gelbooru's tag library screen (sites/gelbooru/tag-library-dialog.js) and its link in the search
+// box's dropdown.  Colors are the theme's (--n-*) and the tag categories' (--gb-cat).
+
+.search-history .n-search-footer > .n-search-tag-library { margin-right: auto; }
+
+html:not(.mobile) .floating > .dialog.gb-taglib {
+    width: min(760px, calc(100vw - 80px));
+    height: min(760px, calc(100vh - 40px));
+}
+
+.dialog.gb-taglib {
+    > .scroll {
+        display: flex;
+        flex-direction: column;
+        padding-top: 0;
+    }
+
+    button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    // The field, the tabs and the selection stay at the top while the list scrolls.
+    .gb-taglib-top {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 4px 0 10px;
+        background: var(--n-surface);
+        border-bottom: 1px solid var(--n-rule);
+    }
+
+    .gb-taglib-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        height: 38px;
+        border: 1px solid var(--n-rule);
+        border-radius: var(--n-radius);
+        color: var(--n-pencil);
+        &:focus-within { border-color: var(--n-blue); }
+
+        .font-icon { font-size: 20px; }
+    }
+
+    .gb-taglib-input {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        padding: 0;
+        border: none;
+        outline: none;
+        background: none;
+        color: var(--n-text);
+        font: 15px var(--n-font);
+        &::placeholder { color: var(--n-pencil); }
+    }
+
+    .gb-taglib-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+    }
+
+    .gb-taglib-tabs {
+        display: flex;
+        gap: 2px;
+    }
+
+    .gb-taglib-tab, .gb-taglib-sort {
+        padding: 4px 8px;
+        color: var(--n-pencil);
+        border-bottom: 2px solid transparent;
+        @media(hover: hover) { &:hover { color: var(--n-text); } }
+    }
+
+    .gb-taglib-tab {
+        // A category tab names its category in its color once selected.
+        &.selected {
+            color: var(--gb-cat, var(--n-text));
+            border-bottom-color: var(--n-blue);
+        }
+    }
+
+    .gb-taglib-total {
+        margin-left: auto;
+        color: var(--n-pencil);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .gb-taglib-sorts {
+        display: flex;
+        .gb-taglib-sort.selected { color: var(--n-text); }
+    }
+
+    .gb-taglib-selection {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+
+        &.empty .gb-taglib-chips::before {
+            content: "用 + 和 − 挑几个标签，一起搜索";
+            color: var(--n-pencil);
+            font-size: 13px;
+        }
+    }
+
+    .gb-taglib-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .gb-taglib-chip {
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        border: 1px solid var(--n-rule);
+        border-radius: 14px;
+        font-size: 13px;
+
+        .gb-taglib-chip-label {
+            padding: 0 4px 0 12px;
+            height: 100%;
+            color: var(--gb-cat, var(--n-text));
+        }
+
+        .gb-taglib-chip-remove {
+            display: inline-flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 8px 0 2px;
+            color: var(--n-pencil);
+            .font-icon { font-size: 15px; }
+            @media(hover: hover) { &:hover { color: var(--n-text); } }
+        }
+
+        &.exclude {
+            border-style: dashed;
+            .gb-taglib-chip-label {
+                color: var(--n-pencil);
+                text-decoration: line-through;
+            }
+        }
+    }
+
+    .gb-taglib-kept {
+        color: var(--n-pencil);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 30%;
+    }
+
+    .gb-taglib-search {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: none;
+        height: 30px;
+        padding: 0 12px;
+        border: 1px solid var(--n-blue) !important;
+        border-radius: var(--n-radius);
+        color: var(--n-blue) !important;
+        font-size: 14px !important;
+        .font-icon { font-size: 18px; }
+
+        &:disabled {
+            border-color: var(--n-rule) !important;
+            color: var(--n-pencil) !important;
+            cursor: default;
+        }
+    }
+
+    .gb-taglib-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 24px 4px;
+        color: var(--n-pencil);
+        font-size: 14px;
+
+        &[hidden] { display: none; }
+
+        .gb-taglib-retry {
+            padding: 3px 12px;
+            border: 1px solid var(--n-rule);
+            border-radius: var(--n-radius);
+            color: var(--n-text);
+        }
+    }
+
+    .gb-taglib-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 4px 0 8px;
+        min-height: 44px;
+        border-bottom: 1px solid var(--n-rule);
+        border-left: 2px solid transparent;
+
+        &.highlight {
+            border-left-color: var(--n-blue);
+            background: var(--n-surface-2);
+        }
+        @media(hover: hover) { &:hover { background: var(--n-surface-2); } }
+    }
+
+    .gb-taglib-main {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 1px;
+        flex: 1;
+        min-width: 0;
+        padding: 6px 0;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .gb-taglib-names {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .gb-taglib-name {
+        color: var(--gb-cat, var(--n-text));
+        font-size: 15px;
+    }
+
+    .gb-taglib-tag {
+        color: var(--n-pencil);
+        font-size: 13px;
+    }
+
+    .gb-taglib-note {
+        color: var(--n-pencil);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        &:empty { display: none; }
+    }
+
+    .gb-taglib-count {
+        flex: none;
+        color: var(--n-pencil);
+        font: 13px var(--n-font-num);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .gb-taglib-actions {
+        display: flex;
+        flex: none;
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: var(--n-radius);
+            color: var(--n-pencil);
+            .font-icon { font-size: 19px; }
+            @media(hover: hover) { &:hover { color: var(--n-text); background: var(--n-rule); } }
+        }
+
+        // The + and − show on the row under the pointer and the highlighted row.  The star
+        // always shows once the tag is saved.
+        .gb-taglib-add, .gb-taglib-exclude, .gb-taglib-save { visibility: hidden; }
+    }
+
+    .gb-taglib-row:hover, .gb-taglib-row.highlight, .gb-taglib-row:focus-within {
+        .gb-taglib-actions button { visibility: visible; }
+    }
+
+    .gb-taglib-row.saved .gb-taglib-save {
+        visibility: visible;
+        color: var(--n-blue);
+    }
+}

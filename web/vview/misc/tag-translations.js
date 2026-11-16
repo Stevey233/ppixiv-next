@@ -198,8 +198,14 @@ export default class TagTranslations
     // "tag-translations-changed" on window says when new ones arrive, so the caller can redraw.
     //
     // lookups limits how many of the tags are looked up, for long lists like an artist's tags.
+    //
+    // A site with its own tag names (ppixiv.site.tagNames, like Gelbooru's Chinese names) answers
+    // from them instead.
     async getTranslations(tags, language=null, { lookups=Infinity }={})
     {
+        if(ppixiv.site.tagNames)
+            return ppixiv.site.tagNames(tags);
+
         if(!this.enabled)
             return {};
 

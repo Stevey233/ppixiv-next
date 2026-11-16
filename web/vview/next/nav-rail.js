@@ -55,8 +55,20 @@ export default class NavRail extends Widget
         {
             let link = document.createElement("a");
             link.className = "rail-destination";
-            link.href = destination.url;
             link.textContent = destination.label;
+
+            // A destination with onclick opens something over the list instead of a list.
+            if(destination.onclick)
+            {
+                link.href = "#";
+                link.setAttribute("role", "button");
+                link.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    destination.onclick();
+                });
+            }
+            else
+                link.href = destination.url;
             list.appendChild(link);
             this._links.push({ link, destination });
         }

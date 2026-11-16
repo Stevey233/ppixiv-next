@@ -39,6 +39,9 @@ export const DEFAULT_CAPS = Object.freeze({
 // - fillSettingsPage(globalOptions): the settings dialog's page for the site, titled with its name
 // - hdThumbnailUrl(mediaId): a larger image for the thumbnail, used when 高清缩略图 is on (Pixiv's
 //   own sizes are chosen in misc/hd-thumbnails.js)
+// - tagNames(tags): { tag: name } for tags with a name to show in place of the tag, used instead of
+//   Pixiv's tag translations (misc/tag-translations.js).  The tag stays the link and the search.
+// - openTagLibrary(): open the site's tag search screen, linked from the search box's dropdown
 export class Site
 {
     constructor()

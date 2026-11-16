@@ -193,6 +193,9 @@ export class TagSearchBoxWidget extends widget
     }
 }
 
+// How long a site's own autocomplete (ppixiv.site.autocomplete) waits for typing to pause.
+const SITE_AUTOCOMPLETE_DELAY_MS = 200;
+
 class TagSearchDropdownWidget extends widget
 {
     constructor({inputElement, savedPosition, textPrompt, ...options})
@@ -207,6 +210,10 @@ class TagSearchDropdownWidget extends widget
                     <vv-container class=contents></vv-container>
 
                     <div class=n-search-footer>
+                        <button type=button class=n-search-tag-library hidden>
+                            ${ helpers.createIcon("mat:sell") }
+                            <span>标签库</span>
+                        </button>
                         <button type=button class="create-section-button editing-only">
                             ${ helpers.createIcon("mat:create_new_folder") }
                             <span>新建分组</span>
@@ -281,6 +288,15 @@ class TagSearchDropdownWidget extends widget
         });
 
         this.editing = false;
+
+        // A site's own tag search screen (Gelbooru's 标签库).
+        let tagLibrary = this.root.querySelector(".n-search-tag-library");
+        tagLibrary.hidden = ppixiv.site.openTagLibrary == null;
+        tagLibrary.addEventListener("click", (e) => {
+            e.preventDefault();
+            this._inputElement.blur();
+            ppixiv.site.openTagLibrary();
+        });
 
         this.root.querySelector(".n-search-edit").addEventListener("click", (e) => {
             e.preventDefault();
@@ -766,12 +782,25 @@ class TagSearchDropdownWidget extends widget
             return;
         }
 
-        // A site with its own autocomplete answers in its own shape.  Store it in Pixiv's.
+        // A site with its own autocomplete answers in its own shape.  Store it in Pixiv's.  It
+        // waits for typing to pause, so a burst of keys asks once, for the last word.
         if(ppixiv.site.autocomplete)
         {
+            this._abortAutocomplete = new AbortController();
+            let typed = this._inputElement.value;
+            await helpers.other.sleep(SITE_AUTOCOMPLETE_DELAY_MS);
+            if(this._abortAutocomplete.signal.aborted || this._inputElement.value != typed)
+            {
+                let aborted = this._abortAutocomplete.signal.aborted;
+                this._abortAutocomplete = null;
+                this._mostRecentAutocomplete = null;
+                if(!aborted)
+                    this._runAutocomplete();
+                return;
+            }
+
             let candidates;
             try {
-                this._abortAutocomplete = new AbortController();
                 let results = await ppixiv.site.autocomplete(keyword, { signal: this._abortAutocomplete.signal });
                 candidates = results.map(({ tag, label, category, count }) => ({ tag_name: tag, access_count: count, label, category }));
             } catch(e) {
@@ -960,13 +989,23 @@ class TagSearchDropdownWidget extends widget
             tagContainer.appendChild(span);
         }
 
-        // A label is one tag shown as one word, with spaces instead of underscores.
+        // A label is one tag shown as one word, with spaces instead of underscores.  A site's own
+        // tag name (Gelbooru's Chinese names) comes first, with the label after it.
         if(label != null)
         {
             let span = document.createElement("span");
             span.classList.add("word", "tag");
             span.dataset.tag = tags;
-            span.textContent = label;
+            let [prefix, tag] = helpers.pixiv.splitTagPrefixes(tags);
+            let name = this.translatedTags?.[tag];
+            span.textContent = name != null? prefix + name:label;
+            if(name != null)
+            {
+                let original = document.createElement("span");
+                original.classList.add("original-tag");
+                original.textContent = label;
+                span.appendChild(original);
+            }
             tagContainer.appendChild(span);
         }
 
