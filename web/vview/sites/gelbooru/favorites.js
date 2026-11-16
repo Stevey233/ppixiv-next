@@ -83,7 +83,10 @@ async function sync(userId)
     let tags = `fav:${userId}`;
     let first = await api.searchPosts({ tags, limit: PER_REQUEST });
     let firstIds = first.posts.map((post) => String(post.id));
-    if(stored != null && first.count == stored.size && firstIds.every((id) => stored.has(id)))
+    // Only the first MAX_PID pages can be read, so a longer list is in sync once those are stored.
+    let readable = MAX_PID * PER_REQUEST;
+    let sameSize = stored != null && (stored.size == first.count || (first.count > readable && stored.size >= readable));
+    if(sameSize && firstIds.every((id) => stored.has(id)))
     {
         pendingChanges = null;
         return;

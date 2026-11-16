@@ -80,6 +80,8 @@ check('unknown tokens stay in place', () => {
 
 check('an {a ~ b} group is one token', () => {
     assert.deepEqual(splitQuery('  a  {b ~   c}   d '), ['a', '{b ~ c}', 'd']);
+    // A group still being typed keeps its last word.
+    assert.deepEqual(splitQuery('cat {a ~ b'), ['cat', '{a ~ b}']);
     roundTrip('{blue_sky ~ red_sky}', {}, { tags: ['{blue_sky ~ red_sky}'] });
 });
 

@@ -209,10 +209,19 @@ export default class MediaCache extends EventTarget
         // A site with its own API loads it there.
         if(ppixiv.site.loadMediaInfo)
         {
-            let info = await ppixiv.site.loadMediaInfo(mediaId);
+            // A failed request is reported like a missing post, as Pixiv's are below, so the
+            // viewer shows its error page and the retry rule applies.
+            let info = null, message = "Post doesn't exist";
+            try {
+                info = await ppixiv.site.loadMediaInfo(mediaId);
+            } catch(error) {
+                console.log(`Couldn't load ${mediaId}:`, error.message);
+                message = error.message;
+            }
+
             if(info == null)
             {
-                this._nonexistantMediaIds[mediaId] = "Post doesn't exist";
+                this._nonexistantMediaIds[mediaId] = message;
                 this._loadFailedAt[mediaId] = Date.now();
             }
             return info;

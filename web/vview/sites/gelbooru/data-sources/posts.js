@@ -210,9 +210,17 @@ export default class DataSource_GelbooruPosts extends DataSource
         if(this._loadingRelatedTagCategories)
             return;
 
+        // A failed lookup leaves the row uncolored, and the next update asks again.
         this._loadingRelatedTagCategories = true;
-        let categories = await categoriesForTags(this.relatedTags);
-        this._loadingRelatedTagCategories = false;
+        let categories = null;
+        try {
+            categories = await categoriesForTags(this.relatedTags);
+        } catch(error) {
+            console.log("Couldn't load tag categories:", error.message);
+        } finally {
+            this._loadingRelatedTagCategories = false;
+        }
+
         if(categories == null)
             return;
 
