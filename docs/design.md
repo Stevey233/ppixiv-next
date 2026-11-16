@@ -409,3 +409,15 @@ ppixiv 是给 Pixiv 插画用的看图工具。用的人每天刷几个固定的
 - 全名不缩成两个字，是因为"关注"和"推荐"各有两个列表（关注的新作和关注的用户，推荐作品和推荐用户），只写两个字分不清。
 - 自己的收藏页头是"收藏 1234"，名字在前、数量在后。原来是"1234 个收藏"。
 - 原版的英文名在 `web/vview/zh/dict.js` 里翻译；数据源的 `pageTitle` 和 `getDisplayingText` 返回同一个英文名（推荐作品原来标签页用"Discovery"，没有标签的搜索页原来标签页是"Search:"）。
+
+### Gelbooru
+
+完整设计在 `.work/gelbooru/DESIGN.md`，这里只记已经做了的和原因。
+
+- 同一个脚本也在 gelbooru.com 上运行（`@match https://gelbooru.com/*`），按域名选站点（`SiteGelbooru`），Pixiv 上的行为不变。站点支持什么写在 `ppixiv.site.caps`，缺的功能在 `body` 上加 `no-<功能>` 类隐藏，不在各处判断域名。
+- 网址沿用 Gelbooru 自己的，加 `#ppixiv`：作品列表 `index.php?page=post&s=list&tags=<查询>`，单个作品 `page=post&s=view&id=<n>`。刷新、`#no-ppixiv` 和粘贴过来的 Gelbooru 链接都落到同一个列表。首页和不带参数的 `index.php` 进作品列表，收藏页 `page=favorites&s=view&id=<n>` 改成 `tags=fav:<n>`。账号、维基、论坛等页面保持 Gelbooru 原样，只有左下角的启用按钮。
+- 查询本身就是状态：`tags` 里既有标签也有条件（`score:>=100`、`sort:score`、`rating:general` 等），`web/vview/sites/gelbooru/query.js` 负责拆开和拼回，搜索框只显示普通标签，换搜索时保留当前列表的条件。
+- API key 从账号设置页读出来，存在 gelbooru.com 自己的 localStorage 里，不放进 ppixiv 的设置（设置可以导出），只发给 gelbooru.com，不写进日志。没有 key 就是没登录，显示一段提示和登录链接，不启动。API 返回 401 时重读一次 key 再试。同时最多 2 个 API 请求，间隔至少 150 毫秒（账号上限每秒 10 个）。
+- 列表每页一个请求 100 件，作品信息直接从列表结果登记，打开作品不再请求；刷新看图网址时按 `id:<n>` 单独请求。Gelbooru 翻到太深时回答 `Too deep!`，列表就到此结束，不报错也不重试。
+- 缩略图上的心加减的是 Gelbooru 收藏（`addfav.php` 和 `favorites&s=delete`），撤销同样可用。Gelbooru 自己的收藏按钮会顺便点赞，这里不会。
+- 搜索框的补全用 Gelbooru 的 `autocomplete2`，显示带空格的标签名、分类颜色和作品数，前面的 `-` 保留。保存的标签和最近搜索按域名分开存，Gelbooru 有自己的一份。
