@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.186.g9c1601d0
+// @version     258.188.ga7e32008
 // ==/UserScript==
 (function() {
 
@@ -3450,6 +3450,13 @@ let bundle = `(() => {
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
     {
+      id: "2026-11-16.8",
+      title: "收藏数可以选 1万+、2万+ 和自定义",
+      items: [
+        '搜索的"收藏数"和设置里的"新搜索的收藏数"多了 1万+、2万+，还有"自定义…"：输入几 k（3 就是 3000，也可以写 2w）。'
+      ]
+    },
+    {
       id: "2026-11-16.7",
       title: "收藏相关：种子加到 20 件",
       items: [
@@ -6076,6 +6083,21 @@ let bundle = `(() => {
   var DialogWidget = _DialogWidget;
   __publicField(DialogWidget, "activeDialogs", []);
 
+  /\x2f web/vview/next/bookmark-count.js
+  var BOOKMARK_COUNTS = [100, 250, 500, 1e3, 2500, 5e3, 1e4, 2e4];
+  function bookmarkCountLabel(count) {
+    if (count >= 1e4 && count % 1e4 == 0)
+      return \`\${count / 1e4}万+\`;
+    return \`\${count}+\`;
+  }
+  function parseBookmarkCount(text) {
+    let match = text.trim().toLowerCase().match(/^(\\d+(?:\\.\\d+)?)\\s*(k|w|万)?\$/);
+    if (match == null)
+      return null;
+    let count = Math.round(parseFloat(match[1]) * (match[2] == "w" || match[2] == "万" ? 1e4 : 1e3));
+    return count > 0 ? count : null;
+  }
+
   /\x2f web/vview/widgets/prompts.js
   var TextPrompt = class extends DialogWidget {
     static async prompt(options) {
@@ -6195,6 +6217,11 @@ let bundle = `(() => {
       this.visible = false;
     };
   };
+  async function promptBookmarkCount(current) {
+    let value = current ? String(current / 1e3) : "";
+    let text = await TextPrompt.prompt({ title: "收藏数至少多少 k（3 = 3000，也可以写 2w）", value });
+    return text == null ? null : parseBookmarkCount(text);
+  }
 
   /\x2f web/vview/util/path.js
   var Path = class {
@@ -9667,6 +9694,7 @@ let bundle = `(() => {
       setting,
       label,
       values,
+      choose = null,
       explanation,
       settings = null,
       ...options
@@ -9693,12 +9721,14 @@ let bundle = `(() => {
             template: \`<div class=vertical-list></div>\`
           });
           let currentValue = this.value;
-          for (let [value, label2] of Object.entries(values)) {
+          for (let [value, label2] of Object.entries(typeof values == "function" ? values() : values)) {
             let link = helpers.createBoxLink({ label: label2, asElement: true });
             helpers.html.setClass(link, "selected", value == currentValue);
             dropdown.root.appendChild(link);
-            link.addEventListener("click", () => {
-              this.value = value;
+            link.addEventListener("click", async () => {
+              let picked = choose ? await choose(value) : value;
+              if (picked != null)
+                this.value = picked;
             });
           }
           return dropdown;
@@ -12008,12 +12038,26 @@ let bundle = `(() => {
           ...globalOptions,
           setting: "search_default_bookmarks",
           label: "新搜索的收藏数",
-          values: {
-            keep: "沿用当前搜索",
-            all: "全部",
-            ...Object.fromEntries([100, 250, 500, 1e3, 2500, 5e3].map((count) => [\`\${count}+\`, \`\${count}+\`]))
+          values: () => {
+            let counts = BOOKMARK_COUNTS;
+            let current = parseInt(ppixiv.settings.get("search_default_bookmarks"));
+            if (current > 0 && !counts.includes(current))
+              counts = [...counts, current].sort((a, b) => a - b);
+            return {
+              keep: "沿用当前搜索",
+              all: "全部",
+              ...Object.fromEntries(counts.map((count) => [\`\${count}+\`, bookmarkCountLabel(count)])),
+              custom: "自定义…"
+            };
           },
-          explanation: (value) => value == "keep" ? "搜新标签时沿用正在看的搜索的收藏数条件。" : "搜新标签时只看收藏数到这个数的作品（会员功能）。给当前搜索加减标签不受影响。"
+          choose: async (value) => {
+            if (value != "custom")
+              return value;
+            let current = parseInt(ppixiv.settings.get("search_default_bookmarks"));
+            let count = await promptBookmarkCount(current > 0 ? current : null);
+            return count == null ? null : \`\${count}+\`;
+          },
+          explanation: (value) => value == "keep" ? "搜新标签时沿用正在看的搜索的收藏数条件。" : value == "all" ? "搜新标签时不限收藏数。给当前搜索加减标签不受影响。" : \`搜新标签时只看收藏数 \${bookmarkCountLabel(parseInt(value))} 的作品（会员功能）。给当前搜索加减标签不受影响。\`
         });
       },
       searchDefaultType: () => {
@@ -31030,13 +31074,19 @@ let bundle = `(() => {
     createOptions: { label: "正方形", icon: "crop_square" },
     setupOptions: { fields: { ratio: "0" } }
   }];
-  var BOOKMARK_COUNT = [{
-    createOptions: { label: "全部", dataset: { default: true } },
-    setupOptions: { fields: { blt: null, bgt: null } }
-  }, ...[100, 250, 500, 1e3, 2500, 5e3].map((count) => ({
-    createOptions: { label: \`\${count}+\` },
-    setupOptions: { fields: { blt: count, bgt: null } }
-  }))];
+  function bookmarkCountItems(url) {
+    let counts = BOOKMARK_COUNTS;
+    let current = parseInt(url.searchParams.get("blt"));
+    if (current > 0 && url.searchParams.get("bgt") == null && !counts.includes(current))
+      counts = [...counts, current].sort((a, b) => a - b);
+    return [{
+      createOptions: { label: "全部", dataset: { default: true } },
+      setupOptions: { fields: { blt: null, bgt: null } }
+    }, ...counts.map((count) => ({
+      createOptions: { label: bookmarkCountLabel(count) },
+      setupOptions: { fields: { blt: count, bgt: null } }
+    }))];
+  }
   var BOOKMARKED = [{
     createOptions: { label: "全部", dataset: { default: true } },
     setupOptions: { fields: { wib: null } }
@@ -31111,7 +31161,7 @@ let bundle = `(() => {
       let time = timeItems();
       let outside = [
         { button: ".sort-button", items: SORT },
-        { button: ".bookmark-count-button", items: BOOKMARK_COUNT }
+        { button: ".bookmark-count-button", items: bookmarkCountItems(new URL(dataSource.url)) }
       ];
       let folded = [
         { button: ".search-mode-button", title: "搜索方式", items: SEARCH_MODE, unset: [0, 1], reset: 1 },
@@ -31147,6 +31197,8 @@ let bundle = `(() => {
       for (let { button, items } of outside) {
         if (button == ".time-ago-button")
           this._setupTimeDropdown(this.querySelector(button), items);
+        else if (button == ".bookmark-count-button")
+          this._setupBookmarkCountDropdown(this.querySelector(button), items);
         else
           dataSource.setupDropdown(this.querySelector(button), items);
       }
@@ -31217,6 +31269,30 @@ let bundle = `(() => {
       url.searchParams.set("s_mode", mode);
       url.searchParams.set("type", "artwork");
       return url.toString();
+    }
+    _setupBookmarkCountDropdown(button, items) {
+      button.classList.add("n-dropdown");
+      new DropdownMenuOpener({
+        button,
+        createDropdown: ({ ...options }) => {
+          let dropdown = new Widget({
+            ...options,
+            template: \`<div class=vertical-list></div>\`
+          });
+          this.dataSource.createDropdownItems(dropdown.root, items);
+          let custom = helpers.createBoxLink({ label: "自定义…", classes: ["n-bookmark-count-custom"], asElement: true });
+          custom.addEventListener("click", async () => {
+            let current = parseInt(new URL(this.dataSource.url).searchParams.get("blt"));
+            let count = await promptBookmarkCount(current > 0 ? current : null);
+            if (count == null)
+              return;
+            let { args } = this.dataSource.setItemInUrl(new helpers.args(this.dataSource.url), { fields: { blt: count, bgt: null } });
+            helpers.navigate(args);
+          });
+          dropdown.root.appendChild(custom);
+          return dropdown;
+        }
+      });
     }
     _setupTimeDropdown(button, items) {
       new DropdownMenuOpener({
@@ -42030,7 +42106,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.186.g9c1601d0"}\`);
+      console.log(\`vview setup: \${"r258.188.ga7e32008"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -42079,7 +42155,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.186.g9c1601d0"}\`);
+      console.log(\`ppixiv setup: \${"r258.188.ga7e32008"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
