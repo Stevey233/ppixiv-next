@@ -64,7 +64,7 @@ export function filterLabel(value)
 const FILTERABLE_DATA_SOURCES = new Set([
     "discovery", "search", "rankings", "bookmarks", "artist", "new_illust", "new_works_by_following",
     "series", "related-illusts", "edited", "completed-requests", "history", "from-bookmarks",
-    "tag-feed", "gb-posts",
+    "tag-feed", "gb-posts", "gb-history",
 ]);
 
 export function dataSourceSupportsFilters(dataSource)
@@ -117,7 +117,7 @@ export function filterAvailable(listKey, value)
         return false;
 
     // Every work on 最近看过 has been seen, so 隐藏看过的 would empty it.
-    if(listKey == "history" && value == "hide-seen")
+    if((listKey == "history" || listKey == "gb-history") && value == "hide-seen")
         return false;
     return !((listKey == "bookmarks-own" || listKey == "gb-posts-favorites-own") && value == "hide-bookmarked");
 }
