@@ -263,6 +263,8 @@ export default class DataSource_GelbooruPosts extends DataSource
         if(this.popularPeriod != null)
             return "热门 - Gelbooru";
         let tags = parseQuery(this.query).tags.map(tokenLabel).join(" ");
+        if(!tags && this.randomPages)
+            return "随机 - Gelbooru";
         return tags? `${tags} - Gelbooru`:"Gelbooru";
     }
 
