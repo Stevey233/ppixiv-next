@@ -406,6 +406,7 @@ export default class ScreenIllust extends Screen
         let earlyIllustData = ppixiv.mediaCache.getMediaInfoSync(mediaId, { full: false });
         if(this.active)
             helpers.setTitleAndIcon(earlyIllustData);
+        ppixiv.site.loadMediaDetails?.(mediaId);
 
         // If the image has the ドット絵 tag, enable nearest neighbor filtering.
         helpers.html.setClass(document.body, "dot", helpers.pixiv.tagsContainDot(earlyIllustData?.tagList));
@@ -611,6 +612,11 @@ export default class ScreenIllust extends Screen
 
         if(this.desktopUi)
             this.desktopUi.refresh();
+
+        // The title can change after the work is shown, like a Gelbooru post's title once its
+        // tag categories arrive.
+        if(e?.mediaId != null && this.currentMediaId != null && e.mediaId == helpers.mediaId.getMediaIdFirstPage(this.currentMediaId))
+            helpers.setTitle(ppixiv.mediaCache.getMediaInfoSync(this.currentMediaId, { full: false }));
 
         this._refreshNombre();
     }

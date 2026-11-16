@@ -77,11 +77,14 @@ function formatDate(value)
 // an animation.  singlePageOfMany is true when one page of a multi-page work is saved.
 export function downloadFilename({ mediaInfo, userName, page=null, singlePageOfMany=false, ext })
 {
+    // Without a user (Gelbooru), the author is the work's userName, its artist tags.
+    userName ??= mediaInfo.userName ?? "";
+
     let template = ppixiv.settings.get("download_filename")?.trim();
     if(template)
     {
         let name = renderFilename(template, {
-            author: userName ?? mediaInfo.userName ?? "",
+            author: userName,
             author_id: String(mediaInfo.userId ?? ""),
             id: String(mediaInfo.illustId),
             title: mediaInfo.illustTitle ?? "",
@@ -94,7 +97,7 @@ export function downloadFilename({ mediaInfo, userName, page=null, singlePageOfM
             return name;
     }
 
-    let filename = `${userName} - ${mediaInfo.illustId}`;
+    let filename = userName != ""? `${userName} - ${mediaInfo.illustId}`:mediaInfo.illustId;
     if(singlePageOfMany && page != null)
         filename += ` #${page + 1}`;
     return `${filename} - ${mediaInfo.illustTitle}.${ext}`;

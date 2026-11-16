@@ -536,7 +536,7 @@ export const ICON_SELECTOR = ".font-icon, .material-icons, .ppixiv-icon";
 
 // Text that should never be translated because it's user content or the ppixiv changelog.
 export const SKIP_SELECTOR = [
-    "textarea", "[contenteditable]", "script", "style",
+    "textarea", "[contenteditable]", "script", "style", "[translate=no]",
     ".description", ".title", ".author", ".folder-text", ".tag", ".tag-entry", ".tag-name",
     ".tag-list", ".search-tags", ".word", ".user-name", ".username",
     ".thumbnail-label", ".whats-new-dialog", ".follow-tag", ".utags_ul", ".avatar-widget",

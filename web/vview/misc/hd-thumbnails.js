@@ -126,6 +126,9 @@ function markThumbTierLoaded(state, tier)
 // Return url unchanged if none has.
 export function loadedPreviewUrl(url)
 {
+    if(loadedSiteThumbs.has(url))
+        return loadedSiteThumbs.get(url);
+
     let tiers = url == null ? null : loadedThumbTiers.get(url);
     let match = tiers?.size ? THUMB_URL_RE.exec(url) : null;
     if(match == null)
@@ -186,12 +189,63 @@ export function forgetThumb(img)
     thumbVisibilityObserver.unobserve(img);
     visibleThumbs.delete(img);
     thumbStates.delete(img);
+    siteThumbs.delete(img);
+}
+
+// A site with one larger image per thumbnail (ppixiv.site.hdThumbnailUrl, Gelbooru's 850 px
+// sample) has no tiers: the thumbnail shows the site's preview, and switches to the larger image
+// once it's in view and that has loaded.  An image whose larger one loaded before shows it at once.
+let siteThumbs = new WeakMap(); // img -> the larger URL, until it's shown
+let loadedSiteThumbs = new Map(); // preview URL -> the larger URL, once it has loaded
+
+function setSiteThumbnail(img, url, mediaId)
+{
+    let large = thumbsEnabled()? window.ppixiv.site.hdThumbnailUrl(mediaId):null;
+    if(large == null || large == url)
+    {
+        img.src = url;
+        return;
+    }
+
+    if(loadedSiteThumbs.get(url) == large)
+    {
+        img.src = large;
+        return;
+    }
+
+    img.src = url;
+    siteThumbs.set(img, large);
+    thumbVisibilityObserver.observe(img);
+}
+
+function upgradeSiteThumb(img)
+{
+    let large = siteThumbs.get(img);
+    siteThumbs.delete(img);
+    let base = img.src;
+    let loader = document.createElement("img");
+    loader.decoding = "async";
+    loader.onload = async () => {
+        loadedSiteThumbs.set(base, large);
+        while(loadedSiteThumbs.size > LOADED_THUMBS_LIMIT)
+            loadedSiteThumbs.delete(loadedSiteThumbs.keys().next().value);
+        await loader.decode().catch(() => {});
+        if(img.isConnected && img.src == base && thumbsEnabled())
+            setImgSrc(img, large);
+    };
+    setImgSrc(loader, large);
 }
 
 // Set the first URL before callers wait for the thumbnail to load.
 export function setThumbnail(img, url, mediaId, box)
 {
     forgetThumb(img);
+    if(window.ppixiv.site.hdThumbnailUrl && mediaId != null)
+    {
+        setSiteThumbnail(img, url, mediaId);
+        return;
+    }
+
     let state = thumbsEnabled() ? trackThumb(img, url, mediaId) : null;
     if(state == null || state.failed || inMangaView())
     {
@@ -389,6 +443,13 @@ let thumbVisibilityObserver = new IntersectionObserver((entries) => {
             visibleThumbs.delete(entry.target);
             continue;
         }
+        if(siteThumbs.has(entry.target))
+        {
+            thumbVisibilityObserver.unobserve(entry.target);
+            upgradeSiteThumb(entry.target);
+            continue;
+        }
+
         visibleThumbs.add(entry.target);
         maybeUpgradeThumb(entry.target, entry.boundingClientRect.width, entry.boundingClientRect.height);
     }

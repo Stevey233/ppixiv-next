@@ -1374,7 +1374,10 @@ export default class SearchView extends Widget
             // The image will be obscured, but we still shouldn't load the image the user blocked (which
             // is something Pixiv does wrong).  Load the user profile image instead.
             forgetThumb(thumb);
-            thumb.src = ppixiv.site.caps.users? ppixiv.mediaCache.getProfilePictureUrl(info.userId):helpers.other.blankImage;
+            if(ppixiv.site.caps.users)
+                thumb.src = ppixiv.mediaCache.getProfilePictureUrl(info.userId);
+            else
+                thumb.removeAttribute("src"); // Gelbooru has no users or avatars
             element.classList.add("muted");
 
             let mutedLabel = element.querySelector(".muted-label");

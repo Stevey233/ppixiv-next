@@ -10,7 +10,10 @@ import { helpers } from '/vview/misc/helpers.js';
 import * as Site from '/vview/sites/site.js';
 import * as api from '/vview/sites/gelbooru/api.js';
 import { searchFromList, refineQuery, favoritesUserId, parseQuery, buildQuery } from '/vview/sites/gelbooru/query.js';
-import { registerPosts } from '/vview/sites/gelbooru/media.js';
+import { registerPosts, loadPostCategories } from '/vview/sites/gelbooru/media.js';
+import TagLibrary from '/vview/sites/gelbooru/tag-library.js';
+import { fillPostDetails, originalPostUrl } from '/vview/sites/gelbooru/post-details.js';
+import { fillSettingsPage } from '/vview/sites/gelbooru/settings.js';
 import { setFavorite, syncFavorites } from '/vview/sites/gelbooru/favorites.js';
 import { rememberCategories } from '/vview/sites/gelbooru/tag-categories.js';
 import * as links from '/vview/sites/gelbooru/links.js';
@@ -70,6 +73,11 @@ export default class SiteGelbooru extends Site.Site
 
         // Read or check the favorites in the background.  The first list doesn't wait for it.
         syncFavorites(credentials.userId);
+
+        // The tag library gives categories (and later Chinese names) without requests.  Nothing
+        // waits for it, and without it tags are looked up with the tag API.
+        this.tagLibrary = new TagLibrary();
+        this.tagLibrary.load().catch((error) => console.log("Tag library not loaded:", error.message));
         return true;
     }
 
@@ -173,6 +181,44 @@ export default class SiteGelbooru extends Site.Site
         await Promise.all(mediaIds.map((mediaId) => this.loadMediaInfo(mediaId)));
     }
 
+    // The viewer opened a post, or it's being downloaded: load its tag categories, for the grouped
+    // tags, the artist and the title.  A failed lookup leaves the post as it was.
+    async loadMediaDetails(mediaId)
+    {
+        await loadPostCategories(mediaId).catch((error) => console.log("Couldn't load tag categories:", error.message));
+    }
+
+    // The viewer's info panel: score, rating, uploader, source and related posts, and a link to
+    // the post's page on Gelbooru.
+    fillPostDetails(container, mediaInfo)
+    {
+        fillPostDetails(container, mediaInfo);
+    }
+
+    originalPostUrl(mediaId)
+    {
+        return originalPostUrl(helpers.mediaId.toIllustIdAndPage(mediaId)[0]);
+    }
+
+    // The settings dialog's Gelbooru page.
+    fillSettingsPage(globalOptions)
+    {
+        fillSettingsPage(globalOptions);
+    }
+
+    // The larger image a thumbnail switches to with 高清缩略图 on (misc/hd-thumbnails.js): the
+    // 850 px sample, or the file itself when there's no sample, because the image is no larger.
+    // Videos keep their poster, which is already full size, and GIFs their still preview.
+    hdThumbnailUrl(mediaId)
+    {
+        let mediaInfo = ppixiv.mediaCache.getMediaInfoSync(mediaId);
+        if(mediaInfo == null || mediaInfo.illustType == "video")
+            return null;
+
+        let url = mediaInfo.mangaPages[0].urls.regular;
+        return /\.gif$/i.test(url)? null:url;
+    }
+
     // Favorites.  Return true on success.  The vote Gelbooru's own button also sends is a
     // setting, off by default.
     async bookmarkAdd(mediaId)
@@ -182,7 +228,7 @@ export default class SiteGelbooru extends Site.Site
             return false;
 
         setFavorite(postId, true);
-        if(ppixiv.settings.get("gelbooru_upvote_on_favorite", false))
+        if(ppixiv.settings.get("gelbooru_upvote_on_favorite"))
             api.upvote(postId);
         return true;
     }

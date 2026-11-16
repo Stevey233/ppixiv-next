@@ -39,6 +39,9 @@ export default class DesktopImageInfo extends Widget
             <a class="icon-button disable-ui-button popup pixiv-only" data-popup="在 Pixiv 打开" href="#no-ppixiv">
                 ${ helpers.createIcon("ppixiv:pixiv") }
             </a>
+            <a class="icon-button site-original-link popup" target=_blank hidden>
+                ${ helpers.createIcon("mat:open_in_new") }
+            </a>
             <button type=button class="icon-button preferences-button popup" data-popup="设置">
                 ${ helpers.createIcon("mat:settings") }
             </button>
@@ -72,6 +75,8 @@ export default class DesktopImageInfo extends Widget
             <div class=ugoira-duration hidden></div>
             <div class=ugoira-frames hidden></div>
         </div>
+
+        <dl class=post-details translate=no hidden></dl>
 
         <div class=info-actions>
             <div class=info-actions-main>
@@ -429,8 +434,9 @@ export default class DesktopImageInfo extends Widget
         let [illustId] = helpers.mediaId.toIllustIdAndPage(this._mediaId);
         let userId = mediaInfo.userId;
 
-        // Show the author if it's someone else's post, or the edit link if it's ours.
-        let ourPost = ppixiv.pixivInfo?.userId == userId;
+        // Show the author if it's someone else's post, or the edit link if it's ours.  A site
+        // without users (Gelbooru) has neither.
+        let ourPost = ppixiv.site.caps.users && ppixiv.pixivInfo?.userId == userId;
         this.querySelector(".author-block").hidden = ourPost;
         this.querySelector(".edit-post").hidden = !ourPost;
         this.querySelector(".edit-post").href = "/member_illust_mod.php?mode=mod&illust_id=" + illustId;
@@ -449,6 +455,7 @@ export default class DesktopImageInfo extends Widget
         elementTitle.href = getUrlForMediaId(this._mediaId).url;
 
         this._setSeries(mediaInfo);
+        this._setSiteDetails(mediaInfo);
         this.artistWorks.set({ mediaInfo: this.visible? mediaInfo:null });
 
         // Show the folder if we're viewing a local image.
@@ -466,7 +473,7 @@ export default class DesktopImageInfo extends Widget
         }
 
         // If the author name or folder are empty, hide it instead of leaving it empty.
-        this.root.querySelector(".author-block").hidden = ourPost || mediaInfo.userName == "";
+        this.root.querySelector(".author-block").hidden = ourPost || mediaInfo.userName == "" || !ppixiv.site.caps.users;
         this.root.querySelector(".folder-block").hidden = !showFolder;
 
         let elementAuthor = this.root.querySelector(".author");
@@ -554,6 +561,24 @@ export default class DesktopImageInfo extends Widget
         if(mediaInfo.pageCount > 1 && this.displayedPage != null)
             pageText = `第 ${this.displayedPage+1} / ${mediaInfo.pageCount} 页`;
         setInfo(".page-count", pageText);
+    }
+
+    // A site's own lines (Gelbooru's score, rating, source and related posts) and the link to the
+    // work's page on the site.
+    _setSiteDetails(mediaInfo)
+    {
+        let details = this.root.querySelector(".post-details");
+        details.hidden = ppixiv.site.fillPostDetails == null;
+        if(!details.hidden)
+            ppixiv.site.fillPostDetails(details, mediaInfo);
+
+        let original = this.root.querySelector(".site-original-link");
+        original.hidden = ppixiv.site.originalPostUrl == null;
+        if(!original.hidden)
+        {
+            original.href = ppixiv.site.originalPostUrl(this._mediaId);
+            original.dataset.popup = `在 ${ppixiv.site.name} 打开`;
+        }
     }
 
     // The series line below the action rows: the series name and the work's number in it, linking

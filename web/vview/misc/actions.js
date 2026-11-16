@@ -686,6 +686,9 @@ export default class Actions
     {
         let mediaInfo = await ppixiv.mediaCache.getMediaInfo(mediaId);
         let userInfo = await ppixiv.userCache.getUserInfo(mediaInfo.userId);
+
+        // The file name may need more than the media info (a Gelbooru post's artist and title).
+        await ppixiv.site.loadMediaDetails?.(mediaId);
         console.log(`Download ${mediaId} with type $[downloadType}`);
 
         if(downloadType == "MKV")

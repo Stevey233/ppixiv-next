@@ -1,1 +1,81 @@
 // Gelbooru: viewer.  See _gelbooru.scss.
+
+.image-ui .ui-box {
+    // The labels of the details and the tag groups share one column width, so their values line
+    // up and don't move between posts.  It fits 关联作品.
+    --gb-label-width: 56px;
+
+    // Gelbooru has no users: no avatar, follow, author name or edit link.
+    body.no-users & .info-author-row { display: none; }
+
+    // Score, rating, uploader and date, source, related posts (sites/gelbooru/post-details.js).
+    // Labels in pencil, values in the text color, links in blue, like the series line.
+    .post-details {
+        display: grid;
+        grid-template-columns: var(--gb-label-width) minmax(0, 1fr);
+        gap: 6px 14px;
+        margin: -4px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+
+        &[hidden] { display: none; }
+
+        dt { color: var(--n-pencil); }
+        dd {
+            margin: 0;
+            color: var(--n-text);
+            font-family: var(--n-font-num);
+            overflow-wrap: anywhere;
+        }
+
+        a {
+            color: var(--n-blue);
+            &:hover { text-decoration: underline; text-underline-offset: 3px; }
+        }
+    }
+
+    // Tags grouped by category (widgets/tag-list-widget.js): one row per group, the label in a
+    // narrow column on the left, the pills wrapping beside it.  Pill text takes the category's
+    // color; the outline stays the quiet rule color until hovered.
+    .tag-list-container .tag-list:has(> .tag-group) {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .tag-group {
+        display: grid;
+        grid-template-columns: var(--gb-label-width) minmax(0, 1fr);
+        column-gap: 14px;
+        align-items: start;
+
+        &[hidden] { display: none; }
+
+        .tag-group-label {
+            padding-top: 5px;
+            color: var(--n-pencil);
+            font-size: 12px;
+        }
+
+        .tag-group-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+
+            > .box-link, > .n-tag-pill > .box-link {
+                height: auto;
+                min-height: 28px;
+                padding: 0 10px;
+                border: 1px solid var(--n-rule);
+                border-radius: 999px;
+                font-size: 13px;
+                @media(hover: hover) {
+                    &:hover { border-color: var(--n-blue); background: none; }
+                }
+            }
+        }
+    }
+
+    .tag-list .tag-entry[class*="tag-category-"] { color: var(--gb-cat); }
+}
