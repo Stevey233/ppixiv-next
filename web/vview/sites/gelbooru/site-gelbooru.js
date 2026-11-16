@@ -205,6 +205,13 @@ export default class SiteGelbooru extends Site.Site
         fillPostDetails(container, mediaInfo);
     }
 
+    // The link of a post: its own page on Gelbooru, with our viewer on it.
+    getUrlForMediaId(mediaId)
+    {
+        let [postId] = helpers.mediaId.toIllustIdAndPage(mediaId);
+        return new helpers.args(`/index.php?page=post&s=view&id=${encodeURIComponent(postId)}#ppixiv`);
+    }
+
     originalPostUrl(mediaId)
     {
         return originalPostUrl(helpers.mediaId.toIllustIdAndPage(mediaId)[0]);

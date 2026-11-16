@@ -25,6 +25,7 @@ export const DEFAULT_CAPS = Object.freeze({
 // otherwise:
 //
 // - loadMediaInfo(mediaId), batchLoadMediaInfo(mediaIds): load media info that isn't cached
+// - getUrlForMediaId(mediaId): the link of a work, as helpers.args (Pixiv's is /artworks/<id>)
 // - bookmarkAdd(mediaId), bookmarkRemove(mediaId): add or remove a bookmark, returning true on success
 // - autocomplete(word, { signal }): tag completions, [{ tag, label, category, count }]
 // - getArgsForTagSearch(tags, url), getArgsForTagRefine(tag, url, { exclude }), getSearchTagsFromUrl(url)

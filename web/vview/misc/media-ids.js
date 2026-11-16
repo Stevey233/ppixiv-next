@@ -14,6 +14,11 @@ export function getUrlForMediaId(mediaId, { manga=false}={})
         return args;
     }
 
+    // A site with its own URLs builds the link, so opening a thumbnail in a new tab or copying
+    // its link gives a page that exists there.
+    if(ppixiv.site.getUrlForMediaId)
+        return ppixiv.site.getUrlForMediaId(mediaId);
+
     let [illustId, page] = helpers.mediaId.toIllustIdAndPage(mediaId);
     let args = new helpers.args("/", ppixiv.plocation);
     args.path  = `/artworks/${illustId}`;
