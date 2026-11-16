@@ -115,14 +115,17 @@ export async function categoriesForTags(tags)
 
     if(wanted.length)
     {
-        let lookup = lookUp(wanted);
+        let lookup = (async () => {
+            try {
+                await lookUp(wanted);
+            } finally {
+                for(let tag of wanted)
+                    if(pending.get(tag) == lookup)
+                        pending.delete(tag);
+            }
+        })();
         for(let tag of wanted)
             pending.set(tag, lookup);
-        lookup.finally(() => {
-            for(let tag of wanted)
-                if(pending.get(tag) == lookup)
-                    pending.delete(tag);
-        });
         waits.push(lookup);
     }
 
