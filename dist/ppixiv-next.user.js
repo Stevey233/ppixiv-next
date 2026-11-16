@@ -22,7 +22,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.184.ge7aa73fa
+// @version     258.186.g9c1601d0
 // ==/UserScript==
 (function() {
 
@@ -3449,6 +3449,13 @@ let bundle = `(() => {
 
   /\x2f web/vview/widgets/whats-new.js
   var changelog = [
+    {
+      id: "2026-11-16.7",
+      title: "收藏相关：种子加到 20 件",
+      items: [
+        '收藏相关改成按 20 件收藏找：最近 50 件收藏里挑 10 件互不相像的，更早的收藏里抽 10 件。第一次打开和"重新查找"多等十几秒。'
+      ]
+    },
     {
       id: "2026-11-16.6",
       title: "推荐画师改版",
@@ -29225,11 +29232,12 @@ let bundle = `(() => {
   };
 
   /\x2f web/vview/misc/seed-feed.js
-  var SEED_COUNT = 10;
-  var RECENT_SEEDS = 5;
-  var OLD_SEEDS = SEED_COUNT - RECENT_SEEDS;
+  var RECENT_SEEDS = 10;
+  var OLD_SEEDS = 10;
+  var SEED_COUNT = RECENT_SEEDS + OLD_SEEDS;
+  var SEED_PAGE_SIZE = 50;
   var OLD_PAGES = 2;
-  var SEED_PAGE_SIZE = 48;
+  var SEEDS_VERSION = 2;
   var RELATED_LIMIT = 180;
   var REQUEST_SPACING = 1250;
   var SEEDS_FRESH = 10 * 60 * 1e3;
@@ -29381,6 +29389,8 @@ let bundle = `(() => {
     }
     async _build(refresh) {
       let stored = await this._get("seeds");
+      if (stored?.version != SEEDS_VERSION)
+        stored = null;
       let seedList = !refresh && stored?.info != null && Date.now() - stored.time < SEEDS_FRESH ? stored : null;
       if (seedList == null) {
         let result = await this._bookmarksPage(0);
@@ -29395,6 +29405,7 @@ let bundle = `(() => {
           info[work.id] = seedInfo(work, false);
         let newIds = [...recent, ...more].map((work) => String(work.id));
         seedList = {
+          version: SEEDS_VERSION,
           time: Date.now(),
           seeds: newIds.concat(old.seeds.filter((id) => !newIds.includes(id))),
           info: { ...info, ...old.info },
@@ -32016,7 +32027,7 @@ let bundle = `(() => {
       if (this.feed.status == "ok") {
         let count = \`共 \${this.mediaIds.length} 件\`;
         let { used, usedOld } = this.feed;
-        let seeds = usedOld ? \`按 \${used} 件收藏（最近 \${used - usedOld} 件，更早 \${usedOld} 件）\` : \`按最近 \${used} 件收藏\`;
+        let seeds = usedOld ? \`按 \${used} 件收藏（最近 \${SEED_PAGE_SIZE} 件里 \${used - usedOld} 件，更早 \${usedOld} 件）\` : \`按最近 \${used} 件收藏\`;
         status.textContent = ppixiv.mobile ? count : \`\${seeds} · \${count}\`;
         fragment.append(status);
       }
@@ -32024,7 +32035,7 @@ let bundle = `(() => {
       refresh.type = "button";
       refresh.className = "n-seed-feed-refresh";
       refresh.textContent = "重新查找";
-      refresh.title = "不用缓存，重新从 Pixiv 读取收藏和相关作品，更早的 5 件收藏重新抽";
+      refresh.title = \`不用缓存，重新从 Pixiv 读取收藏和相关作品，更早的 \${OLD_SEEDS} 件收藏重新抽\`;
       refresh.addEventListener("click", () => {
         refreshRequested = true;
         ppixiv.app.setCurrentDataSource({ refresh: true, startAtBeginning: true });
@@ -42019,7 +42030,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.184.ge7aa73fa"}\`);
+      console.log(\`vview setup: \${"r258.186.g9c1601d0"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -42068,7 +42079,7 @@ html:not(.mobile) .settings-dialog.floating > .dialog {
         native: false,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.184.ge7aa73fa"}\`);
+      console.log(\`ppixiv setup: \${"r258.186.g9c1601d0"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
