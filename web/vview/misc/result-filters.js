@@ -4,7 +4,7 @@
 // filtered here.  The filters are part of the URL, in the "filter" hash argument, as a
 // comma-separated list:
 //
-//   type:  illust (illustrations and animations), manga, ugoira (animations)
+//   type:  illust (illustrations and animations, without works tagged 漫画), manga, ugoira (animations)
 //   shape: portrait, landscape
 //   pages: single, multi
 //   hide:  hide-ai, hide-bookmarked, hide-seen
@@ -41,6 +41,7 @@ export const HIDE_FILTERS = [
 ];
 
 const HIDE_VALUES = HIDE_FILTERS.map(([value]) => value);
+const MANGA_TAGS = new Set(["漫画", "マンガ"]);
 const TYPE_VALUES = FILTER_GROUPS[0].options.map(([value]) => value);
 
 const ALL_FILTERS = new Set([
@@ -254,6 +255,42 @@ function applyRememberedAgeMode(args)
     return true;
 }
 
+// The conditions a new tag search starts with, chosen on the settings page: the order, the
+// minimum bookmark count and the type.  "keep" leaves what the current search has, or Pixiv's
+// default when coming from another list.  getArgsForTagSearch calls this for a new search;
+// adding or excluding a tag (getArgsForTagRefine) keeps the current conditions.
+export function applySearchDefaults(args)
+{
+    let order = ppixiv.settings.get("search_default_order") ?? "keep";
+    if(order == "date_d")
+        args.query.delete("order");
+    else if(order != "keep")
+        args.query.set("order", order);
+
+    let minBookmarks = ppixiv.settings.get("search_default_bookmarks") ?? "keep";
+    if(minBookmarks != "keep")
+    {
+        args.query.delete("bgt");
+        if(minBookmarks == "all")
+            args.query.delete("blt");
+        else
+            args.query.set("blt", parseInt(minBookmarks));
+    }
+
+    let type = ppixiv.settings.get("search_default_type") ?? "keep";
+    if(type != "keep")
+    {
+        // A fresh search has no filters yet, so start from the remembered hide filters, which
+        // applyFilterDefaults only adds when the URL has no filters at all.
+        let filters = args.hash.has("filter")? getFilters(args):rememberedFilters("search");
+        for(let value of TYPE_VALUES)
+            filters.delete(value);
+        if(type != "all")
+            filters.add(type);
+        setFilters(args, filters);
+    }
+}
+
 // Before a list opens, convert upstream's type options in args to filters, and if args has no
 // filters, add the hide filters remembered for the list.  A tag search also gets its remembered
 // age rating.  name is the data source name for the URL.  Return true if args changed.
@@ -334,8 +371,10 @@ export function hideReason(filters)
         if(info == null)
             return null;
 
+        // Pixiv's type is what the artist picked, and many comics are posted as illustrations
+        // with a 漫画 tag, so 插画 hides those too.
         let type = info.illustType;
-        if(filters.has("illust") && type == 1)
+        if(filters.has("illust") && (type == 1 || info.tagList?.some((tag) => MANGA_TAGS.has(tag))))
             return "other";
         if(filters.has("manga") && type != 1)
             return "other";

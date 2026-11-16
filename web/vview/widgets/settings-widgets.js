@@ -561,6 +561,59 @@ function createSettingsWidget({ globalOptions })
             });
         },
 
+        // The conditions a new tag search starts with, see applySearchDefaults.
+        searchDefaultOrder: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "search_default_order",
+                label: "新搜索的排序",
+                values: {
+                    keep: "沿用当前搜索",
+                    date_d: "最新",
+                    date: "最旧",
+                    popular_d: "热门（会员）",
+                },
+                explanation: (value) => value == "keep"?
+                    "搜新标签时沿用正在看的搜索的排序。":
+                    "从搜索框、保存的标签或作品的标签搜一个新标签时用这个排序。给当前搜索加减标签不受影响。",
+            });
+        },
+
+        searchDefaultBookmarks: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "search_default_bookmarks",
+                label: "新搜索的收藏数",
+                values: {
+                    keep: "沿用当前搜索",
+                    all: "全部",
+                    // "100+" rather than "100": an object puts integer keys before the others.
+                    ...Object.fromEntries([100, 250, 500, 1000, 2500, 5000].map((count) => [`${count}+`, `${count}+`])),
+                },
+                explanation: (value) => value == "keep"?
+                    "搜新标签时沿用正在看的搜索的收藏数条件。":
+                    "搜新标签时只看收藏数到这个数的作品（会员功能）。给当前搜索加减标签不受影响。",
+            });
+        },
+
+        searchDefaultType: () => {
+            return new MenuOptionOptionsSetting({
+                ...globalOptions,
+                setting: "search_default_type",
+                label: "新搜索的类型",
+                values: {
+                    keep: "沿用当前搜索",
+                    all: "全部",
+                    illust: "插画",
+                    manga: "漫画",
+                    ugoira: "动图",
+                },
+                explanation: (value) => value == "keep"?
+                    "搜新标签时沿用正在看的搜索的类型筛选。":
+                    "搜新标签时打开这个类型筛选。给当前搜索加减标签不受影响。",
+            });
+        },
+
         clearSeenWorks: () => {
             return new MenuOptionButton({
                 ...globalOptions,
@@ -922,6 +975,12 @@ export class SettingsDialog extends DialogWidget
                 {
                     settingsWidgets.hoverPreload();
                     settingsWidgets.searchRelatedTags();
+                }
+                if(!ppixiv.native)
+                {
+                    settingsWidgets.searchDefaultOrder();
+                    settingsWidgets.searchDefaultBookmarks();
+                    settingsWidgets.searchDefaultType();
                 }
                 if(!ppixiv.mobile)
                 {

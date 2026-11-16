@@ -7,6 +7,7 @@ import * as mediaId from '/vview/util/media-id.js';
 import * as pixiv from '/vview/util/pixiv.js';
 import * as pixivRequest from '/vview/util/pixiv-request.js';
 import { translateTitle } from '/vview/zh/i18n.js';
+import { applySearchDefaults } from '/vview/misc/result-filters.js';
 
 export class helpers 
 {
@@ -569,6 +570,7 @@ export class helpers
         
         // Don't include things like the current page in the URL.
         let args = helpers.getCanonicalUrl(url);
+        applySearchDefaults(args);
         return args;
     }
 

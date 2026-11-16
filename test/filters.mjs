@@ -186,6 +186,13 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.deepEqual(keptBy('ugoira'), ['illust:3-0']);
     log('ok   The type filters keep their types on lists filtered locally');
 
+    // 插画 also hides illustrations tagged 漫画 or マンガ, comics posted as illustrations.
+    setupPpixiv({ media: { 1: { illustType: 0, tagList: ['女の子', '漫画'] }, 2: { illustType: 0, tagList: ['マンガ'] }, 3: { illustType: 0, tagList: ['女の子'] }, 4: { illustType: 1, tagList: ['漫画'] } } });
+    let ids4 = ['illust:1-0', 'illust:2-0', 'illust:3-0', 'illust:4-0'];
+    assert.deepEqual(ids4.filter(filters.makeFilter(set('illust'))), ['illust:3-0']);
+    assert.deepEqual(ids4.filter(filters.makeFilter(set('manga'))), ['illust:4-0']);
+    log('ok   插画 hides works tagged 漫画');
+
     // A hidden work is counted under the first reason that hides it: the type, shape and page
     // filters, then AI, bookmarked, seen.
     setupPpixiv({
@@ -226,6 +233,28 @@ async function makeDataSource(pageTypes, { query='', filter='illust', loadPageIn
     assert.equal(apply('https://www.pixiv.net/discovery#ppixiv', 'discovery'), null, 'only tag search');
     filters.rememberAgeMode('all');
     log('ok   A tag search without mode gets the remembered age rating');
+
+    // A new search gets the default conditions from the settings; "keep" leaves the URL alone.
+    let withDefaults = (url) => {
+        let args = new Args(url);
+        filters.applySearchDefaults(args);
+        return decodeURIComponent(args.url.toString().replace('https://www.pixiv.net', ''));
+    };
+    assert.equal(withDefaults('https://www.pixiv.net/search?q=a&order=popular_d&blt=100#ppixiv?filter=manga'), '/search?q=a&order=popular_d&blt=100#ppixiv?filter=manga');
+    ppixiv.settings.set('search_default_order', 'date_d');
+    ppixiv.settings.set('search_default_bookmarks', '5000+');
+    ppixiv.settings.set('search_default_type', 'illust');
+    assert.equal(withDefaults('https://www.pixiv.net/search?q=a&order=popular_d&blt=100&bgt=200#ppixiv?filter=manga,hide-ai'), '/search?q=a&blt=5000#ppixiv?filter=illust,hide-ai');
+    filters.rememberFilters('search', set('hide-seen'));
+    assert.equal(withDefaults('https://www.pixiv.net/search?q=a&s_mode=tag#ppixiv'), '/search?q=a&s_mode=tag&blt=5000#ppixiv?filter=illust,hide-seen', 'a fresh search keeps the remembered hide filters');
+    filters.rememberFilters('search', set());
+    ppixiv.settings.set('search_default_order', 'popular_d');
+    ppixiv.settings.set('search_default_bookmarks', 'all');
+    ppixiv.settings.set('search_default_type', 'all');
+    assert.equal(withDefaults('https://www.pixiv.net/search?q=a&blt=100#ppixiv?filter=manga'), '/search?q=a&order=popular_d#ppixiv');
+    for(let key of ['search_default_order', 'search_default_bookmarks', 'search_default_type'])
+        ppixiv.settings.set(key, 'keep');
+    log('ok   A new search gets the default conditions');
 
     // Remembered per list: only the hide filters, not on other lists, and turning them off is
     // remembered too.

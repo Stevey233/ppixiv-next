@@ -9,6 +9,14 @@ import widget from '/vview/widgets/widget.js';
 // release: the newest id is what the "new" marker compares against.
 let changelog = [
     {
+        id: "2026-11-16.3",
+        title: "新搜索的默认条件，插画筛掉漫画标签",
+        items: [
+            "设置的缩略图页可以给新搜索设默认的排序、收藏数和类型，比如每次都按最新、只看 5000 收藏以上的插画。给当前搜索加减标签不会被改回默认。",
+            "筛选\"插画\"时，带\"漫画\"标签的作品也会隐藏，很多漫画是当成插画投稿的。",
+        ],
+    },
+    {
         id: "2026-11-16.2",
         title: "右键保存相关标签",
         items: [
