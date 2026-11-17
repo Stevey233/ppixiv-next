@@ -36,6 +36,9 @@ export default class DataSource_NewPostsByFollowing extends DataSource
             tag: currentTag,
             mode: r18? "r18":"all",
         });
+        // A response from before a refresh must not change the new visit or its bookmark hearts.
+        if(this._retired)
+            return;
 
         let data = result.body;
         this.lastSeen?.pageLoaded(data.thumbnails.illust.map((illust) => illust.id));

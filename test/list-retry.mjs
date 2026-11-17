@@ -5,6 +5,7 @@ import { setupPpixiv } from './vview.mjs';
 const { helpers } = await import('/vview/misc/helpers.js');
 const { default: DataSource } = await import('/vview/sites/data-source.js');
 const { Site } = await import('/vview/sites/site.js');
+const { default: Following } = await import('/vview/sites/pixiv/data-sources/new-posts-by-following.js');
 
 const url = new URL('https://www.pixiv.net/bookmark_new_illust.php#ppixiv');
 const pageData = { mediaIds: ['illust:101-0'] };
@@ -95,6 +96,26 @@ for(let outcome of ['succeeds', 'fails'])
         assert.equal(old.anyPageFailed, false);
     });
 }
+
+test('a superseded following response cannot update the visit marker or bookmark data', async (t) => {
+    let site = makeSite(t);
+    site.getDataSourceForUrl = () => Following;
+    let sent = Promise.withResolvers(), response = Promise.withResolvers();
+    helpers.pixivRequest = { get() { sent.resolve(); return response.promise; } };
+    ppixiv.tagTranslations = { addTranslationsDict() {} };
+    let cacheWorks = t.mock.fn();
+    ppixiv.mediaCache.addMediaInfosPartial = cacheWorks;
+    let old = site.createDataSourceForUrl(url);
+    let recordVisit = t.mock.method(old.lastSeen, 'pageLoaded', () => {});
+    let load = old.loadPage(1);
+    await sent.promise;
+    site.createDataSourceForUrl(url, { force: true });
+    response.resolve({ body: { thumbnails: { illust: [{ id: '101' }] }, page: { tags: [] } } });
+
+    assert.equal(await load, false);
+    assert.equal(recordVisit.mock.callCount(), 0);
+    assert.equal(cacheWorks.mock.callCount(), 0);
+});
 
 test('a cached list can retry in the background and be reused on return', async (t) => {
     let site = makeSite(t);

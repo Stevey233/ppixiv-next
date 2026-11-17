@@ -166,6 +166,8 @@ export default class DataSource_GelbooruPosts extends DataSource
 
         let requestRevision = favoriteRevision;
         let { posts, count, tooDeep } = await api.searchPosts({ tags: query.trim(), pid, limit: PER_PAGE });
+        if(this._retired)
+            return;
         if(tooDeep)
         {
             console.log(`Gelbooru won't page past page ${page - 1}`);
@@ -193,7 +195,8 @@ export default class DataSource_GelbooruPosts extends DataSource
             noteFavorites(posts.map((post) => post.id), requestRevision);
 
         let mediaIds = await registerPosts(posts);
-        this.lastSeen?.pageLoaded(posts.map((post) => post.id));
+        if(!this._retired)
+            this.lastSeen?.pageLoaded(posts.map((post) => post.id));
         return { mediaIds };
     }
 
