@@ -21,6 +21,10 @@ const MAX_PID = 200;
 
 let favorites = new Set();
 
+// User edits made after a list request started take precedence over its snapshot.
+export let favoriteRevision = 0;
+let changedAt = new Map();
+
 // Every post ID the mapper asked about, so their media info can be corrected.
 let registered = new Set();
 
@@ -44,6 +48,7 @@ export function setFavorite(postId, favorite)
 {
     postId = String(postId);
     pendingChanges?.set(postId, favorite);
+    changedAt.set(postId, ++favoriteRevision);
     changeInMemory(postId, favorite);
     dbOp(["favorites"], "readwrite", ({ favorites: store }) => {
         if(favorite)
@@ -56,10 +61,14 @@ export function setFavorite(postId, favorite)
 
 // Posts on the user's own fav:<me> list are favorites.  This only changes memory: the stored set
 // is the one the last sync read.
-export function noteFavorites(postIds)
+export function noteFavorites(postIds, requestRevision)
 {
     for(let postId of postIds)
-        changeInMemory(String(postId), true);
+    {
+        postId = String(postId);
+        if((changedAt.get(postId) ?? 0) <= requestRevision)
+            changeInMemory(postId, true);
+    }
 }
 
 // Resolves when the first sync has finished.  Steps and tests wait on it.
@@ -166,6 +175,7 @@ async function receive(data)
     else if(typeof data?.postId == "string" && /^\d+$/.test(data.postId))
     {
         pendingChanges?.set(data.postId, !!data.favorite);
+        changedAt.set(data.postId, ++favoriteRevision);
         changeInMemory(data.postId, !!data.favorite);
     }
 }

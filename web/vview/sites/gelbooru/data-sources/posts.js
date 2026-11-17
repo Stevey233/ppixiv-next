@@ -19,7 +19,7 @@ import { helpers } from '/vview/misc/helpers.js';
 import * as api from '/vview/sites/gelbooru/api.js';
 import { parseQuery, buildQuery, splitQuery, favoritesUserId } from '/vview/sites/gelbooru/query.js';
 import { registerPosts } from '/vview/sites/gelbooru/media.js';
-import { noteFavorites } from '/vview/sites/gelbooru/favorites.js';
+import { noteFavorites, favoriteRevision } from '/vview/sites/gelbooru/favorites.js';
 import { createConditionsUi, createConditionsNote } from '/vview/sites/gelbooru/conditions-ui.js';
 import { categoriesForTags } from '/vview/sites/gelbooru/tag-categories.js';
 import { tokenLabel } from '/vview/sites/gelbooru/tag-names.js';
@@ -152,6 +152,7 @@ export default class DataSource_GelbooruPosts extends DataSource
             pid = 0;
         }
 
+        let requestRevision = favoriteRevision;
         let { posts, count, tooDeep } = await api.searchPosts({ tags: query.trim(), pid, limit: PER_PAGE });
         if(tooDeep)
         {
@@ -177,7 +178,7 @@ export default class DataSource_GelbooruPosts extends DataSource
 
         // Every post on the user's own favorites list is a favorite.
         if(this.isOwnFavorites)
-            noteFavorites(posts.map((post) => post.id));
+            noteFavorites(posts.map((post) => post.id), requestRevision);
 
         return { mediaIds: await registerPosts(posts) };
     }
