@@ -61,6 +61,16 @@ export default class SiteGelbooru extends Site.Site
         helpers.html.moveChildren(document.head, html);
         helpers.html.moveChildren(document.body, html);
 
+        // Gelbooru's page has no viewport tag, and app.js adds one only on iOS, so Android
+        // would lay the page out at 980px and shrink it to fit.
+        if(ppixiv.mobile && !ppixiv.ios)
+        {
+            let meta = document.createElement("meta");
+            meta.setAttribute("name", "viewport");
+            meta.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no");
+            document.head.appendChild(meta);
+        }
+
         let credentials;
         try {
             credentials = await api.getCredentials();
