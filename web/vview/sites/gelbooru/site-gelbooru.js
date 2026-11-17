@@ -8,6 +8,7 @@
 //   /index.php#ppixiv/history                           gb-history (最近看过)
 import { helpers } from '/vview/misc/helpers.js';
 import * as Site from '/vview/sites/site.js';
+import NotesOverlay from '/vview/sites/gelbooru/notes-overlay.js';
 import * as api from '/vview/sites/gelbooru/api.js';
 import { searchFromList, refineQuery, favoritesUserId, parseQuery, buildQuery } from '/vview/sites/gelbooru/query.js';
 import { registerPosts, loadPostCategories } from '/vview/sites/gelbooru/media.js';
@@ -40,6 +41,7 @@ const CAPS = Object.freeze({
     recommendations: false,
     rankings: false,
     imageTranslation: false,
+    imageNotes: true,
     series: false,
 });
 
@@ -240,6 +242,11 @@ export default class SiteGelbooru extends Site.Site
     originalPostUrl(mediaId)
     {
         return originalPostUrl(helpers.mediaId.toIllustIdAndPage(mediaId)[0]);
+    }
+
+    createImageOverlay(options)
+    {
+        return new NotesOverlay(options);
     }
 
     // The settings dialog's Gelbooru page.

@@ -41,6 +41,7 @@ const SHORTCUTS = [
             ["→ / ↓ / PageDown / 滚轮向下", "下一张，多页作品先往后翻页"],
             ["Shift+方向键 / Shift+滚轮", "跳过多页作品剩下的页，直接到上一件或下一件作品"],
             ["Home / End", "多页作品的第一页 / 最后一页"],            // viewer-images.js onkeydown
+            ["N", "显示或隐藏图片注释", "imageNotes"],                  // sites/gelbooru/notes-overlay.js
             ["I", "收起或展开信息栏"],                               // desktop-image-info.js handleKeydown
             ["Esc", "返回列表；开着对话框或下拉菜单时只关掉最上面那个"],   // context-menu.js _handleKeyEventForImage, dialog.js, dropdown.js
             ["按住左键", "在按下的位置放大，拖动查看细节，松开恢复"],     // desktop-viewer-images.js _pointerevent

@@ -132,7 +132,7 @@ export function userId()
 // Run a dapi request.  params are the query arguments after page=dapi.  Return the parsed
 // JSON, or { tooDeep: true } when Gelbooru refuses to page that far.  A 401 means the stored key
 // is stale: read it again once and retry.
-async function dapi(params, { signal=null }={})
+async function dapi(params, { signal=null, xml=false }={})
 {
     let credentials = null;
     for(let attempt = 0; ; attempt++)
@@ -157,6 +157,13 @@ async function dapi(params, { signal=null }={})
         let text = await response.text();
         if(text.startsWith("Too deep"))
             return { tooDeep: true };
+        if(xml)
+        {
+            let doc = new DOMParser().parseFromString(text, "text/xml");
+            if(doc.querySelector("parsererror") || doc.documentElement.tagName != "notes")
+                throw new Error("Invalid Gelbooru notes XML");
+            return doc;
+        }
         return JSON.parse(text);
     }
 }
@@ -258,3 +265,30 @@ export async function upvote(postId)
 }
 
 export const loginUrl = "/index.php?page=account&s=login&code=00#no-ppixiv";
+
+// Keep the promise too: reopening a post shares an in-flight request, and failed requests
+// aren't repeated during this session.  Only the active image viewer calls this.
+const notesByPost = new Map();
+export function getNotes(postId)
+{
+    postId = String(postId);
+    if(!notesByPost.has(postId))
+        notesByPost.set(postId, loadNotes(postId).catch((error) => {
+            console.log("Gelbooru notes unavailable:", error.message);
+            return [];
+        }));
+    return notesByPost.get(postId);
+}
+
+async function loadNotes(postId)
+{
+    let doc = await dapi({ s: "note", q: "index", post_id: postId }, { xml: true });
+    return Array.from(doc.querySelectorAll("note"), (node) => ({
+        id: node.getAttribute("id"),
+        active: node.getAttribute("is_active") == "true",
+        x: Number(node.getAttribute("x")), y: Number(node.getAttribute("y")),
+        width: Number(node.getAttribute("width")), height: Number(node.getAttribute("height")),
+        body: node.getAttribute("body") ?? "",
+    })).filter((note) => note.active && [note.x, note.y, note.width, note.height].every(Number.isFinite)
+        && note.x >= 0 && note.y >= 0 && note.width > 0 && note.height > 0);
+}

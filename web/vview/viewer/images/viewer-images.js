@@ -116,6 +116,24 @@ export default class ViewerImages extends Viewer
         }
     }
 
+    set active(value)
+    {
+        super.active = value;
+        this._refreshSiteOverlay();
+    }
+    get active() { return super.active; }
+
+    _refreshSiteOverlay()
+    {
+        if(!this._cropBox)
+            return;
+        if(this.active && !this._siteOverlay)
+            this._siteOverlay = ppixiv.site.createImageOverlay?.({
+                container: this._cropBox, parent: this, viewer: this,
+            });
+        this._siteOverlay?.refresh();
+    }
+
     async load()
     {
         let {
@@ -173,6 +191,7 @@ export default class ViewerImages extends Viewer
             return;
 
         let { mediaInfo } = imageInfo;
+        this._refreshSiteOverlay();
 
         // If width is null, we only have the aspect ratio and not the actual size.
         let haveActualResolution = imageInfo.width != null;
@@ -473,6 +492,7 @@ export default class ViewerImages extends Viewer
 
     onkeydown = async(e) =>
     {
+        this._siteOverlay?.onkeydown?.(e);
         if(e.ctrlKey || e.altKey || e.metaKey)
             return;
         
