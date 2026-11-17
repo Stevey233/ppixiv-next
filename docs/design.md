@@ -40,8 +40,13 @@ ppixiv 是给 Pixiv 插画用的看图工具。用的人每天刷几个固定的
 
 - 中文用系统字体：MiSans、HarmonyOS Sans SC、苹方、Noto Sans CJK SC、微软雅黑。中文网页字体太大，不加载。
 - 西文和数字用 Sofia Sans（Google Fonts），页码、排名、收藏数这类数字用它的 Condensed 宽度，像原稿页边的页码，占地小、能对齐。
+- 界面的 Material Icons 随脚本打包。Google 的图标 CDN 不通时，图标名会按普通文字排版。条带式右键菜单里，溢出格子的图标名会挡住「收藏并下载」的中心。内置图标沿用原字体的字形和连字。
 - 字号：12、13、15、20、28。正文 15，标题 28。行高中文 1.6，标题 1.25。
 - 不用全大写标签、不在标题上方加小标签。
+
+Material Icons 子集在 `web/resources/material-icons.woff`。改图标后可以运行 `python3 tools/subset-material-icons.py --check`，核对源码里的名字是否都在字体中。工具会收集 `mat:` 字符串和没有前缀的 `createIcon` 参数、`icon` 选项。直接改图标节点文字的名字也要列在工具的 `WRITTEN_ICONS` 中。
+
+需要重新生成时，取 [Google Fonts 的原始 WOFF2](https://fonts.gstatic.com/s/materialicons/v129/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2)，用 `woff2_decompress` 解成 TTF，再用 FontTools 4.68.0 运行 `python3 tools/subset-material-icons.py --source /path/to/material-icons.ttf`。原始 WOFF2 的 SHA-256 是 `2d8fbe04b63d3e31f3316706bf9ee8ad684beb9e85739d793e49013b99bd9bb2`。日常构建直接用提交好的子集。字体的署名、修改说明和 [Apache 2.0 许可证](licenses/material-icons.txt) 也随脚本发布。
 
 ### 布局
 

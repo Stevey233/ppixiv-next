@@ -29,7 +29,7 @@ export class helpers
         return [iconClass, name];
     }
 
-    // Create a font icon.  iconName is an icon set and name, eg. "mat:lightbulb"
+    // Create a font icon.  iconName is an icon set and name, eg. "mat:search"
     // for material icons or "ppixiv:icon" for our icon set.  If no icon set is
     // specified, material icons is used.
     static createIcon(iconName, {

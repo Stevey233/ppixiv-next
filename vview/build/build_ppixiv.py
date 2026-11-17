@@ -643,6 +643,9 @@ class Build(object):
         result = self.build_header(version_name=self.get_release_version())
         result.append(f'// ==/UserScript==')
 
+        font_license = Path('docs/licenses/material-icons.txt').read_text(encoding='utf-8')
+        result.append(f'/*\n{font_license.rstrip()}\n*/')
+
         # Encapsulate the script.
         result.append('(function() {\n')
 

@@ -144,12 +144,19 @@ export default class App
             }
         `);
 
-        // Load our icon font.  var() doesn't work for font-face src, so we have to do
+        // Load the bundled icon fonts.  var() doesn't work for font-face src, so we have to do
         // this manually.
         helpers.html.addStyle("ppixiv-font", `
             @font-face {
                 font-family: 'ppixiv';
                 src: url(${ppixiv.resources['resources/ppixiv.woff']}) format('woff');
+                font-weight: normal;
+                font-style: normal;
+                font-display: block;
+            }
+            @font-face {
+                font-family: 'Material Icons';
+                src: url(${ppixiv.resources['resources/material-icons.woff']}) format('woff');
                 font-weight: normal;
                 font-style: normal;
                 font-display: block;
