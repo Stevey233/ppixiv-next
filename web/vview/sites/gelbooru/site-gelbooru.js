@@ -211,9 +211,9 @@ export default class SiteGelbooru extends Site.Site
 
     async batchLoadMediaInfo(mediaIds)
     {
-        // A post whose request fails is left unregistered, which the cache reports as missing.
-        await Promise.all(mediaIds.map((mediaId) => this.loadMediaInfo(mediaId).catch((error) =>
-            console.log(`Couldn't load ${mediaId}:`, error.message))));
+        // These are individual full loads.  Use the cache's full-load path so failures expire
+        // and simultaneous viewer requests share the same load.
+        await Promise.all(mediaIds.map((mediaId) => ppixiv.mediaCache.getMediaInfo(mediaId)));
     }
 
     // The viewer opened a post, or it's being downloaded: load its tag categories, for the grouped
