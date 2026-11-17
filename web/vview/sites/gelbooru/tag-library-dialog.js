@@ -145,9 +145,10 @@ class TagLibraryDialog extends DialogWidget
     // back out.
     shutdown()
     {
+        // Mobile history dispatches popstate inside back(). Remove our listener first.
+        super.shutdown();
         if(!this._navigated && ppixiv.phistory.state?.[HISTORY_KEY])
             ppixiv.phistory.back();
-        super.shutdown();
     }
 
     // The selection starts as the current search's plain tags.  Anything else in its tags, like
