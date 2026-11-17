@@ -6,15 +6,19 @@
 - 构建好的脚本：`dist/ppixiv-next.user.js`
 - 最近一次界面审计和修复记录：[docs/audit-2026-11-11.md](docs/audit-2026-11-11.md)
 
+同一个脚本也在 gelbooru.com 上运行，界面和 Pixiv 上一样：帖子列表和看图、排序和分数、分级、类型、尺寸等搜索条件、热门和随机、Gelbooru 收藏（缩略图上的心）、最近看过、按分类分组的标签和中文标签名、标签库、下载。要先登录 Gelbooru：脚本从账号设置页读出 API key，存在 gelbooru.com 自己的 localStorage 里，只发给 gelbooru.com。中文标签名来自仓库里的标签包 `data/gelbooru-tags.*.tsv.gz`，第一次从 GitHub 下载约 5 MB，之后存在浏览器的 IndexedDB 里。只在电脑上检查过。各处的行为和原因见 [docs/design.md](docs/design.md) 的"Gelbooru"一节。
+
 ## 安装
 
 1. 在 Tampermonkey 里停用或删除 ppixiv 和 ppixiv-zh。原版 ppixiv 同时启用时，新脚本会在页面上提示并且不启动。
 2. 打开 <https://raw.githubusercontent.com/Stevey233/ppixiv-next/stevey/dist/ppixiv-next.user.js>，Tampermonkey 会弹出安装页，点"安装"。
-3. 刷新 pixiv.net 的页面。
+3. 刷新 pixiv.net 或 gelbooru.com 的页面。
 
 更新：脚本的 `@updateURL` 指向上面这个地址，Tampermonkey 按它的检查间隔自动更新，也可以在 Tampermonkey 里对"ppixiv 新界面"点"检查更新"。新版本要推到 GitHub 的 `stevey` 分支才会被检查到。
 
-设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。
+脚本匹配两个网站：`@match https://*.pixiv.net/*` 和 `@match https://gelbooru.com/*`。从只匹配 Pixiv 的旧版本更新时，多了一个网站，Tampermonkey 可能会弹出更新页让你确认。
+
+设置存在同一个 localStorage 里，ppixiv-zh 的设置会在新脚本第一次启动时导入一次，原值不删。localStorage 按网站分开，gelbooru.com 上的设置是另一份。
 
 ## 构建
 
