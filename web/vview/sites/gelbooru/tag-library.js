@@ -97,6 +97,7 @@ export default class TagLibrary extends EventTarget
         this._categories = null;    // Uint8Array: row -> Gelbooru category ID
         this._rowsByTag = null;     // Map: tag -> row
         this._search = "";          // the search string, see NAME, ROW and ALIAS
+        this._lastSearch = null;
         this._searchStart = null;   // Uint32Array: row -> offset of its ROW in _search, plus the end
     }
 
@@ -211,6 +212,7 @@ export default class TagLibrary extends EventTarget
         lineStart.push(pos);
         searchStart.push(searchLength);
 
+        this._lastSearch = null;
         this._text = text;
         this._lineStart = Uint32Array.from(lineStart);
         this._categories = Uint8Array.from(categories);
@@ -262,7 +264,16 @@ export default class TagLibrary extends EventTarget
             throw new Error(`Unknown tag category: ${category}`);
 
         let query = normalizeTagText(text);
-        let ranked = query == ""? [this._allRows(categoryId)]:this._match(query, categoryId, sort == "relevance");
+        // Appending a page in the library repeats this query with a new offset.  Keep only
+        // the latest match list so paging doesn't scan the whole pack again.
+        let rank = sort == "relevance";
+        let cached = this._lastSearch;
+        if(cached?.query != query || cached.categoryId !== categoryId || cached.rank != rank)
+        {
+            let ranked = query == ""? [this._allRows(categoryId)]:this._match(query, categoryId, rank);
+            cached = this._lastSearch = { query, categoryId, rank, ranked };
+        }
+        let ranked = cached.ranked;
 
         let total = 0;
         for(let rows of ranked)
