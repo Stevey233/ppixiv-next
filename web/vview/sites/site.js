@@ -130,6 +130,8 @@ export class Site
         // the data source with, so it starts at the current page.
         let baseUrl = helpers.getCanonicalUrl(url, { startAtBeginning }).url.toString();
         let dataSource = new dataSourceClass({ url: baseUrl });
+        if(force)
+            oldDataSource?.retire();
         this.dataSourcesByUrl[canonicalUrl] = dataSource;
         return dataSource;
     }

@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 node test/thumbnails.mjs
 node test/preload.mjs
 node test/filters.mjs
+node test/list-retry.mjs
 node test/seed-feed.mjs
 node test/gelbooru-query.mjs
 node test/tag-library.mjs

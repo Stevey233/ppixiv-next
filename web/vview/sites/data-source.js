@@ -82,6 +82,13 @@ export default class DataSource extends EventTarget
         this.active = false;
     }
 
+    // A refresh replaces this instance.  A source that was only shut down can still
+    // finish loading in the background and be reused when the user returns.
+    retire()
+    {
+        this._retired = true;
+    }
+
     // Return the URL to use to return to this search.  For most data sources, this is the URL
     // it was initialized with.
     get searchUrl() { return this.url; }
@@ -92,9 +99,10 @@ export default class DataSource extends EventTarget
     // Load the given page.  Return true if the page was loaded.
     loadPage(page, { cause }={})
     {
-        // Note that we don't remove entries from loadingPages when they finish, so
-        // future calls to loadPage will still return a promise for that page that will
-        // resolve immediately.
+        if(this._retired)
+            return Promise.resolve(false);
+
+        // Share page loads with other callers, including loads that already finished.
         let result = this.loadedPages[page] || this.loadingPages[page];
         if(result == null)
         {
@@ -102,10 +110,10 @@ export default class DataSource extends EventTarget
             result = this._loadPageRetrying(page, { cause });
             loadingPages[page] = result;
             result.then(() => {
-                // Move the load from loadingPages to loadedPages.  A page that failed isn't kept,
-                // so the next call asks Pixiv again instead of ending the list there.
+                // Keep completed loads for sources that can be used again.  A failed page stays
+                // unloaded so the next call can try it again.
                 delete loadingPages[page];
-                if(this._pageFailedAt?.[page] == null)
+                if(!this._retired && this._pageFailedAt?.[page] == null)
                     loadedPages[page] = result;
             });
         }
@@ -127,14 +135,17 @@ export default class DataSource extends EventTarget
         if(Date.now() - (this._pageFailedAt[page] ?? -Infinity) < FAILED_COOLDOWN)
             return false;
 
-        for(let attempt = 0; ; attempt++)
+        for(let attempt = 0; !this._retired && this.loadedPages === loadedPages; attempt++)
         {
             try {
                 let result = await this._loadPageAsync(page, { cause });
                 delete this._pageFailedAt[page];
                 return result;
             } catch(e) {
-                // Stop if the list was reset (refreshed) while this was waiting.
+                if(this._retired)
+                    return false;
+
+                // Stop if the list's pages were reset while this was loading.
                 if(attempt >= RETRY_DELAYS.length || this.loadedPages !== loadedPages)
                 {
                     console.error(`Couldn't load page ${page}:`, e);
@@ -144,10 +155,10 @@ export default class DataSource extends EventTarget
 
                 console.warn(`Loading page ${page} failed, trying again in ${RETRY_DELAYS[attempt]} ms:`, e);
                 await helpers.other.sleep(RETRY_DELAYS[attempt]);
-                if(this.loadedPages !== loadedPages)
-                    return false;
             }
         }
+
+        return false;
     }
 
     // Return true if the given page is either loaded, or currently being loaded by a call to loadPage.
@@ -226,9 +237,13 @@ export default class DataSource extends EventTarget
         // guarantees that loadPage has a chance to store us in this.loadingPages before
         // we do anything that might have side-effects of starting another load.
         await null;
+        if(this._retired)
+            return false;
 
         // Run the actual load.
         let { mediaIds, allowEmpty } = await this.loadPageInternal(page) ?? { };
+        if(this._retired)
+            return false;
 
         // Some APIs return their last page again for every page past the end, like new works by
         // followed users and tag search.  If every work on the page came on an earlier page, it's
