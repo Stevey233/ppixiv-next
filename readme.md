@@ -6,7 +6,7 @@
 - 构建好的脚本：`dist/ppixiv-next.user.js`
 - 最近一次界面审计和修复记录：[docs/audit-2026-11-11.md](docs/audit-2026-11-11.md)
 
-同一个脚本也在 gelbooru.com 上运行，界面和 Pixiv 上一样：帖子列表和看图、排序和分数、分级、类型、尺寸等搜索条件、热门和随机、Gelbooru 收藏（缩略图上的心）、最近看过、按分类分组的标签和中文标签名、标签库、下载。要先登录 Gelbooru：脚本从账号设置页读出 API key，存在 gelbooru.com 自己的 localStorage 里，只发给 gelbooru.com。中文标签名来自仓库里的标签包 `data/gelbooru-tags.*.tsv.gz`，第一次从 GitHub 下载约 5 MB，之后存在浏览器的 IndexedDB 里。只在电脑上检查过。各处的行为和原因见 [docs/design.md](docs/design.md) 的"Gelbooru"一节。
+同一个脚本也在 gelbooru.com 上运行，界面和 Pixiv 上一样：帖子列表和看图、排序和分数、分级、类型、尺寸等搜索条件、热门和随机、Gelbooru 收藏（缩略图上的心）、最近看过、按分类分组的标签和中文标签名、标签库、下载。要先登录 Gelbooru：脚本从账号设置页读出 API key，存在 gelbooru.com 自己的 localStorage 里，只发给 gelbooru.com。中文标签名来自仓库里的标签包 `data/gelbooru-tags.*.tsv.gz`，第一次从 GitHub 下载约 5 MB，之后存在浏览器的 IndexedDB 里。手机版只在模拟器里检查过：底栏是最新、热门、标签库、收藏，搜索标签用标签库。各处的行为和原因见 [docs/design.md](docs/design.md) 的"Gelbooru"一节。
 
 ## 安装
 
