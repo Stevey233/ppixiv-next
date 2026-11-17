@@ -56,7 +56,10 @@ export default class DragHandler extends Actor
         ...options
     }={})
     {
-        super(options);
+        // Pass the signal on, so a dragger given only a signal shuts down with it.  Without it the
+        // dragger stayed in Actor._topActors forever, keeping its element and every viewer it
+        // could reach (a video's seek bar kept the whole chain of earlier viewers).
+        super({ signal, ...options });
 
         this.name = name;
         this.element = element;

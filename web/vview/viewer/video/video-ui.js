@@ -60,11 +60,13 @@ export default class VideoUI extends Widget
 
         // Add the seek bar.  This moves between seek-bar-container-top and seek-bar-container-bottom.
         this.seekBar = new SeekBar({
+            parent: this,
             container: this.root.querySelector(".seek-bar-container-top"),
         });
         this._setSeekBarPos();
 
         this.volumeSlider = new VolumeSliderWidget({
+            parent: this,
             container: this.root.querySelector(".volume-slider-container"),
             startedDragging: () =>
             {
