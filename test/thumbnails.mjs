@@ -8,8 +8,8 @@ let instance = 0;
 let tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // zoom: ppixiv zooms square thumbnails.  dataSource: the name of ppixiv's current data source.
-// saveData: the browser's "save data" mode.  settings: ppixiv's settings, if given.
-async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData = false, settings = null } = {})
+// saveData: the browser's "save data" mode.  hdThumbnailUrl: the optional site hook.
+async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData = false, hdThumbnailUrl } = {})
 {
     let requests = [], loaders = [], microtasks = [], events = new Map(), registered = [], probes = [];
     let navigator = { onLine: true, connection: { saveData } };
@@ -34,9 +34,9 @@ async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData 
     let observers = [];
     class Observer
     {
-        constructor(callback) { this.callback = callback; observers.push(this); }
-        observe() {}
-        unobserve() {}
+        constructor(callback) { this.callback = callback; this.targets = new Set(); observers.push(this); }
+        observe(target) { this.targets.add(target); }
+        unobserve(target) { this.targets.delete(target); }
     }
     let document = {
         body: { classList: { contains: () => false } },
@@ -49,8 +49,8 @@ async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData 
         matchMedia: () => ({ matches: zoom, addEventListener() {} }),
         ppixiv: {
             app: { currentDataSource: { name: dataSource } },
-            site: {},
-            settings: { get: (key) => key == "hd_thumbnails" ? storage.get("ppx-zh-thumb-quality") : settings?.[key] },
+            site: { hdThumbnailUrl },
+            settings: { get: (key) => storage.get(key) },
             mediaCache: { getMediaInfoSync: () => ({ width: 2000, height: 1000 }), getImageDimensions: (info) => info },
             extraCache: { registerLoadingThumbnail: (mediaId, img) => { registered.push({ mediaId, src: img.src }); return Promise.resolve(); } },
         },
@@ -84,12 +84,12 @@ async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData 
                 up ? p.resolve({}) : p.reject(new TypeError('Failed to fetch'));
             await tick();
         },
-        create(id, { width = 100, currentWidth } = {})
+        create(id, { width = 100, currentWidth, url = `https://i.pximg.net/c/540x540_70/img-master/${id}_master1200.jpg` } = {})
         {
             let box = { dataset: { id: `illust:${id}-0` }, origWidth: width, origHeight: width / 2,
                 currentWidth, currentHeight: currentWidth == null ? undefined : currentWidth / 2 };
             let img = new Image(box);
-            module.setThumbnail(img, `https://i.pximg.net/c/540x540_70/img-master/${id}_master1200.jpg`, box.dataset.id, box);
+            module.setThumbnail(img, url, box.dataset.id, box);
             return img;
         },
         fail(img) { module.thumbnailFailed(img); },
@@ -107,8 +107,11 @@ async function runtime({ zoom = false, dpr = 1, dataSource = 'search', saveData 
             }
         },
         resize(img, width = 900) { hooks.resize([{ target: img, contentRect: { width, height: width / 2 } }]); },
-        enter(img, width = 900) { hooks.visibility([{ target: img, isIntersecting: true,
-            boundingClientRect: { width, height: width / 2 } }]); },
+        enter(img, width = 900)
+        {
+            if(observers[2].targets.has(img))
+                hooks.visibility([{ target: img, isIntersecting: true, boundingClientRect: { width, height: width / 2 } }]);
+        },
         flush() { while(microtasks.length) microtasks.shift()(); },
     };
 }
@@ -207,12 +210,64 @@ console.log('ok   An in-flight upgrade cannot replace an image after disablement
 let deferred = await runtime();
 let queued = deferred.create(1, { currentWidth: 900 });
 let initial = queued.src;
-deferred.storage.set('ppx-zh-thumb-quality', 'off');
+deferred.storage.set('hd_thumbnails', 'off');
 deferred.flush();
 deferred.resize(queued);
 assert.equal(queued.src, initial);
 assert.equal(deferred.loaders.length, 0);
 console.log('ok   Turning quality off also stops deferred layout and observer upgrades');
+
+let disabled = await runtime();
+let lateError = disabled.create(16);
+disabled.resize(disabled.create(17));
+disabled.storage.set('hd_thumbnails', 'off');
+disabled.fail(lateError);
+disabled.settle(false);
+await tick();
+assert.match(lateError.src, /540x540_70/, 'the visible image still gets its fallback');
+assert.equal(disabled.probes.length, 0, 'late image errors must not start connection checks');
+console.log('ok   Turning quality off keeps the fallback and skips checks for late image errors');
+
+let queuedProbe = await runtime();
+queuedProbe.fail(queuedProbe.create(18));
+queuedProbe.storage.set('hd_thumbnails', 'off');
+await tick();
+assert.equal(queuedProbe.probes.length, 0, 'a queued check must read the current setting');
+
+let runningProbe = await runtime();
+runningProbe.fail(runningProbe.create(19));
+await tick();
+assert.equal(runningProbe.probes.length, 1, 'the connection check started with quality on');
+runningProbe.storage.set('hd_thumbnails', 'off');
+await runningProbe.probe(true);
+assert.equal(runningProbe.loaders.length, 0, 'a check resolving while off must not start a retry');
+runningProbe.storage.set('hd_thumbnails', 'auto');
+assert.match(runningProbe.create(19).src, /600x1200_90_webp/, 'rebuilds can use HD again');
+console.log('ok   Turning quality off skips queued checks and retries, and turning it on resumes HD');
+
+let runningRetry = await runtime();
+runningRetry.fail(runningRetry.create(20));
+await runningRetry.probe(true);
+assert.equal(runningRetry.loaders.length, 1, 'the retry started with quality on');
+runningRetry.storage.set('hd_thumbnails', 'off');
+runningRetry.settle(false);
+assert.equal(runningRetry.failures, 0, 'an error from a retry while off does not count');
+console.log('ok   A late retry error leaves the failure budget intact');
+
+let preview = 'https://img4.gelbooru.com/thumbnails/example.jpg';
+let sample = 'https://img4.gelbooru.com/samples/example.jpg';
+let gelbooru = await runtime({ hdThumbnailUrl: () => sample });
+let offscreen = gelbooru.create(21, { url: preview });
+gelbooru.storage.set('hd_thumbnails', 'off');
+gelbooru.enter(offscreen);
+assert.equal(gelbooru.loaders.length, 0, 'a previously observed thumbnail must not load a sample while off');
+assert.equal(offscreen.src, preview);
+gelbooru.storage.set('hd_thumbnails', 'auto');
+gelbooru.enter(offscreen);
+assert.deepEqual(gelbooru.loaders.map((loader) => loader.src), [sample]);
+await gelbooru.loaders[0].onload();
+assert.equal(offscreen.src, sample);
+console.log('ok   Gelbooru only loads a sample on viewport entry with quality enabled');
 
 // ppixiv records aspect ratio 0 for the failed image.  Measure again once the 540 has loaded,
 // not while the error is still being dispatched.

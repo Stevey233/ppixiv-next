@@ -318,7 +318,7 @@ function loadDetached(url, done)
 // and gets larger sizes again once the observers see it or ppixiv rebuilds it.
 function thumbFailed(state, url)
 {
-    if(state.failed)
+    if(state.failed || !thumbsEnabled())
         return;
     state.failed = true;
     if(failedThumbUrls.has(state.base))
@@ -334,9 +334,26 @@ function thumbFailed(state, url)
     // come from the cache while offline.  A no-cors fetch resolves for any HTTP response and
     // rejects only when the request didn't get through.  ppixiv replaces fetch and keeps the
     // original as realFetch.
-    Promise.resolve()
-        .then(() => (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" }))
-        .then(() => loadDetached(url, (ok) => ok || navigator.onLine === false ? forget() : thumbFailures++), forget);
+    Promise.resolve().then(async () => {
+        if(!thumbsEnabled())
+            return forget();
+
+        try {
+            await (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" });
+        } catch(e) {
+            return forget();
+        }
+
+        if(!thumbsEnabled())
+            return forget();
+
+        loadDetached(url, (ok) => {
+            if(ok || navigator.onLine === false || !thumbsEnabled())
+                forget();
+            else
+                thumbFailures++;
+        });
+    });
 }
 
 // Remember which tiers have loaded, for shownThumbTier.
@@ -445,6 +462,8 @@ let thumbVisibilityObserver = new IntersectionObserver((entries) => {
         }
         if(siteThumbs.has(entry.target))
         {
+            if(!thumbsEnabled())
+                continue;
             thumbVisibilityObserver.unobserve(entry.target);
             upgradeSiteThumb(entry.target);
             continue;
