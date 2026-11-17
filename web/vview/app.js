@@ -519,7 +519,10 @@ export default class App
 
         // The data source is set separately from activation because scrollSearchToMediaId can set
         // the screen's data source before it's visible for transitions.
-        newScreen.setDataSource(dataSource, { targetMediaId });
+        // A history anchor tells the list which thumbnails to create, not which one to
+        // center.  Let SearchView restore its saved offset when returning between lists.
+        let scrollTarget = newScreen.screenType == "search" && oldScreen?.screenType != "illust"? null:targetMediaId;
+        newScreen.setDataSource(dataSource, { targetMediaId: scrollTarget });
 
         if(this._contextMenu)
         {
