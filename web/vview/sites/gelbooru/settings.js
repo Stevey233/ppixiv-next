@@ -11,6 +11,14 @@ function accountText()
 
 export function fillSettingsPage(globalOptions)
 {
+    new MenuOptionToggleSetting({
+        ...globalOptions,
+        label: "显示图片注释",
+        setting: "gelbooru_show_notes",
+        explanationEnabled: "显示翻译注释的框，悬停或轻点查看内容。看图时按 N 切换。",
+        explanationDisabled: "隐藏图片上的注释框。看图时按 N 切换。",
+    });
+
     let account = new MenuOptionButton({
         ...globalOptions,
         label: "重新读取 API key",

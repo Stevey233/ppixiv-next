@@ -116,6 +116,7 @@ export default class MediaInfo
     get md5() { return this._getInfo("md5", null); }
     get uploader() { return this._getInfo("uploader", ""); }
     get parentId() { return this._getInfo("parentId", null); }
+    get hasNotes() { return this._getInfo("hasNotes", false); }
     get hasChildren() { return this._getInfo("hasChildren", false); }
 
     // A map from tag to category, or null until the categories are loaded.
@@ -304,7 +305,7 @@ let partialPixivKeys = new Set([
     "userId",
     "pageCount",
     "width", "height",
-    "score", "rating", "source", "md5", "uploader", "parentId", "hasChildren", "tagCategories",
+    "score", "rating", "source", "md5", "uploader", "parentId", "hasChildren", "hasNotes", "tagCategories",
 ]);
 
 function createPartialPixivMediaInfo(mediaInfo)

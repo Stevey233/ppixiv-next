@@ -71,6 +71,7 @@ export default class Settings extends EventTarget
         this.configure("theme", { defaultValue: "auto" }); // "dark", "light" or "auto"
         this.configure("tag_language", { defaultValue: "zh" }); // "zh" or "en"
         this.configure("hd_thumbnails", { defaultValue: "auto" }); // "auto" or "off"
+        this.configure("gelbooru_show_notes", { defaultValue: true });
         this.configure("gelbooru_upvote_on_favorite", { defaultValue: false });
         this.configure("gelbooru_tag_chinese_names", { defaultValue: true }); // see sites/gelbooru/tag-names.js
         this.configure("hover_preload", { defaultValue: true });

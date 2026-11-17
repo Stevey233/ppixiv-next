@@ -84,6 +84,7 @@ export function mediaInfoFromPost(post, { extraData={} }={})
         md5: post.md5,
         uploader: post.owner ?? "",
         parentId: post.parent_id? String(post.parent_id):null,
+        hasNotes: post.has_notes == "true" || post.has_notes === true,
         hasChildren: post.has_children == "true" || post.has_children === true,
         tagCategories,
     };
