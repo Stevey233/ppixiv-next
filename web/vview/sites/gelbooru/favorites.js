@@ -189,6 +189,16 @@ async function writeStored(userId, ids)
         favorites.clear();
         for(let id of ids)
             favorites.put(1, Number(id));
+
+        // The response is a snapshot from before these edits.  Apply them inside the same
+        // transaction so a sync can't overwrite a favorite changed while it was loading.
+        for(let [postId, favorite] of pendingChanges ?? [])
+        {
+            if(favorite)
+                favorites.put(1, Number(postId));
+            else
+                favorites.delete(Number(postId));
+        }
         meta.put(userId, "favoritesUser");
     });
 }
