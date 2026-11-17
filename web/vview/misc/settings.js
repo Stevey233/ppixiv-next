@@ -77,6 +77,7 @@ export default class Settings extends EventTarget
         this.configure("hover_preload", { defaultValue: true });
         this.configure("seen_works", { defaultValue: "dim" }); // "dim", "keep" or "off"
         this.configure("following_last_seen_marker", { defaultValue: true });
+        this.configure("gelbooru_last_seen", { defaultValue: {} }); // bounded search visits
         this.configure("following_last_seen", { defaultValue: {} }); // see next/last-seen.js
         this.configure("download_filename", { defaultValue: "" }); // a template, see misc/download-names.js
         this.configure("mark_downloaded", { defaultValue: true }); // see misc/downloaded-works.js

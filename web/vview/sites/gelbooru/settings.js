@@ -41,6 +41,14 @@ export function fillSettingsPage(globalOptions)
 
     new MenuOptionToggleSetting({
         ...globalOptions,
+        label: "最新排序的搜索标出上次看到的位置",
+        setting: "following_last_seen_marker",
+        explanationEnabled: "页头显示同一搜索上次之后的新作件数，并标出“上次看到这里”。两次访问相隔超过两小时才移动分界。",
+        explanationDisabled: "不显示件数和标记，访问记录照常更新。",
+    });
+
+    new MenuOptionToggleSetting({
+        ...globalOptions,
         label: "标签显示中文名",
         setting: "gelbooru_tag_chinese_names",
         explanationEnabled: "标签库里有中文名的标签显示中文，鼠标停在上面能看到原标签。搜索和链接仍用原标签。",
