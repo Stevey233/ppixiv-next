@@ -16,10 +16,12 @@ const VISIT_GAP = 2*60*60*1000;
 
 export default class FollowingLastSeen
 {
-    constructor(dataSource, mode)
+    constructor(dataSource, mode, { storageKey="following_last_seen", maxEntries=null }={})
     {
         this.dataSource = dataSource;
         this.mode = mode;
+        this.storageKey = storageKey;
+        this.maxEntries = maxEntries;
 
         // The boundary for this list: undefined until the first page loads, then null on the
         // first visit or the remembered illust ID.
@@ -43,7 +45,7 @@ export default class FollowingLastSeen
         if(illustIds.length == 0)
             return;
 
-        let stored = ppixiv.settings.get("following_last_seen") ?? {};
+        let stored = ppixiv.settings.get(this.storageKey) ?? {};
         let entry = stored[this.mode];
         let now = Date.now();
 
@@ -56,14 +58,20 @@ export default class FollowingLastSeen
         }
 
         let top = Math.max(...illustIds.map(Number));
-        ppixiv.settings.set("following_last_seen", {
+        let updated = {
             ...stored,
             [this.mode]: {
                 mark: entry?.mark ?? null,
                 pending: Math.max(entry?.pending ?? 0, top),
                 visitTime: now,
             },
-        });
+        };
+        if(this.maxEntries != null)
+        {
+            let keys = Object.keys(updated).sort((a, b) => updated[b].visitTime - updated[a].visitTime);
+            updated = Object.fromEntries(keys.slice(0, this.maxEntries).map((key) => [key, updated[key]]));
+        }
+        ppixiv.settings.set(this.storageKey, updated);
     }
 
     // Return { count, boundary, more } for the list as shown, or null if there's nothing to show.

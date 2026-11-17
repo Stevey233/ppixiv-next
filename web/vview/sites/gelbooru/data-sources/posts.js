@@ -23,6 +23,7 @@ import { noteFavorites } from '/vview/sites/gelbooru/favorites.js';
 import { createConditionsUi, createConditionsNote } from '/vview/sites/gelbooru/conditions-ui.js';
 import { categoriesForTags } from '/vview/sites/gelbooru/tag-categories.js';
 import { tokenLabel } from '/vview/sites/gelbooru/tag-names.js';
+import FollowingLastSeen from '/vview/next/last-seen.js';
 import RelatedTagsRow from '/vview/next/related-tags-row.js';
 import { PERIODS, periodKey, periodLabel, popularMinId } from '/vview/sites/gelbooru/popular.js';
 
@@ -71,7 +72,18 @@ export default class DataSource_GelbooruPosts extends DataSource
 
         // The post IDs a random list has returned.
         this._randomIds = new Set();
+
+        if(!this._sorted && this.popularPeriod == null && favoritesUserId(this.query) == null)
+        {
+            // Conditions belong to the key: a narrow search hasn't shown posts outside it.
+            let key = buildQuery(parseQuery(this.query));
+            this.lastSeen = new FollowingLastSeen(this, key, {
+                storageKey: "gelbooru_last_seen", maxEntries: 300,
+            });
+        }
     }
+
+    lastSeenForMediaId(mediaId) { return this.lastSeen?.isBoundary(mediaId) ?? false; }
 
     // Redraw the title when Chinese tag names arrive or are turned on or off.
     startup()
@@ -179,7 +191,9 @@ export default class DataSource_GelbooruPosts extends DataSource
         if(this.isOwnFavorites)
             noteFavorites(posts.map((post) => post.id));
 
-        return { mediaIds: await registerPosts(posts) };
+        let mediaIds = await registerPosts(posts);
+        this.lastSeen?.pageLoaded(posts.map((post) => post.id));
+        return { mediaIds };
     }
 
     // Shown at the end of the list when a sorted list reached Gelbooru's limit.
@@ -315,7 +329,7 @@ export default class DataSource_GelbooruPosts extends DataSource
             count.textContent = `${this.totalCount.toLocaleString()} 件`;
             title.appendChild(count);
         }
-        return title;
+        return this.lastSeen?.title(title) ?? title;
     }
 }
 
