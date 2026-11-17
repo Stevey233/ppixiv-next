@@ -30,6 +30,8 @@ export const DEFAULT_CAPS = Object.freeze({
 // - autocomplete(word, { signal }): tag completions, [{ tag, label, category, count }]
 // - getArgsForTagSearch(tags, url), getArgsForTagRefine(tag, url, { exclude }), getSearchTagsFromUrl(url)
 // - mainDestinations(), otherDestinations(): the navigation rail's lists
+// - mobileTabs(): the keys of the main destinations on the mobile tab bar, in place of Pixiv's tabs
+//   and its dialog of every list
 // - createSearchSettings(globalOptions): the site's search settings, in place of Pixiv's related
 //   tags and new search defaults
 // - loadMediaDetails(mediaId): load what showing or saving a work needs beyond its media info

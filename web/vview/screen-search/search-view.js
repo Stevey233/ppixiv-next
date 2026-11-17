@@ -722,11 +722,13 @@ export default class SearchView extends Widget
     }
 
     // Show "没有结果" when the list is empty, or the data source's own reason, like a ranking date
-    // Pixiv has no ranking for.
+    // Pixiv has no ranking for.  An empty list whose first page failed isn't empty: say it didn't
+    // load, and that a scroll or swipe tries again (retryFailedPage).
     _refreshNoResults()
     {
         let noResults = this.root.querySelector(".no-results");
-        noResults.querySelector(".message").textContent = this.dataSource?.noResultsText ?? "没有结果";
+        let failed = this.dataSource?.anyPageFailed? `加载失败，${ ppixiv.mobile? "滑动":"滚动" }一下重试`:null;
+        noResults.querySelector(".message").textContent = failed ?? this.dataSource?.noResultsText ?? "没有结果";
 
         // When loading stopped early, say why under the last row, where the user is when it
         // happens.  This replaces "没有结果" when nothing was kept, since there may be more later.

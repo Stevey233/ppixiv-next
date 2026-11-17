@@ -18,8 +18,10 @@ export default class ViewerVideoBase extends Viewer
 
         this.videoContainer = this.root.querySelector(".video-container");
 
-        // Create the video UI.
+        // Create the video UI.  Both it and the top seek bar are children, so they're shut down with
+        // the viewer instead of staying in the top-level actor list.
         this.videoUi = new VideoUI({
+            parent: this,
             container: this.root.querySelector(".video-ui-container"),
         });
 
@@ -32,6 +34,7 @@ export default class ViewerVideoBase extends Viewer
             // it's not obscured by the user's hand, and drags with a DragHandler similar to TouchScroller's
             // dragging.  The seek bar itself doesn't trigger seeks here.
             this.topSeekBar = new SeekBar({
+                parent: this,
                 container: this.root.querySelector(".top-seek-bar"),
             });
     

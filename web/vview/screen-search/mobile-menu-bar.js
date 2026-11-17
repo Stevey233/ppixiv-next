@@ -22,21 +22,14 @@ export default class MobileSearchUI extends Widget
         `});
 
         let bar = this.root.querySelector(".tab-bar");
-        let main = mainDestinations();
-        let tabs = [
-            main.find((d) => d.key == "discovery"),
-            main.find((d) => d.key == "following"),
-            { key: "search", label: "搜索", icon: "mat:search", url: "/search?s_mode=tag&type=artwork#ppixiv",
-              matches: (ds) => ds?.name == "search" },
-            main.find((d) => d.key == "bookmarks"),
-        ];
+        let tabs = mobileTabs();
 
         this._tabs = [];
         for(let tab of tabs)
         {
             let link = document.createElement("a");
             link.className = "tab";
-            link.href = tab.url;
+            setDestinationLink(link, tab);
             link.innerHTML = `${ helpers.createIcon(tab.icon) }<span class=tab-label></span>`;
             link.querySelector(".tab-label").textContent = tab.label;
             bar.appendChild(link);
@@ -47,7 +40,7 @@ export default class MobileSearchUI extends Widget
         more.type = "button";
         more.className = "tab tab-more";
         more.innerHTML = `${ helpers.createIcon("mat:menu") }<span class=tab-label>更多</span>`;
-        more.addEventListener("click", () => new MobileMoreSheet({ searchUi: this.parent }));
+        more.addEventListener("click", () => new MobileMoreSheet({ searchUi: this.parent, tabs }));
         bar.appendChild(more);
     }
 
@@ -71,10 +64,45 @@ export default class MobileSearchUI extends Widget
     }
 }
 
+// The tabs: the site's (ppixiv.site.mobileTabs() names main destinations by key), or Pixiv's.
+function mobileTabs()
+{
+    let main = mainDestinations();
+    if(ppixiv.site.mobileTabs)
+        return ppixiv.site.mobileTabs().map((key) => main.find((d) => d.key == key)).filter((d) => d != null);
+
+    return [
+        main.find((d) => d.key == "discovery"),
+        main.find((d) => d.key == "following"),
+        { key: "search", label: "搜索", icon: "mat:search", url: "/search?s_mode=tag&type=artwork#ppixiv",
+          matches: (ds) => ds?.name == "search" },
+        main.find((d) => d.key == "bookmarks"),
+    ];
+}
+
+// Point a link at a destination.  A destination with onclick opens something over the list (like
+// the rail does), and onopen runs before it.
+function setDestinationLink(link, destination, onopen)
+{
+    if(!destination.onclick)
+    {
+        link.href = destination.url;
+        return;
+    }
+
+    link.href = "#";
+    link.setAttribute("role", "button");
+    link.addEventListener("click", (e) => {
+        e.preventDefault();
+        onopen?.();
+        destination.onclick();
+    });
+}
+
 // The "more" sheet: the other lists, and the actions that used to be on the bar.
 class MobileMoreSheet extends DialogWidget
 {
-    constructor({ searchUi, ...options }={})
+    constructor({ searchUi, tabs, ...options }={})
     {
         super({...options,
             dialogClass: "edit-search-dialog",
@@ -84,10 +112,11 @@ class MobileMoreSheet extends DialogWidget
         });
 
         let list = this.root.querySelector(".more-sheet-list");
-        let addLink = ({ label, icon, url }) => {
+        let addLink = (destination) => {
+            let { label, icon } = destination;
             let link = document.createElement("a");
             link.className = "box-link more-sheet-row";
-            link.href = url;
+            setDestinationLink(link, destination, () => this.visible = false);
             link.innerHTML = `${ helpers.createIcon(icon) }<span class=label></span>`;
             link.querySelector(".label").textContent = label;
             list.appendChild(link);
@@ -102,20 +131,25 @@ class MobileMoreSheet extends DialogWidget
             });
         };
 
-        let main = mainDestinations();
-        for(let destination of main.filter((d) => d.key == "rankings" || d.key == "new"))
-            addLink(destination);
+        // The main destinations that aren't tabs, then the other lists.
+        for(let destination of mainDestinations())
+            if(!tabs.some((tab) => tab.key == destination.key))
+                addLink(destination);
         for(let destination of otherDestinations())
             if(destination.url.indexOf("/search?") == -1)
                 addLink(destination);
-        addAction("全部列表", "mat:list", () => new MobileEditSearchDialog());
+
+        // Pixiv's dialog of every list.  Other sites have all their lists in the rail.
+        if(!ppixiv.site.mobileTabs)
+            addAction("全部列表", "mat:list", () => new MobileEditSearchDialog());
 
         list.appendChild(Object.assign(document.createElement("div"), { className: "more-sheet-rule" }));
 
         addAction("刷新", "refresh", () => searchUi.refreshSearch());
         addAction("幻灯片", "wallpaper", () => helpers.navigate(ppixiv.app.slideshowURL));
         addAction("设置", "settings", () => new SettingsDialog());
-        addLink({ label: "回到 Pixiv 原页面", icon: "ppixiv:pixiv", url: "#no-ppixiv" });
+        let pixiv = ppixiv.site.name == "Pixiv";
+        addLink({ label: `回到 ${ppixiv.site.name} 原页面`, icon: pixiv? "ppixiv:pixiv":"mat:open_in_browser", url: "#no-ppixiv" });
 
         // Close after following a link.
         list.addEventListener("click", (e) => {

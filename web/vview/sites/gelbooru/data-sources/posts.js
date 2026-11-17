@@ -258,11 +258,24 @@ export default class DataSource_GelbooruPosts extends DataSource
         return createConditionsNote(this);
     }
 
+    // The tags the title shows.  The user's own fav:<id> is the list 收藏 (its rail name), which
+    // the title names instead of the ID.
+    get _titleTags()
+    {
+        let tags = parseQuery(this.query).tags;
+        if(!this.isOwnFavorites)
+            return tags;
+        return tags.filter((tag) => !/^fav:\d+$/i.test(tag));
+    }
+
     get pageTitle()
     {
         if(this.popularPeriod != null)
             return "热门 - Gelbooru";
-        let tags = parseQuery(this.query).tags.map(tokenLabel).join(" ");
+        let tags = this._titleTags.map(tokenLabel);
+        if(this.isOwnFavorites)
+            tags.unshift("收藏");
+        tags = tags.join(" ");
         if(!tags && this.randomPages)
             return "随机 - Gelbooru";
         return tags? `${tags} - Gelbooru`:"Gelbooru";
@@ -271,12 +284,13 @@ export default class DataSource_GelbooruPosts extends DataSource
     getDisplayingText()
     {
         let title = document.createElement("vv-container");
-        let tags = parseQuery(this.query).tags;
-        if(this.popularPeriod != null || tags.length == 0)
+        let tags = this._titleTags;
+        if(this.popularPeriod != null || tags.length == 0 || this.isOwnFavorites)
         {
             let label = document.createElement("span");
             label.textContent =
                 this.popularPeriod != null? `热门 · ${periodLabel(this.popularPeriod)}`:
+                this.isOwnFavorites? "收藏":
                 this.randomPages? "随机":
                 "全部作品";
             title.appendChild(label);

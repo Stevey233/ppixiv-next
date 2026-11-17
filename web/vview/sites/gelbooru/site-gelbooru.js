@@ -59,10 +59,18 @@ export default class SiteGelbooru extends Site.Site
         helpers.html.moveChildren(document.head, html);
         helpers.html.moveChildren(document.body, html);
 
-        let credentials = await api.getCredentials();
+        let credentials;
+        try {
+            credentials = await api.getCredentials();
+        } catch(error) {
+            console.log("Gelbooru account page not read:", error.message);
+            this._showStartFailed({ unreachable: true });
+            return false;
+        }
+
         if(credentials == null)
         {
-            this._showLoggedOut();
+            this._showStartFailed({ unreachable: false });
             return false;
         }
 
@@ -89,10 +97,12 @@ export default class SiteGelbooru extends Site.Site
         return true;
     }
 
-    // Without an API key nothing loads.  Say so, with a way to log in and a way back to the page.
-    _showLoggedOut()
+    // Without an API key nothing loads.  Say why: not logged in (with a way to log in), or the
+    // account page didn't load (with a retry), and offer a way back to the page.
+    _showStartFailed({ unreachable })
     {
-        console.log("No Gelbooru API key: not logged in");
+        if(!unreachable)
+            console.log("No Gelbooru API key: not logged in");
         document.documentElement.style.filter = "";
         let back = new URL(location.href);
         back.hash = "#no-ppixiv";
@@ -101,12 +111,27 @@ export default class SiteGelbooru extends Site.Site
         box.className = "gb-logged-out";
         box.style.cssText = "max-width:420px;margin:20vh auto;padding:24px;border-radius:12px;background:#222;color:#eee;font:15px/1.6 system-ui,sans-serif;text-align:center;";
         box.innerHTML = `
-            <p>还没有登录 Gelbooru，新界面需要登录后的 API key 才能读取作品。</p>
+            <p class=gb-start-message></p>
             <p><a class=gb-login-link style="color:#8cf"></a> · <a class=gb-back-link style="color:#8cf"></a></p>
         `;
+        box.querySelector(".gb-start-message").textContent = unreachable?
+            "连不上 Gelbooru 的账号设置页，读不到 API key。":
+            "还没有登录 Gelbooru，新界面需要登录后的 API key 才能读取作品。";
         let login = box.querySelector(".gb-login-link");
-        login.href = api.loginUrl;
-        login.textContent = "登录 Gelbooru";
+        if(unreachable)
+        {
+            login.href = location.href;
+            login.textContent = "重试";
+            login.addEventListener("click", (e) => {
+                e.preventDefault();
+                location.reload();
+            });
+        }
+        else
+        {
+            login.href = api.loginUrl;
+            login.textContent = "登录 Gelbooru";
+        }
         let original = box.querySelector(".gb-back-link");
         original.href = back.toString();
         original.textContent = "使用原页面";
@@ -388,5 +413,11 @@ export default class SiteGelbooru extends Site.Site
     otherDestinations()
     {
         return [];
+    }
+
+    // The mobile tab bar.  The list has no search box on mobile, so the tag library is the search.
+    mobileTabs()
+    {
+        return ["new", "popular", "tag-library", "favorites"];
     }
 }

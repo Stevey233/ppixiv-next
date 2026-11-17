@@ -65,8 +65,9 @@ html:not(.mobile) .floating > .dialog.gb-taglib {
 
     .gb-taglib-bar {
         display: flex;
+        flex-wrap: wrap;            // on a phone the sorts go under the tabs
         align-items: center;
-        gap: 12px;
+        gap: 4px 12px;
         font-size: 13px;
     }
 
@@ -77,6 +78,7 @@ html:not(.mobile) .floating > .dialog.gb-taglib {
 
     .gb-taglib-tab, .gb-taglib-sort {
         padding: 4px 8px;
+        white-space: nowrap;
         color: var(--n-pencil);
         border-bottom: 2px solid transparent;
         @media(hover: hover) { &:hover { color: var(--n-text); } }

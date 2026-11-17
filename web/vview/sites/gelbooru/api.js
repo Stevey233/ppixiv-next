@@ -77,10 +77,13 @@ function storedCredentials()
 }
 
 // Read the credentials from the account options page and store them.  Return null if the page
-// shows no key, which means the user isn't logged in.
+// shows no key, which means the user isn't logged in.  Throw if the page didn't load, keeping the
+// stored key: an error page or a dropped connection says nothing about the login.
 export async function readCredentials()
 {
     let response = await fetchSite(OPTIONS_URL);
+    if(!response.ok)
+        throw new Error(`Gelbooru answered ${response.status}`);
     let doc = new DOMParser().parseFromString(await response.text(), "text/html");
     let credentials = null;
     for(let textarea of doc.querySelectorAll("textarea"))
