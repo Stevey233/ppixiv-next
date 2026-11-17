@@ -24,7 +24,7 @@
 // @comment     the script manager will ask for permission the first time.
 // @connect     *
 //
-// @version     258.239.ga92f7503
+// @version     258.245.g4bdb6cb6
 // ==/UserScript==
 (function() {
 
@@ -4608,7 +4608,7 @@ let bundle = `(() => {
     setImgSrc(loader, url);
   }
   function thumbFailed(state, url) {
-    if (state.failed)
+    if (state.failed || !thumbsEnabled())
       return;
     state.failed = true;
     if (failedThumbUrls.has(state.base))
@@ -4618,7 +4618,23 @@ let bundle = `(() => {
       failedThumbUrls.delete(state.base);
       state.failed = false;
     };
-    Promise.resolve().then(() => (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" })).then(() => loadDetached(url, (ok) => ok || navigator.onLine === false ? forget() : thumbFailures++), forget);
+    Promise.resolve().then(async () => {
+      if (!thumbsEnabled())
+        return forget();
+      try {
+        await (window.realFetch ?? window.fetch)(state.base, { mode: "no-cors", cache: "no-store", credentials: "omit" });
+      } catch (e) {
+        return forget();
+      }
+      if (!thumbsEnabled())
+        return forget();
+      loadDetached(url, (ok) => {
+        if (ok || navigator.onLine === false || !thumbsEnabled())
+          forget();
+        else
+          thumbFailures++;
+      });
+    });
   }
   function thumbnailLoaded(img) {
     let state = thumbStates.get(img);
@@ -4691,6 +4707,8 @@ let bundle = `(() => {
         continue;
       }
       if (siteThumbs.has(entry.target)) {
+        if (!thumbsEnabled())
+          continue;
         thumbVisibilityObserver.unobserve(entry.target);
         upgradeSiteThumb(entry.target);
         continue;
@@ -20926,6 +20944,9 @@ let bundle = `(() => {
     shutdown() {
       this.active = false;
     }
+    retire() {
+      this._retired = true;
+    }
     get searchUrl() {
       return this.url;
     }
@@ -20933,6 +20954,8 @@ let bundle = `(() => {
       return null;
     }
     loadPage(page, { cause } = {}) {
+      if (this._retired)
+        return Promise.resolve(false);
       let result = this.loadedPages[page] || this.loadingPages[page];
       if (result == null) {
         let loadedPages = this.loadedPages, loadingPages = this.loadingPages;
@@ -20940,7 +20963,7 @@ let bundle = `(() => {
         loadingPages[page] = result;
         result.then(() => {
           delete loadingPages[page];
-          if (this._pageFailedAt?.[page] == null)
+          if (!this._retired && this._pageFailedAt?.[page] == null)
             loadedPages[page] = result;
         });
       }
@@ -20951,12 +20974,14 @@ let bundle = `(() => {
       this._pageFailedAt ??= {};
       if (Date.now() - (this._pageFailedAt[page] ?? -Infinity) < FAILED_COOLDOWN)
         return false;
-      for (let attempt = 0; ; attempt++) {
+      for (let attempt = 0; !this._retired && this.loadedPages === loadedPages; attempt++) {
         try {
           let result = await this._loadPageAsync(page, { cause });
           delete this._pageFailedAt[page];
           return result;
         } catch (e) {
+          if (this._retired)
+            return false;
           if (attempt >= RETRY_DELAYS.length || this.loadedPages !== loadedPages) {
             console.error(\`Couldn't load page \${page}:\`, e);
             this._pageFailedAt[page] = Date.now();
@@ -20964,10 +20989,9 @@ let bundle = `(() => {
           }
           console.warn(\`Loading page \${page} failed, trying again in \${RETRY_DELAYS[attempt]} ms:\`, e);
           await helpers.other.sleep(RETRY_DELAYS[attempt]);
-          if (this.loadedPages !== loadedPages)
-            return false;
         }
       }
+      return false;
     }
     isPageLoadedOrLoading(page) {
       if (this.idList.isPageLoaded(page))
@@ -21009,7 +21033,11 @@ let bundle = `(() => {
         return true;
       console.log(\`Load page \${page} for: \${cause}\`);
       await null;
+      if (this._retired)
+        return false;
       let { mediaIds, allowEmpty } = await this.loadPageInternal(page) ?? {};
+      if (this._retired)
+        return false;
       this._returnedMediaIds ??= /* @__PURE__ */ new Set();
       let newMediaIds = new Set(mediaIds?.filter((mediaId) => !this._returnedMediaIds.has(mediaId)));
       let returnedNew = newMediaIds.size;
@@ -29141,6 +29169,8 @@ let bundle = `(() => {
       }
       let baseUrl = helpers.getCanonicalUrl(url, { startAtBeginning }).url.toString();
       let dataSource = new dataSourceClass({ url: baseUrl });
+      if (force)
+        oldDataSource?.retire();
       this.dataSourcesByUrl[canonicalUrl] = dataSource;
       return dataSource;
     }
@@ -31985,6 +32015,8 @@ let bundle = `(() => {
         tag: currentTag,
         mode: r18 ? "r18" : "all"
       });
+      if (this._retired)
+        return;
       let data = result.body;
       this.lastSeen?.pageLoaded(data.thumbnails.illust.map((illust) => illust.id));
       ppixiv.tagTranslations.addTranslationsDict(data.tagTranslation);
@@ -34379,9 +34411,9 @@ let bundle = `(() => {
       this.input.focus();
     }
     shutdown() {
+      super.shutdown();
       if (!this._navigated && ppixiv.phistory.state?.[HISTORY_KEY])
         ppixiv.phistory.back();
-      super.shutdown();
     }
     _readSelection() {
       this.selection = [];
@@ -34621,6 +34653,10 @@ let bundle = `(() => {
       this._navigate(helpers.getArgsForTagSearch(tags.join(" "), new URL(this._fromUrl)));
     }
     _navigate(args) {
+      if (args.toString() == new helpers.args(this._fromUrl).toString()) {
+        this.visible = false;
+        return;
+      }
       this._navigated = true;
       helpers.navigate(args, { addToHistory: false });
       if (!this.hasShutdown)
@@ -35223,6 +35259,8 @@ let bundle = `(() => {
       }
       let requestRevision = favoriteRevision;
       let { posts, count, tooDeep } = await searchPosts({ tags: query.trim(), pid, limit: PER_PAGE });
+      if (this._retired)
+        return;
       if (tooDeep) {
         console.log(\`Gelbooru won't page past page \${page - 1}\`);
         return;
@@ -35240,7 +35278,8 @@ let bundle = `(() => {
       if (this.isOwnFavorites)
         noteFavorites(posts.map((post2) => post2.id), requestRevision);
       let mediaIds = await registerPosts(posts);
-      this.lastSeen?.pageLoaded(posts.map((post2) => post2.id));
+      if (!this._retired)
+        this.lastSeen?.pageLoaded(posts.map((post2) => post2.id));
       return { mediaIds };
     }
     get listEndText() {
@@ -45884,7 +45923,7 @@ html:not(.mobile) .floating > .dialog.gb-taglib {
         native: true,
         ...mobileFlags()
       };
-      console.log(\`vview setup: \${"r258.239.ga92f7503"}\`);
+      console.log(\`vview setup: \${"r258.245.g4bdb6cb6"}\`);
       console.log("Browser:", navigator.userAgent);
       this._cleanupEnvironment();
       console.log("Launching app");
@@ -45934,7 +45973,7 @@ html:not(.mobile) .floating > .dialog.gb-taglib {
         siteId,
         ...mobileFlags()
       };
-      console.log(\`ppixiv setup: \${"r258.239.ga92f7503"}\`);
+      console.log(\`ppixiv setup: \${"r258.245.g4bdb6cb6"}\`);
       console.log("Browser:", navigator.userAgent);
       for (let node of document.querySelectorAll("script[id *= 'Stay']"))
         node.remove();
