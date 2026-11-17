@@ -465,6 +465,12 @@ class TagLibraryDialog extends DialogWidget
     // the dialog was opened from.
     _navigate(args)
     {
+        // Searching the current selection just closes the dialog and removes its history entry.
+        if(args.toString() == new helpers.args(this._fromUrl).toString())
+        {
+            this.visible = false;
+            return;
+        }
         this._navigated = true;
         helpers.navigate(args, { addToHistory: false });
 
